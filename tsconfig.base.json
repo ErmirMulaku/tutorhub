@@ -21,10 +21,9 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
 
-    "baseUrl": ".",
     "paths": {
-      "@ermulaku/types": ["packages/types/src/index.ts"],
-      "@ermulaku/slot-engine": ["packages/slot-engine/src/index.ts"]
+      "@ermulaku/types": ["./packages/types/src/index.ts"],
+      "@ermulaku/slot-engine": ["./packages/slot-engine/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist"]
