@@ -2,6 +2,30 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input BookInput {
+  startTime: DateTime!
+  subjectId: ID!
+  tutorId: ID!
+}
+
+type Booking {
+  endTime: DateTime!
+  id: ID!
+  startTime: DateTime!
+  status: BookingStatus!
+  student: Student!
+  subject: Subject!
+  tutor: Tutor!
+}
+
+enum BookingStatus {
+  CANCELLED
+  COMPLETED
+  CONFIRMED
+  NO_SHOW
+  PENDING
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -13,9 +37,16 @@ enum Level {
   INTERMEDIATE
 }
 
+type Mutation {
+  bookLesson(input: BookInput!): Booking!
+  cancelBooking(id: ID!, reason: String): Booking!
+  leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
+}
+
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
   me: Student!
+  myBookings(status: BookingStatus): [Booking!]!
   tutor(id: ID!): Tutor
   tutors(level: Level, limit: Int! = 20, offset: Int! = 0, subject: String): TutorPage!
 }

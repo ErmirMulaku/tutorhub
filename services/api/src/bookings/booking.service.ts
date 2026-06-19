@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import type { BookingStatus } from '@ermulaku/types';
-import { EntityNotFoundError } from '../common/errors.js';
-import type { Booking } from '../generated/prisma/client.js';
+import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
+import { BookingStatus, type Booking, type Review } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { assertCanTransition } from './booking-status.js';
+import type { BookInput } from './dto/book-input.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
+
+const SLOT_MINUTES = 60;
+const MS_PER_MINUTE = 60_000;
 
 export interface BookingFilter {
   status?: BookingStatus;
@@ -68,5 +71,53 @@ export class BookingService {
     const booking = await this.findById(id);
     assertCanTransition(booking.status, to);
     return this.prisma.booking.update({ where: { id }, data: { status: to } });
+  }
+
+  /** Student-facing booking: derives a fixed-length end and sets PENDING. */
+  bookLesson(input: BookInput, studentId: string): Promise<Booking> {
+    const start = input.startTime;
+    const end = new Date(start.getTime() + SLOT_MINUTES * MS_PER_MINUTE);
+    return this.create({
+      tutorId: input.tutorId,
+      subjectId: input.subjectId,
+      studentId,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+    });
+  }
+
+  /** Cancel a booking the student owns (hidden as 404 if it is not theirs). */
+  async cancelForStudent(id: string, studentId: string): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (booking.studentId !== studentId) {
+      throw new EntityNotFoundError('Booking', id);
+    }
+    return this.updateStatus(id, BookingStatus.CANCELLED);
+  }
+
+  /** Leave a review for the student's own completed booking. */
+  async leaveReview(
+    bookingId: string,
+    studentId: string,
+    rating: number,
+    comment: string | null,
+  ): Promise<Review> {
+    if (rating < 1 || rating > 5) {
+      throw new BadRequestDomainError('rating must be between 1 and 5.');
+    }
+    const booking = await this.findById(bookingId);
+    if (booking.studentId !== studentId) {
+      throw new EntityNotFoundError('Booking', bookingId);
+    }
+    if (booking.status !== BookingStatus.COMPLETED) {
+      throw new BadRequestDomainError('Only completed bookings can be reviewed.');
+    }
+    const existing = await this.prisma.review.findUnique({ where: { bookingId } });
+    if (existing !== null) {
+      throw new BadRequestDomainError('This booking has already been reviewed.');
+    }
+    return this.prisma.review.create({
+      data: { bookingId, tutorId: booking.tutorId, rating, comment },
+    });
   }
 }
