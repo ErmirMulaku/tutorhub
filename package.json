@@ -53,6 +53,7 @@
     "tmp": "0.2.7",
     "js-yaml": "4.2.0",
     "multer": "2.2.0",
-    "@hono/node-server": "1.19.14"
+    "@hono/node-server": "1.19.14",
+    "ws": "8.21.0"
   }
 }

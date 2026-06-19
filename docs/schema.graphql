@@ -1,0 +1,43 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+enum Level {
+  ADVANCED
+  BEGINNER
+  INTERMEDIATE
+}
+
+type Query {
+  tutor(id: ID!): Tutor
+  tutors(level: Level, limit: Int! = 20, offset: Int! = 0, subject: String): TutorPage!
+}
+
+type Review {
+  comment: String
+  id: ID!
+  rating: Int!
+}
+
+type Subject {
+  id: ID!
+  level: Level!
+  name: String!
+}
+
+type Tutor {
+  bio: String
+  hourlyCents: Int!
+  id: ID!
+  name: String!
+  rating: Float
+  reviews: [Review!]!
+  subjects: [Subject!]!
+  timezone: String!
+}
+
+type TutorPage {
+  hasMore: Boolean!
+  items: [Tutor!]!
+  total: Int!
+}
