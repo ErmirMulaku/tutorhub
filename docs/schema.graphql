@@ -2,6 +2,11 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
 enum Level {
   ADVANCED
   BEGINNER
@@ -9,6 +14,7 @@ enum Level {
 }
 
 type Query {
+  availability(date: String!, tutorId: ID!): [Slot!]!
   tutor(id: ID!): Tutor
   tutors(level: Level, limit: Int! = 20, offset: Int! = 0, subject: String): TutorPage!
 }
@@ -17,6 +23,11 @@ type Review {
   comment: String
   id: ID!
   rating: Int!
+}
+
+type Slot {
+  end: DateTime!
+  start: DateTime!
 }
 
 type Subject {

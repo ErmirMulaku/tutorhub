@@ -132,4 +132,25 @@ describe('API (e2e)', () => {
   it('returns 404 for an unknown booking', async () => {
     await http().get('/bookings/00000000-0000-0000-0000-000000000000').expect(404);
   });
+
+  it('GraphQL availability uses the slot engine (Mon 09:00–17:00 → 8 future slots)', async () => {
+    // A Monday ~2 weeks out (future, so nothing is filtered by lead time) with
+    // no bookings for this tutor → eight 1-hour slots, regardless of season.
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + 14);
+    while (date.getUTCDay() !== 1) date.setUTCDate(date.getUTCDate() + 1);
+    const day = date.toISOString().slice(0, 10);
+
+    const query = `{ availability(tutorId: "${tutorId}", date: "${day}") { start end } }`;
+    const res = await http().post('/graphql').send({ query }).expect(200);
+    const slots = (res.body as { data: { availability: { start: string; end: string }[] } }).data
+      .availability;
+    expect(slots).toHaveLength(8);
+    const first = slots[0];
+    expect(first).toBeDefined();
+    if (first !== undefined) {
+      const durationMs = new Date(first.end).getTime() - new Date(first.start).getTime();
+      expect(durationMs).toBe(60 * 60 * 1000);
+    }
+  });
 });

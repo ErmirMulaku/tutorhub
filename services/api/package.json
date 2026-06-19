@@ -30,6 +30,7 @@
     "@nestjs/platform-express": "11.1.27",
     "@nestjs/swagger": "11.4.4",
     "@prisma/adapter-pg": "7.8.0",
+    "@ermulaku/slot-engine": "*",
     "@ermulaku/types": "*",
     "@prisma/client": "7.8.0",
     "class-transformer": "0.5.1",
