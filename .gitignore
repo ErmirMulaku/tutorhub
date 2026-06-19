@@ -145,3 +145,11 @@ vite.config.ts.timestamp-*
 # Nx cache
 .nx/cache
 .nx/workspace-data
+
+# Prisma generated client (run `npm run db:generate`)
+**/src/generated/
+
+
+# ingore file Spec.md
+Spec.md
+
