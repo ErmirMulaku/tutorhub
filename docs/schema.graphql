@@ -15,6 +15,7 @@ enum Level {
 
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
+  me: Student!
   tutor(id: ID!): Tutor
   tutors(level: Level, limit: Int! = 20, offset: Int! = 0, subject: String): TutorPage!
 }
@@ -28,6 +29,12 @@ type Review {
 type Slot {
   end: DateTime!
   start: DateTime!
+}
+
+type Student {
+  email: String!
+  fullName: String!
+  id: ID!
 }
 
 type Subject {

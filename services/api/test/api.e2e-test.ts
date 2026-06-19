@@ -26,6 +26,7 @@ describe('API (e2e)', () => {
   let tutorId = '';
   let subjectId = '';
   let studentId = '';
+  let studentEmail = '';
   let bookingId = '';
 
   beforeAll(async () => {
@@ -38,8 +39,9 @@ describe('API (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    studentEmail = `e2e+${Date.now().toString()}@example.com`;
     const student = await prisma.student.create({
-      data: { fullName: 'E2E Student', email: `e2e+${Date.now().toString()}@example.com` },
+      data: { fullName: 'E2E Student', email: studentEmail },
     });
     studentId = student.id;
   });
@@ -152,5 +154,27 @@ describe('API (e2e)', () => {
       const durationMs = new Date(first.end).getTime() - new Date(first.start).getTime();
       expect(durationMs).toBe(60 * 60 * 1000);
     }
+  });
+
+  it('dev-login mints a JWT and the guarded `me` query returns the student', async () => {
+    const login = await http().post('/auth/dev-login').send({ email: studentEmail }).expect(200);
+    const token = (login.body as { accessToken: string }).accessToken;
+    expect(token).toEqual(expect.any(String));
+
+    const res = await http()
+      .post('/graphql')
+      .set('authorization', `Bearer ${token}`)
+      .send({ query: '{ me { id email } }' })
+      .expect(200);
+    const me = (res.body as { data: { me: { id: string; email: string } } }).data.me;
+    expect(me.id).toBe(studentId);
+    expect(me.email).toBe(studentEmail);
+  });
+
+  it('rejects the `me` query without a token', async () => {
+    const res = await http().post('/graphql').send({ query: '{ me { id } }' }).expect(200);
+    const body = res.body as { data: unknown; errors: unknown[] };
+    expect(body.data).toBeNull();
+    expect(body.errors).toBeDefined();
   });
 });
