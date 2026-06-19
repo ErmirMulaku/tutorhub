@@ -1,0 +1,32 @@
+{
+  "name": "tutorhub",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "TutorHub — a tutoring/lessons marketplace built as a TypeScript monorepo.",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "typecheck": "nx run-many -t typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "26.0.0",
+    "nx": "23.0.0",
+    "typescript": "6.0.3"
+  },
+  "overrides": {
+    "form-data": "4.0.6",
+    "tmp": "0.2.7"
+  }
+}
