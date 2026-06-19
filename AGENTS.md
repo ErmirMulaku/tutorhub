@@ -88,6 +88,28 @@ runtime's `Intl` rather than a date library. A GitHub Actions workflow runs lint
   versions via `overrides` (`form-data`, `tmp`, and a scoped `js-yaml` for Jest's coverage tooling),
   each reviewed to confirm the override was API-compatible rather than a blind bump.
 
+### Phase 2 — API core ✅
+
+**Built (in six reviewed commits):** `services/api`, a NestJS 11 **ESM** service over
+**PostgreSQL + Prisma 7**. A Prisma schema modelling SPEC §8 (with a seed of 3 tutors, subjects
+and a student); a global `PrismaModule` using the Prisma 7 **driver-adapter** pattern; REST CRUD
+for tutors/subjects/bookings with `class-validator` DTOs and **Swagger** at `/docs`; and a shared
+`BookingService` whose status **state machine** is the single source of truth (reused by GraphQL/
+gRPC later). Domain errors map to HTTP via a global filter (404/409/400).
+
+**Verified (not just generated):**
+
+- Exhaustive unit tests for the status machine (all 25 from→to pairs) run **without a database**;
+  **9 supertest e2e tests** exercise the real REST API against Postgres (create → confirm →
+  complete, plus 409/404/400 paths).
+- CI gained a **Postgres service container** + `prisma migrate deploy` so endpoints are verified on
+  every push; the unit suite stays DB-free.
+- Manually drove the booking lifecycle over HTTP and read Swagger to confirm behaviour.
+- **Adapting to Prisma 7** (a new major) was done against current docs, not memory: the datasource
+  URL moved to `prisma.config.ts` and runtime connects via `@prisma/adapter-pg`.
+- `npm audit` kept at **0 vulnerabilities** (added `multer` and `@hono/node-server` overrides for
+  NestJS/Prisma-CLI transitive advisories).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

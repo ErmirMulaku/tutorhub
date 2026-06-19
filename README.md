@@ -11,7 +11,7 @@ calendar, bookings, and earnings. Built as a TypeScript monorepo with a Next.js 
 a custom-Webpack React/Redux dashboard, an Expo mobile app, and a NestJS API exposing the same
 domain over **REST, GraphQL, and gRPC**.
 
-> Status: 🚧 Phase 1 (Foundation) complete — see [Roadmap](#roadmap).
+> Status: 🚧 Phase 2 (API core) complete — see [Roadmap](#roadmap).
 > Live demo: _TODO_ · API docs: _TODO_ · Storybook: _TODO_
 
 ## Why this project
@@ -57,24 +57,24 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + C
 
 ## Getting started
 
-> **Phase 1 status:** only `packages/types` and `packages/slot-engine` exist so far. After
-> `npm install`, the full verification pipeline runs today:
->
-> ```bash
-> npm install
-> npm run lint && npm run typecheck && npm test && npm run build
-> ```
->
-> The app/service setup below (Docker, Postgres, `npm run dev`) lands in later phases.
+> **Built so far (Phases 1–2):** `packages/types`, `packages/slot-engine`, and the
+> `services/api` NestJS REST API (Postgres + Prisma). The marketplace/dashboard/mobile
+> apps land in later phases.
 
 ```bash
-# prerequisites: Node 22+, npm, Docker (for Postgres), and (optional) Elixir
-npm install
-cp .env.example .env            # fill values; never commit .env
-docker compose up -d db         # local PostgreSQL
-npm run db:migrate              # Prisma migrate + seed
-npm run dev                     # run apps/services (see package scripts)
+# prerequisites: Node 22+, npm, Docker (for Postgres)
+npm install                                   # also generates the Prisma client
+npm run lint && npm run typecheck && npm test && npm run build   # full verification
+
+# run the API:
+cp services/api/.env.example services/api/.env   # set DATABASE_URL; never commit .env
+docker compose up -d db                          # local PostgreSQL
+npm run db:deploy -w @ermulaku/api               # apply migrations
+npm run db:seed   -w @ermulaku/api               # sample data
+npm run start:dev -w @ermulaku/api               # API + Swagger at :4000/docs
 ```
+
+See [`services/api/README.md`](./services/api/README.md) for the full API guide.
 
 | Service            | Local URL                     |
 | ------------------ | ----------------------------- |
@@ -125,7 +125,7 @@ Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime
 ## Roadmap
 
 - [x] **Phase 1** — Monorepo + `slot-engine` (tested) + CI + `AGENTS.md`
-- [ ] **Phase 2** — NestJS API + Prisma/Postgres + REST + Swagger
+- [x] **Phase 2** — NestJS API + Prisma/Postgres + REST + Swagger
 - [ ] **Phase 3** — GraphQL + gRPC + API docs
 - [ ] **Phase 4** — Dashboard SPA (custom Webpack) + real-time
 - [ ] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
