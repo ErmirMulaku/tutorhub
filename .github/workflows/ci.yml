@@ -11,11 +11,26 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint · Typecheck · Test · Build
+    name: Lint · Typecheck · Test · Build · E2E
     runs-on: ubuntu-latest
     env:
       # Skip Husky hook installation in CI (no commits happen here).
       HUSKY: '0'
+      DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tutorhub
+          POSTGRES_PASSWORD: tutorhub
+          POSTGRES_DB: tutorhub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tutorhub -d tutorhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,3 +55,9 @@ jobs:
 
       - name: Build
         run: npx nx run-many -t build
+
+      - name: Apply database migrations
+        run: npm run db:deploy --workspace @ermulaku/api
+
+      - name: E2E tests
+        run: npm run test:e2e --workspace @ermulaku/api

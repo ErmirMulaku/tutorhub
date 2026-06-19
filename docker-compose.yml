@@ -1,0 +1,22 @@
+# Local PostgreSQL for services/api. Not used in production (Cloud SQL, SPEC §14).
+#   docker compose up -d db
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: tutorhub-db
+    environment:
+      POSTGRES_USER: tutorhub
+      POSTGRES_PASSWORD: tutorhub
+      POSTGRES_DB: tutorhub
+    ports:
+      - '5432:5432'
+    volumes:
+      - tutorhub-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tutorhub -d tutorhub']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tutorhub-db-data:

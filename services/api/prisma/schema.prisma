@@ -1,0 +1,99 @@
+// TutorHub domain model (SPEC §8). One source of truth for Postgres; the
+// generated client is consumed by the NestJS service layer.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+model Tutor {
+  id           String    @id @default(uuid())
+  name         String
+  bio          String?
+  timezone     String // IANA, e.g. "Europe/Belgrade"
+  hourlyCents  Int
+  workingHours Json // WorkingHours[] — [{ day, start, end }]
+  isActive     Boolean   @default(true)
+  subjects     Subject[]
+  bookings     Booking[]
+  reviews      Review[]
+  createdAt    DateTime  @default(now())
+}
+
+model Subject {
+  id       String    @id @default(uuid())
+  name     String
+  level    Level
+  tutor    Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId  String
+  bookings Booking[]
+}
+
+model Student {
+  id        String    @id @default(uuid())
+  fullName  String
+  email     String    @unique
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
+}
+
+model Booking {
+  id        String        @id @default(uuid())
+  tutor     Tutor         @relation(fields: [tutorId], references: [id])
+  tutorId   String
+  student   Student       @relation(fields: [studentId], references: [id])
+  studentId String
+  subject   Subject       @relation(fields: [subjectId], references: [id])
+  subjectId String
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(PENDING)
+  payment   Payment?
+  review    Review?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Review {
+  id        String  @id @default(uuid())
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String  @unique
+  tutor     Tutor   @relation(fields: [tutorId], references: [id])
+  tutorId   String
+  rating    Int // 1–5
+  comment   String?
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String        @unique
+  amountCents Int
+  status      PaymentStatus @default(PENDING)
+}
