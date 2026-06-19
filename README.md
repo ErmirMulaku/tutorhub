@@ -11,15 +11,17 @@ calendar, bookings, and earnings. Built as a TypeScript monorepo with a Next.js 
 a custom-Webpack React/Redux dashboard, an Expo mobile app, and a NestJS API exposing the same
 domain over **REST, GraphQL, and gRPC**.
 
-> Status: 🚧 in active development — see [Roadmap](#roadmap).
+> Status: 🚧 Phase 1 (Foundation) complete — see [Roadmap](#roadmap).
 > Live demo: _TODO_ · API docs: _TODO_ · Storybook: _TODO_
 
 ## Why this project
+
 A full, real-world marketplace built to senior standards: clean architecture, documented APIs,
 tests, CI, and an [AI-augmented workflow](./AGENTS.md). The booking/availability model mirrors
 real scheduling platforms (timezone-correct slots, no-show handling, real-time updates).
 
 ## Architecture
+
 ```
  marketplace (Next.js)  ┐                       ┌ dashboard (React+Redux, Webpack)
  mobile (Expo)          ┴── GraphQL / REST ──►  │
@@ -30,44 +32,60 @@ real scheduling platforms (timezone-correct slots, no-show handling, real-time u
                                 └─────────► PostgreSQL (Prisma)
    real-time: WebSocket events → dashboard (live bookings)
 ```
+
 Full design and decisions: [`SPEC.md`](./SPEC.md) and [`docs/`](./docs).
 
 ## Tech stack
+
 TypeScript · React 19 + Redux Toolkit · Next.js 15 (SSR/PWA) · custom Webpack 5 + esbuild ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
 Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + Cloud SQL.
 
 ## Monorepo
-| Path | What |
-|---|---|
-| `apps/marketplace` | Next.js student app (SSR, PWA, RTL, GPU-only animations) |
-| `apps/dashboard` | React + Redux tutor dashboard (custom Webpack) |
-| `apps/mobile` | Expo / React Native student app |
-| `services/api` | NestJS — REST + GraphQL + gRPC over Postgres |
-| `services/notifications` | Elixir/Phoenix — lesson reminders |
-| `packages/slot-engine` | timezone-aware availability engine ([published to npm](#)) |
-| `packages/ui` | shared component library + Storybook |
-| `packages/types`, `packages/api-client` | shared TS types & typed client |
+
+| Path                                    | What                                                       |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)   |
+| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)             |
+| `apps/mobile`                           | Expo / React Native student app                            |
+| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres               |
+| `services/notifications`                | Elixir/Phoenix — lesson reminders                          |
+| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](#)) |
+| `packages/ui`                           | shared component library + Storybook                       |
+| `packages/types`, `packages/api-client` | shared TS types & typed client                             |
 
 ## Getting started
+
+> **Phase 1 status:** only `packages/types` and `packages/slot-engine` exist so far. After
+> `npm install`, the full verification pipeline runs today:
+>
+> ```bash
+> npm install
+> npm run lint && npm run typecheck && npm test && npm run build
+> ```
+>
+> The app/service setup below (Docker, Postgres, `npm run dev`) lands in later phases.
+
 ```bash
-# prerequisites: Node 20+, npm, Docker (for Postgres), and (optional) Elixir
+# prerequisites: Node 22+, npm, Docker (for Postgres), and (optional) Elixir
 npm install
 cp .env.example .env            # fill values; never commit .env
 docker compose up -d db         # local PostgreSQL
 npm run db:migrate              # Prisma migrate + seed
 npm run dev                     # run apps/services (see package scripts)
 ```
-| Service | Local URL |
-|---|---|
-| Marketplace | http://localhost:3000 |
-| Dashboard | http://localhost:3100 |
-| API (REST/Swagger) | http://localhost:4000/docs |
-| GraphQL | http://localhost:4000/graphql |
-| gRPC | localhost:50051 |
+
+| Service            | Local URL                     |
+| ------------------ | ----------------------------- |
+| Marketplace        | http://localhost:3000         |
+| Dashboard          | http://localhost:3100         |
+| API (REST/Swagger) | http://localhost:4000/docs    |
+| GraphQL            | http://localhost:4000/graphql |
+| gRPC               | localhost:50051               |
 
 ## Scripts
+
 ```bash
 npm run dev          # start apps/services in watch mode
 npm run build        # build all packages
@@ -78,7 +96,15 @@ npm run e2e          # Cypress
 npm run storybook    # component catalog
 ```
 
+## Built with AI
+
+This repo is built with an **AI-augmented workflow** (Claude Code) under senior review — AI handles
+mechanical work; architecture, correctness, and security stay human-owned. The approach,
+verification checklist, and security process live in [`AGENTS.md`](./AGENTS.md), and the per-phase
+prompts are recorded in [`SPEC.md` §17](./SPEC.md) as evidence.
+
 ## Documentation
+
 - [`SPEC.md`](./SPEC.md) — full build spec & phases
 - [`AGENTS.md`](./AGENTS.md) — AI-augmented workflow & verification process
 - [`docs/API.md`](./docs/API.md) — REST / GraphQL / gRPC reference
@@ -87,15 +113,18 @@ npm run storybook    # component catalog
 - [`docs/adr/`](./docs/adr) — architecture decision records
 
 ## Testing & CI
+
 Every domain rule has a Jest test; core flows have Cypress E2E. GitHub Actions runs
 lint → typecheck → test → build on every PR, plus a Lighthouse CI budget on the marketplace.
 
 ## Operations
+
 Health: `GET /health` (liveness), `GET /ready` (readiness). Metrics: Prometheus at `/metrics`.
 Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime/SLO notes.
 
 ## Roadmap
-- [ ] **Phase 1** — Monorepo + `slot-engine` (tested) + CI + `AGENTS.md`
+
+- [x] **Phase 1** — Monorepo + `slot-engine` (tested) + CI + `AGENTS.md`
 - [ ] **Phase 2** — NestJS API + Prisma/Postgres + REST + Swagger
 - [ ] **Phase 3** — GraphQL + gRPC + API docs
 - [ ] **Phase 4** — Dashboard SPA (custom Webpack) + real-time
@@ -104,4 +133,5 @@ Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime
 - [ ] **Phase 7** — Elixir notifications + Expo mobile + publish slot-engine to npm
 
 ## License
+
 MIT © Ermir Mulaku
