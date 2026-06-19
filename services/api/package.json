@@ -9,8 +9,9 @@
     "postinstall": "prisma generate",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src test",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config jest-e2e.config.cjs",
     "start": "node dist/main.js",
     "start:dev": "tsx watch src/main.ts",
     "db:generate": "prisma generate",
@@ -35,9 +36,12 @@
     "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "@nestjs/testing": "11.1.27",
     "@types/express": "5.0.6",
     "@types/pg": "8.20.0",
+    "@types/supertest": "7.2.0",
     "prisma": "7.8.0",
+    "supertest": "7.2.2",
     "tsx": "4.22.4"
   }
 }
