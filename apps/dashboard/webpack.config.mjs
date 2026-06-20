@@ -26,17 +26,12 @@ export default (_env, argv) => {
     module: {
       rules: [
         {
-          test: /\.[jt]sx?$/,
+          test: /\.tsx?$/,
           exclude: /node_modules/,
           use: {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                ['@babel/preset-env', { targets: 'defaults' }],
-                ['@babel/preset-react', { runtime: 'automatic' }],
-                '@babel/preset-typescript',
-              ],
-            },
+            loader: 'ts-loader',
+            // Type-checking is a separate `tsc --noEmit` target; transpile fast here.
+            options: { transpileOnly: true, compilerOptions: { noEmit: false } },
           },
         },
         {
@@ -50,6 +45,8 @@ export default (_env, argv) => {
       splitChunks: { chunks: 'all' },
       runtimeChunk: 'single',
     },
+    // Vendor (react-dom) exceeds the default budget; size is tracked via the analyzer.
+    performance: { hints: false },
     plugins: [
       new HtmlWebpackPlugin({ template: resolve(root, 'src/index.html') }),
       new webpack.DefinePlugin({

@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
 import Logo from '../assets/logo.svg';
+import { BookingsList } from '../features/bookings/BookingsList';
+import { TutorSelect } from '../features/tutors/TutorSelect';
 
 export function App(): JSX.Element {
   return (
@@ -9,7 +11,13 @@ export function App(): JSX.Element {
         <h1>TutorHub Dashboard</h1>
       </header>
       <main className="app__main">
-        <p>Tutor back office — calendar, bookings, and live updates.</p>
+        <section className="panel">
+          <TutorSelect />
+        </section>
+        <section className="panel">
+          <h2>Bookings</h2>
+          <BookingsList />
+        </section>
       </main>
     </div>
   );
