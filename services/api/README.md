@@ -1,9 +1,15 @@
 # @ermulaku/api
 
 The TutorHub API — a **NestJS 11 (ESM)** service over **PostgreSQL + Prisma 7**.
-Phase 2 exposes the domain over **REST** with **Swagger** docs and a shared
-`BookingService` that enforces the booking status state machine. GraphQL and
-gRPC (sharing the same service layer) arrive in Phase 3.
+It exposes the same domain over **three protocols** sharing one service layer
+(`BookingService` is the single source of truth for booking rules):
+
+- **REST** + Swagger UI at `/docs`
+- **GraphQL** (code-first Apollo) at `/graphql` — SDL committed to [`docs/schema.graphql`](../../docs/schema.graphql)
+- **gRPC** (`tutorhub.v1`) from [`proto/booking.proto`](../../proto/booking.proto), default `localhost:50051`
+
+Full reference: [`docs/API.md`](../../docs/API.md). Guarded GraphQL operations
+use a JWT — mint one via `POST /auth/dev-login`.
 
 ## Prerequisites
 

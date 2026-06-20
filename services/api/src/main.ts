@@ -1,9 +1,13 @@
 import 'reflect-metadata';
+import { fileURLToPath } from 'node:url';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { type MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { DomainExceptionFilter } from './common/domain-exception.filter.js';
+
+const PROTO_PATH = fileURLToPath(new URL('../../../proto/booking.proto', import.meta.url));
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -13,7 +17,7 @@ async function bootstrap(): Promise<void> {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  // Map transport-agnostic domain errors to HTTP status codes.
+  // Map transport-agnostic domain errors to HTTP / GraphQL shapes.
   app.useGlobalFilters(new DomainExceptionFilter());
 
   const swaggerConfig = new DocumentBuilder()
@@ -22,6 +26,18 @@ async function bootstrap(): Promise<void> {
     .setVersion('0.1.0')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
+
+  // gRPC microservice (SPEC §9), reusing the same service layer.
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'tutorhub.v1',
+      protoPath: PROTO_PATH,
+      url: process.env.GRPC_URL ?? '0.0.0.0:50051',
+      loader: { longs: Number, enums: String, defaults: true, oneofs: true },
+    },
+  });
+  await app.startAllMicroservices();
 
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port);

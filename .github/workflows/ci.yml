@@ -17,6 +17,7 @@ jobs:
       # Skip Husky hook installation in CI (no commits happen here).
       HUSKY: '0'
       DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
+      JWT_SECRET: test-secret
     services:
       postgres:
         image: postgres:17-alpine

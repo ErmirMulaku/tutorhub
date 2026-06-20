@@ -26,7 +26,10 @@ describe('API (e2e)', () => {
   let tutorId = '';
   let subjectId = '';
   let studentId = '';
+  let studentEmail = '';
   let bookingId = '';
+  let token = '';
+  let gqlBookingId = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -38,15 +41,18 @@ describe('API (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    studentEmail = `e2e+${Date.now().toString()}@example.com`;
     const student = await prisma.student.create({
-      data: { fullName: 'E2E Student', email: `e2e+${Date.now().toString()}@example.com` },
+      data: { fullName: 'E2E Student', email: studentEmail },
     });
     studentId = student.id;
   });
 
   afterAll(async () => {
-    if (bookingId !== '') {
-      await prisma.booking.deleteMany({ where: { id: bookingId } });
+    for (const id of [bookingId, gqlBookingId]) {
+      if (id !== '') {
+        await prisma.booking.deleteMany({ where: { id } }); // cascades its review
+      }
     }
     if (subjectId !== '') {
       await prisma.subject.deleteMany({ where: { id: subjectId } });
@@ -131,5 +137,112 @@ describe('API (e2e)', () => {
 
   it('returns 404 for an unknown booking', async () => {
     await http().get('/bookings/00000000-0000-0000-0000-000000000000').expect(404);
+  });
+
+  it('GraphQL availability uses the slot engine (Mon 09:00–17:00 → 8 future slots)', async () => {
+    // A Monday ~2 weeks out (future, so nothing is filtered by lead time) with
+    // no bookings for this tutor → eight 1-hour slots, regardless of season.
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + 14);
+    while (date.getUTCDay() !== 1) date.setUTCDate(date.getUTCDate() + 1);
+    const day = date.toISOString().slice(0, 10);
+
+    const query = `{ availability(tutorId: "${tutorId}", date: "${day}") { start end } }`;
+    const res = await http().post('/graphql').send({ query }).expect(200);
+    const slots = (res.body as { data: { availability: { start: string; end: string }[] } }).data
+      .availability;
+    expect(slots).toHaveLength(8);
+    const first = slots[0];
+    expect(first).toBeDefined();
+    if (first !== undefined) {
+      const durationMs = new Date(first.end).getTime() - new Date(first.start).getTime();
+      expect(durationMs).toBe(60 * 60 * 1000);
+    }
+  });
+
+  it('dev-login mints a JWT and the guarded `me` query returns the student', async () => {
+    const login = await http().post('/auth/dev-login').send({ email: studentEmail }).expect(200);
+    token = (login.body as { accessToken: string }).accessToken;
+    expect(token).toEqual(expect.any(String));
+
+    const res = await http()
+      .post('/graphql')
+      .set('authorization', `Bearer ${token}`)
+      .send({ query: '{ me { id email } }' })
+      .expect(200);
+    const me = (res.body as { data: { me: { id: string; email: string } } }).data.me;
+    expect(me.id).toBe(studentId);
+    expect(me.email).toBe(studentEmail);
+  });
+
+  it('rejects the `me` query without a token', async () => {
+    const res = await http().post('/graphql').send({ query: '{ me { id } }' }).expect(200);
+    const body = res.body as { data: unknown; errors: unknown[] };
+    expect(body.data).toBeNull();
+    expect(body.errors).toBeDefined();
+  });
+
+  it('bookLesson mutation creates a PENDING booking for the current student', async () => {
+    const mutation = `mutation {
+      bookLesson(input: { tutorId: "${tutorId}", subjectId: "${subjectId}", startTime: "2025-07-07T09:00:00.000Z" }) {
+        id status student { id } tutor { id }
+      }
+    }`;
+    const res = await http()
+      .post('/graphql')
+      .set('authorization', `Bearer ${token}`)
+      .send({ query: mutation })
+      .expect(200);
+    const booking = (
+      res.body as {
+        data: { bookLesson: { id: string; status: string; student: { id: string } } };
+      }
+    ).data.bookLesson;
+    gqlBookingId = booking.id;
+    expect(booking.status).toBe('PENDING');
+    expect(booking.student.id).toBe(studentId);
+  });
+
+  it('myBookings returns the current student bookings', async () => {
+    const res = await http()
+      .post('/graphql')
+      .set('authorization', `Bearer ${token}`)
+      .send({ query: '{ myBookings { id } }' })
+      .expect(200);
+    const ids = (res.body as { data: { myBookings: { id: string }[] } }).data.myBookings.map(
+      (b) => b.id,
+    );
+    expect(ids).toContain(gqlBookingId);
+  });
+
+  it('leaveReview works once the booking is COMPLETED (cross-transport)', async () => {
+    // Drive the GraphQL-created booking to COMPLETED over REST, then review it.
+    await http()
+      .patch(`/bookings/${gqlBookingId}/status`)
+      .send({ status: 'CONFIRMED' })
+      .expect(200);
+    await http()
+      .patch(`/bookings/${gqlBookingId}/status`)
+      .send({ status: 'COMPLETED' })
+      .expect(200);
+
+    const mutation = `mutation {
+      leaveReview(bookingId: "${gqlBookingId}", rating: 5, comment: "Great") { id rating comment }
+    }`;
+    const res = await http()
+      .post('/graphql')
+      .set('authorization', `Bearer ${token}`)
+      .send({ query: mutation })
+      .expect(200);
+    const review = (res.body as { data: { leaveReview: { rating: number } } }).data.leaveReview;
+    expect(review.rating).toBe(5);
+  });
+
+  it('rejects bookLesson without a token', async () => {
+    const mutation = `mutation {
+      bookLesson(input: { tutorId: "${tutorId}", subjectId: "${subjectId}", startTime: "2025-07-08T09:00:00.000Z" }) { id }
+    }`;
+    const res = await http().post('/graphql').send({ query: mutation }).expect(200);
+    expect((res.body as { errors: unknown[] }).errors).toBeDefined();
   });
 });
