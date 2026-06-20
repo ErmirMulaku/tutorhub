@@ -110,6 +110,30 @@ gRPC later). Domain errors map to HTTP via a global filter (404/409/400).
 - `npm audit` kept at **0 vulnerabilities** (added `multer` and `@hono/node-server` overrides for
   NestJS/Prisma-CLI transitive advisories).
 
+### Phase 3 — GraphQL + gRPC ✅
+
+**Built (in six reviewed commits):** a code-first **Apollo GraphQL** API
+(`autoSchemaFile` → committed `docs/schema.graphql`) with object/input types, enums, pagination,
+nested resolvers, a built-in `DateTime` scalar, and an `availability` query that calls
+`@ermulaku/slot-engine`; **minimal JWT auth** (dev-login + GraphQL guard + `@CurrentUser`) for
+`me`/`myBookings`/mutations; **typed GraphQL errors** (`NOT_FOUND` / `BAD_USER_INPUT`) via a
+context-aware exception filter; and a **gRPC** microservice from `proto/booking.proto`
+(`tutorhub.v1`) reusing `BookingService`, with `Timestamp`↔`Date` mapping, gRPC status codes, and a
+server-streaming `WatchBookings` backed by an in-process RxJS event bus. All three protocols share
+one service layer. Full reference in `docs/API.md`.
+
+**Verified (not just generated):**
+
+- **21 e2e tests** across two suites: REST + GraphQL (auth, availability, mutations, the
+  cross-transport book→complete→review flow) and a real **gRPC client** suite (unary calls, the
+  `NOT_FOUND` / `FAILED_PRECONDITION` mappings, and a live `WatchBookings` stream assertion).
+- A test caught a real behaviour I'd have missed: availability for a _past_ date returns `[]`
+  (the engine filters slots before `now`) — so the test queries a computed future Monday instead.
+- Adopted current library facts over memory: `graphql` pinned to **16** (Apollo/Nest don't support
+  17 yet), and Express 5 needs the `@as-integrations/express5` Apollo integration.
+- `npm audit` kept at **0 vulnerabilities** (added a `ws` override for a GraphQL-subscriptions
+  transitive advisory).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
