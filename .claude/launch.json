@@ -20,6 +20,12 @@
         "packages/ui/.storybook"
       ],
       "port": 6006
+    },
+    {
+      "name": "marketplace",
+      "runtimeExecutable": "/Users/ermir/.nvm/versions/node/v22.22.2/bin/node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/marketplace", "-p", "3200"],
+      "port": 3200
     }
   ]
 }

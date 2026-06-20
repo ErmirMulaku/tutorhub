@@ -1,0 +1,37 @@
+{
+  "brand": "TutorHub",
+  "nav": {
+    "discover": "Find a tutor",
+    "home": "Home"
+  },
+  "home": {
+    "heroTitle": "Learn from tutors who fit your schedule",
+    "heroSubtitle": "Browse expert tutors across maths, languages, music and more. See real-time availability in your timezone and book a lesson in seconds.",
+    "ctaBrowse": "Browse tutors",
+    "feature1Title": "Real availability",
+    "feature1Body": "Timezone- and DST-aware slots, so the time you see is the time you get.",
+    "feature2Title": "Book in seconds",
+    "feature2Body": "Pick a slot, confirm, done — no back-and-forth messaging.",
+    "feature3Title": "Every subject",
+    "feature3Body": "From calculus to conversational Arabic, find a tutor for it."
+  },
+  "discover": {
+    "title": "Find a tutor",
+    "subtitle": "{count} tutors available",
+    "searchPlaceholder": "Search by subject…",
+    "filterLevel": "Level",
+    "filterAll": "All levels",
+    "levelBEGINNER": "Beginner",
+    "levelINTERMEDIATE": "Intermediate",
+    "levelADVANCED": "Advanced",
+    "empty": "No tutors match your search.",
+    "perHour": "/hr",
+    "viewProfile": "View profile",
+    "reviews": "{count} reviews"
+  },
+  "common": {
+    "back": "Back",
+    "loading": "Loading…",
+    "switchLocale": "Language"
+  }
+}

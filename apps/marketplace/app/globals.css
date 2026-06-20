@@ -1,0 +1,142 @@
+/**
+ * Marketplace page-level styles. Component styling comes from `@ermulaku/ui`
+ * (design tokens + primitives); this file holds resets and page layout only.
+ * Directional rules use CSS logical properties so every page mirrors under
+ * `dir="rtl"`.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--th-bg);
+  color: var(--th-text);
+  font-family: var(--th-font);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  margin: 0;
+}
+
+.container {
+  inline-size: min(72rem, 100% - 2 * var(--th-space-5));
+  margin-inline: auto;
+}
+
+/* ---- Header -------------------------------------------------------------- */
+.site-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--th-bg) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(8px);
+  border-block-end: 1px solid var(--th-border);
+}
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--th-space-4);
+  padding-block: var(--th-space-3);
+}
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-2);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--th-primary);
+}
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--th-space-4);
+}
+
+/* ---- Locale switcher ----------------------------------------------------- */
+.locale-switcher {
+  display: inline-flex;
+  gap: var(--th-space-1);
+  background: var(--th-surface-2);
+  border: 1px solid var(--th-border);
+  border-radius: 999px;
+  padding: var(--th-space-1);
+}
+.locale-switcher a {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+  padding-block: var(--th-space-1);
+  padding-inline: var(--th-space-3);
+  border-radius: 999px;
+}
+.locale-switcher a[aria-current='true'] {
+  background: var(--th-surface);
+  color: var(--th-text);
+  box-shadow: var(--th-shadow-1);
+}
+
+/* ---- Hero ---------------------------------------------------------------- */
+.hero {
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+.hero__title {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  max-inline-size: 18ch;
+}
+.hero__subtitle {
+  margin-block-start: var(--th-space-4);
+  max-inline-size: 52ch;
+  color: var(--th-text-muted);
+  font-size: 1.125rem;
+}
+.hero__actions {
+  margin-block-start: var(--th-space-5);
+}
+
+/* ---- Feature grid -------------------------------------------------------- */
+.features {
+  display: grid;
+  gap: var(--th-space-5);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  padding-block-end: var(--th-space-6);
+}
+.feature__title {
+  font-size: 1.1rem;
+  margin-block-end: var(--th-space-2);
+}
+.feature__body {
+  color: var(--th-text-muted);
+  margin: 0;
+}
+
+/* ---- Page scaffolding ---------------------------------------------------- */
+.page {
+  padding-block: var(--th-space-6);
+}
+.page__title {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+.page__subtitle {
+  color: var(--th-text-muted);
+  margin-block-start: var(--th-space-2);
+}

@@ -6,7 +6,15 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/generated/**', '.nx/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/generated/**',
+      '**/.next/**',
+      '**/storybook-static/**',
+      '.nx/**',
+    ],
   },
 
   // Type-aware linting for TypeScript sources.
