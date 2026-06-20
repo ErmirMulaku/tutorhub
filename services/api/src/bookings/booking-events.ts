@@ -15,6 +15,11 @@ export class BookingEvents {
     this.changes.next(booking);
   }
 
+  /** All booking changes (consumed by the Socket.IO gateway). */
+  all(): Observable<Booking> {
+    return this.changes.asObservable();
+  }
+
   forTutor(tutorId: string): Observable<Booking> {
     return this.changes.pipe(filter((booking) => booking.tutorId === tutorId));
   }

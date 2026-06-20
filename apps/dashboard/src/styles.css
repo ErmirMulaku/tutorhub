@@ -1,0 +1,232 @@
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --text: #e2e8f0;
+  --accent: #38bdf8;
+  --muted: #94a3b8;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: var(--panel);
+  border-bottom: 1px solid #334155;
+}
+
+.app__header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.app__logo {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+
+.app__main {
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+  max-width: 900px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: #f87171;
+}
+
+.tutor-select {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tutor-select select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+}
+
+.bookings {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bookings th,
+.bookings td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #334155;
+}
+
+.status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #334155;
+}
+
+.status--confirmed {
+  background: #166534;
+}
+.status--completed {
+  background: #1e40af;
+}
+.status--cancelled,
+.status--no_show {
+  background: #7f1d1d;
+}
+
+/* Working-hours editor */
+.hours-editor {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.hours-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.hours-editor__day {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 5rem;
+}
+
+.hours-editor input[type='time'] {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid #475569;
+  border-radius: 5px;
+  padding: 0.2rem 0.4rem;
+}
+
+.btn {
+  margin-top: 0.5rem;
+  justify-self: start;
+  background: var(--accent);
+  color: #04263a;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn--sm {
+  margin: 0 0.25rem 0 0;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  background: #334155;
+  color: var(--text);
+}
+
+.bookings__actions {
+  white-space: nowrap;
+}
+
+/* Week calendar */
+.availability {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.calendar {
+  display: grid;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+.calendar__corner,
+.calendar__head,
+.calendar__time,
+.calendar__cell {
+  border-right: 1px solid #1f2a3a;
+  border-bottom: 1px solid #1f2a3a;
+  min-height: 26px;
+}
+
+.calendar__head {
+  background: #0b1220;
+  text-align: center;
+  font-weight: 600;
+  padding: 0.3rem 0;
+}
+
+.calendar__time {
+  color: var(--muted);
+  text-align: right;
+  padding: 0.1rem 0.4rem;
+}
+
+.calendar__cell {
+  position: relative;
+}
+
+.calendar__cell--open {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.chip {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  min-height: 22px;
+  border-radius: 3px;
+}
+
+.chip--pending {
+  background: #475569;
+}
+.chip--confirmed {
+  background: #166534;
+}
+.chip--completed {
+  background: #1e40af;
+}
+.chip--cancelled,
+.chip--no_show {
+  background: #7f1d1d;
+}

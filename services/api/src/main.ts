@@ -12,6 +12,9 @@ const PROTO_PATH = fileURLToPath(new URL('../../../proto/booking.proto', import.
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  // Allow the dashboard (separate origin in dev) to call REST + connect via Socket.IO.
+  app.enableCors({ origin: true });
+
   // Validate and strip every inbound payload (SPEC §7: validate all input).
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),

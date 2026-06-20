@@ -134,6 +134,29 @@ one service layer. Full reference in `docs/API.md`.
 - `npm audit` kept at **0 vulnerabilities** (added a `ws` override for a GraphQL-subscriptions
   transitive advisory).
 
+### Phase 4 — Dashboard SPA ✅
+
+**Built (in seven reviewed commits):** a Socket.IO **gateway** on the API (fed by the Phase 3 RxJS
+`BookingEvents` bus, fanning changes out to per-tutor rooms); and `apps/dashboard`, a React 19 +
+Redux Toolkit SPA on a **hand-written Webpack 5** build (TS via ts-loader, SVGR, CSS extraction,
+code-splitting, env injection, bundle analyzer). Data flows through **RTK Query** over REST; the SPA
+has a week **availability calendar** (set working hours, see bookings in the tutor's timezone),
+**booking management** (legal status transitions only), and **live updates** via a Socket.IO hook
+that invalidates the booking cache.
+
+**Verified (not just generated):**
+
+- Drove the whole UI **in a real browser** (Preview tool): the dropdown loads tutors, the calendar
+  shades working hours and shows a booking chip, saving Saturday **persisted to the DB** and the grid
+  refetched, and an **external** API status change pushed to the dashboard **live** (~300ms, no
+  interaction) and recoloured the chip — proving the Socket.IO path end-to-end.
+- Added a **gateway e2e** (real socket.io-client receives `bookingChanged`) and **dashboard Jest/RTL
+  tests** (reducer, calendar helpers, a `WeekCalendar` render); whole-workspace `nx test` green.
+- **Build-tooling judgement:** Babel 8's `preset-typescript` mis-parsed generic call expressions, so
+  I switched the Webpack TS transform to `ts-loader` (type-checking stays a separate `tsc` target).
+- `npm audit` kept at **0 vulnerabilities** (dev-server-only `http-proxy-middleware` / `uuid`
+  overrides, each checked for API compatibility — e.g. confirming `uuid@11` keeps a CJS export).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
