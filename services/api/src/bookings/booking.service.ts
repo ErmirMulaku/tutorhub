@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
 import { BookingStatus, type Booking, type Review } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { BookingEvents } from './booking-events.js';
 import { assertCanTransition } from './booking-status.js';
 import type { BookInput } from './dto/book-input.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
@@ -22,7 +23,10 @@ export interface BookingFilter {
  */
 @Injectable()
 export class BookingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: BookingEvents,
+  ) {}
 
   async create(dto: CreateBookingDto): Promise<Booking> {
     // Validate references up-front so callers get a clean 404 rather than a
@@ -36,7 +40,7 @@ export class BookingService {
     if (student === null) throw new EntityNotFoundError('Student', dto.studentId);
     if (subject === null) throw new EntityNotFoundError('Subject', dto.subjectId);
 
-    return this.prisma.booking.create({
+    const booking = await this.prisma.booking.create({
       data: {
         tutorId: dto.tutorId,
         studentId: dto.studentId,
@@ -45,6 +49,8 @@ export class BookingService {
         endTime: new Date(dto.endTime),
       },
     });
+    this.events.emit(booking);
+    return booking;
   }
 
   findAll(filter: BookingFilter = {}): Promise<Booking[]> {
@@ -70,7 +76,9 @@ export class BookingService {
   async updateStatus(id: string, to: BookingStatus): Promise<Booking> {
     const booking = await this.findById(id);
     assertCanTransition(booking.status, to);
-    return this.prisma.booking.update({ where: { id }, data: { status: to } });
+    const updated = await this.prisma.booking.update({ where: { id }, data: { status: to } });
+    this.events.emit(updated);
+    return updated;
   }
 
   /** Student-facing booking: derives a fixed-length end and sets PENDING. */

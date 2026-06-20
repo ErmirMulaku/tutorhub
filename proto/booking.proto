@@ -1,0 +1,56 @@
+// TutorHub gRPC contract (SPEC §9). Versioned package; the service reuses the
+// same BookingService as REST and GraphQL.
+syntax = "proto3";
+
+package tutorhub.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service BookingService {
+  // Fetch a booking by id. NOT_FOUND if it does not exist.
+  rpc GetBooking (GetReq) returns (Booking);
+  // Create a PENDING booking. INVALID_ARGUMENT / NOT_FOUND on bad input.
+  rpc BookLesson (BookReq) returns (Booking);
+  // Move a booking through the lifecycle. FAILED_PRECONDITION on illegal transitions.
+  rpc UpdateStatus (UpdateReq) returns (Booking);
+  // Server-streaming: emit a booking each time one changes for the tutor.
+  rpc WatchBookings (WatchReq) returns (stream Booking);
+}
+
+enum BookingStatus {
+  BOOKING_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  CONFIRMED = 2;
+  COMPLETED = 3;
+  CANCELLED = 4;
+  NO_SHOW = 5;
+}
+
+message Booking {
+  string id = 1;
+  string tutor_id = 2;
+  string student_id = 3;
+  string subject_id = 4;
+  google.protobuf.Timestamp start_time = 5;
+  BookingStatus status = 6;
+}
+
+message GetReq {
+  string id = 1;
+}
+
+message BookReq {
+  string tutor_id = 1;
+  string student_id = 2;
+  string subject_id = 3;
+  google.protobuf.Timestamp start_time = 4;
+}
+
+message UpdateReq {
+  string id = 1;
+  BookingStatus status = 2;
+}
+
+message WatchReq {
+  string tutor_id = 1;
+}
