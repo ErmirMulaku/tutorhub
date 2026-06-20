@@ -146,10 +146,17 @@ vite.config.ts.timestamp-*
 .nx/cache
 .nx/workspace-data
 
+# Storybook static build
+storybook-static
+# Next.js build output
+.next
+next-env.d.ts
+
 # Prisma generated client (run `npm run db:generate`)
 **/src/generated/
 
 
 # ingore file Spec.md
 Spec.md
+HANDOFF.md
 
