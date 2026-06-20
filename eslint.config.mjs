@@ -11,7 +11,7 @@ export default tseslint.config(
 
   // Type-aware linting for TypeScript sources.
   {
-    files: ['**/*.ts'],
+    files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
@@ -39,6 +39,9 @@ export default tseslint.config(
     extends: [js.configs.recommended],
     languageOptions: {
       globals: { ...globals.node },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 
