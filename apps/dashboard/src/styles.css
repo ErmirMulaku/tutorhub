@@ -153,6 +153,18 @@ body {
   cursor: default;
 }
 
+.btn--sm {
+  margin: 0 0.25rem 0 0;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  background: #334155;
+  color: var(--text);
+}
+
+.bookings__actions {
+  white-space: nowrap;
+}
+
 /* Week calendar */
 .availability {
   display: grid;
