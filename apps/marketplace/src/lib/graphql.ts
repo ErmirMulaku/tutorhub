@@ -1,4 +1,4 @@
-import { GRAPHQL_URL } from './env.js';
+import { GRAPHQL_URL } from './env';
 
 interface GraphQLResponse<T> {
   data?: T;

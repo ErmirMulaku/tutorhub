@@ -1,4 +1,4 @@
-import type { Locale } from './config.js';
+import type { Locale } from './config';
 import en from './en.json';
 import ar from './ar.json';
 

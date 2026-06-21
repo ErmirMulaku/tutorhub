@@ -25,6 +25,7 @@
     "levelINTERMEDIATE": "متوسّط",
     "levelADVANCED": "متقدّم",
     "empty": "لا يوجد معلّمون يطابقون بحثك.",
+    "error": "تعذّر تحميل المعلّمين الآن. يُرجى المحاولة بعد قليل.",
     "perHour": "/ساعة",
     "viewProfile": "عرض الملف",
     "reviews": "{count} تقييم"

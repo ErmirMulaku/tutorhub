@@ -129,6 +129,107 @@ h3 {
   margin: 0;
 }
 
+/* ---- Discover ------------------------------------------------------------ */
+.discover-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--th-space-3);
+  align-items: end;
+  margin-block: var(--th-space-5);
+}
+.discover-filters__search {
+  flex: 1 1 16rem;
+  font: inherit;
+  color: var(--th-text);
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-md);
+  padding-block: var(--th-space-3);
+  padding-inline: var(--th-space-4);
+}
+.discover-filters__search:focus-visible,
+.discover-filters__level select:focus-visible {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 1px;
+}
+.discover-filters__level {
+  display: grid;
+  gap: var(--th-space-1);
+}
+.discover-filters__level-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+}
+.discover-filters__level select {
+  font: inherit;
+  color: var(--th-text);
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-md);
+  padding-block: var(--th-space-3);
+  padding-inline: var(--th-space-4);
+}
+
+.tutor-grid {
+  display: grid;
+  gap: var(--th-space-5);
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+}
+.tutor-card-link {
+  display: block;
+}
+.tutor-card {
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--th-space-3);
+}
+.tutor-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--th-space-3);
+}
+.tutor-card__id {
+  display: grid;
+  gap: var(--th-space-1);
+}
+.tutor-card__name {
+  font-size: 1.05rem;
+}
+.tutor-card__bio {
+  margin: 0;
+  color: var(--th-text-muted);
+  font-size: 0.9375rem;
+  /* Clamp to two lines so cards stay even. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tutor-card__subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--th-space-2);
+}
+.tutor-card__foot {
+  margin-block-start: auto;
+  padding-block-start: var(--th-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--th-space-2);
+}
+.tutor-card__cta {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--th-primary);
+}
+.discover-empty {
+  color: var(--th-text-muted);
+  padding-block: var(--th-space-6);
+}
+
 /* ---- Page scaffolding ---------------------------------------------------- */
 .page {
   padding-block: var(--th-space-6);

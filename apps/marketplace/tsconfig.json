@@ -11,7 +11,10 @@
     "resolveJsonModule": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Override the base config's source mapping: Next's bundler needs the
+      // built `dist` (real `.js` files), not the NodeNext `.js`-specifier source.
+      "@ermulaku/types": ["../../packages/types/dist/index.js"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

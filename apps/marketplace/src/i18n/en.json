@@ -25,6 +25,7 @@
     "levelINTERMEDIATE": "Intermediate",
     "levelADVANCED": "Advanced",
     "empty": "No tutors match your search.",
+    "error": "We couldn't load tutors right now. Please try again shortly.",
     "perHour": "/hr",
     "viewProfile": "View profile",
     "reviews": "{count} reviews"
