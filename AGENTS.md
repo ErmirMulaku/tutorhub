@@ -216,6 +216,31 @@ endpoint returns `503` when unconfigured.
 - A dedicated `marketplace-e2e` CI job runs Cypress + Lighthouse; the main job's `nx run-many` builds
   and tests every project including the new modules. `npm audit` stayed at **0 vulnerabilities**.
 
+### Phase 7 — Bonus ✅
+
+**Built (in five reviewed commits):** the cross-stack bonus surface. `packages/api-client` — a small,
+isomorphic typed client (GraphQL reads + booking, REST dev-login) reusing `@ermulaku/types`;
+`apps/mobile` — an **Expo / React Native** student app (SDK 56) that lists tutors, shows availability
+in the tutor's timezone, and books a lesson through `api-client`; `services/notifications` — an
+**Elixir / Phoenix** service (the one non-TS service) that turns booking events into lesson reminders
+via a `GenServer` store + a periodic scheduler, delivery mocked; and **`@ermulaku/slot-engine`
+published to npm** (metadata, `prepublishOnly`, LICENSE, badges).
+
+**Verified (not just generated):**
+
+- **`slot-engine` is live on npm** (`@ermulaku/slot-engine@0.1.0`), verified with `npm publish
+--dry-run` before the real publish (run by the maintainer; publishing is an irreversible public act).
+- **The mobile app books a lesson** — driven in a real browser via the Expo **web** export: tapped a
+  tutor → real availability in their timezone → tapped a slot → confirmation, and the booking
+  **persisted** (verified in Postgres). Also `expo export` proves the monorepo bundles through Metro.
+- **The notifications service** has **7 ExUnit tests** (scheduling one hour out, idempotent delivery,
+  the webhook) and a live `POST /api/bookings → 202` check; CI gained an Elixir job (setup-beam,
+  `mix format --check`, compile `--warnings-as-errors`, `mix test`).
+- `api-client` is unit-tested against a mocked `fetch`. Whole-workspace `nx run-many` stayed green and
+  `npm audit` at **0 vulnerabilities** throughout.
+- **Adapted to the environment honestly:** Elixir/Erlang weren't installed, so I installed the
+  toolchain to actually compile and test the service rather than ship it unverified.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
