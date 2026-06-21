@@ -11,7 +11,7 @@ calendar, bookings, and earnings. Built as a TypeScript monorepo with a Next.js 
 a custom-Webpack React/Redux dashboard, an Expo mobile app, and a NestJS API exposing the same
 domain over **REST, GraphQL, and gRPC**.
 
-> Status: 🚧 Phase 4 (Dashboard SPA) complete — see [Roadmap](#roadmap).
+> Status: 🚧 Phase 5 (Marketplace) complete — see [Roadmap](#roadmap).
 > Live demo: _TODO_ · API docs: [`docs/API.md`](./docs/API.md) · Storybook: _TODO_
 
 ## Why this project
@@ -57,10 +57,12 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + C
 
 ## Getting started
 
-> **Built so far (Phases 1–4):** `packages/types`, `packages/slot-engine`, the
-> `services/api` NestJS API (Postgres + Prisma) exposing the domain over **REST,
-> GraphQL, and gRPC**, and `apps/dashboard` — a React/Redux SPA on a custom Webpack
-> build with a live availability calendar. The marketplace/mobile apps land in later phases.
+> **Built so far (Phases 1–5):** `packages/types`, `packages/slot-engine`, `packages/ui`
+> (RTL-safe components + Storybook), the `services/api` NestJS API (Postgres + Prisma)
+> exposing the domain over **REST, GraphQL, and gRPC**, `apps/dashboard` — a React/Redux
+> SPA on a custom Webpack build with a live availability calendar — and `apps/marketplace`,
+> a **Next.js 16** SSR/PWA storefront (discover, profile, booking) with an Arabic **RTL**
+> locale and GPU-only animations. The mobile app lands in a later phase.
 
 ```bash
 # prerequisites: Node 22+, npm, Docker (for Postgres)
@@ -129,7 +131,7 @@ Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime
 - [x] **Phase 2** — NestJS API + Prisma/Postgres + REST + Swagger
 - [x] **Phase 3** — GraphQL + gRPC + API docs
 - [x] **Phase 4** — Dashboard SPA (custom Webpack) + real-time
-- [ ] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
+- [x] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
 - [ ] **Phase 6** — AI booking assistant + monitoring
 - [ ] **Phase 7** — Elixir notifications + Expo mobile + publish slot-engine to npm
 

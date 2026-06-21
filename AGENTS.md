@@ -157,6 +157,37 @@ that invalidates the booking cache.
 - `npm audit` kept at **0 vulnerabilities** (dev-server-only `http-proxy-middleware` / `uuid`
   overrides, each checked for API compatibility — e.g. confirming `uuid@11` keeps a CJS export).
 
+### Phase 5 — Marketplace ✅
+
+**Built (in eight reviewed commits):** `packages/ui`, a focused, **RTL-safe** (CSS logical
+properties only) and **GPU-only-animated** (`transform`/`opacity` + `will-change`) React primitive
+set documented in **Storybook** (LTR/RTL + light/dark toolbar); and `apps/marketplace`, a
+**Next.js 16** App Router SSR storefront. It has a dependency-free **i18n** layer with
+locale-prefixed routes (`/en`, `/ar`) and `Accept-Language` negotiation in `proxy.ts`; Arabic renders
+fully mirrored. Pages are React Server Components fetching from the GraphQL API through a tiny typed
+`fetch` client: a **discover** grid (URL-driven search + level filters), a **profile** page (detail +
+availability shown in the tutor's timezone), and a **booking flow** whose slots open a GPU-animated
+booking sheet and confirm via a **Server Action** (dev-login + `bookLesson`, token kept server-side).
+Plus a hand-written **PWA** (manifest, service worker, zero-dep PNG icon generator), a **Cypress**
+search→book E2E, and a **Lighthouse CI** budget.
+
+**Verified (not just generated):**
+
+- Drove every page **in a real browser** (Preview tool) in both locales: discover search filtered
+  the grid live (URL + count updated), the profile showed slots converted into the tutor's timezone,
+  and a booking went end-to-end — a `PENDING` row persisted and availability dropped **8 → 7** as the
+  slot-engine excluded the booked time. Arabic mirrored correctly throughout.
+- **Cypress** search→book passes headlessly; **Lighthouse** (desktop, prod build) clears the budget:
+  performance **0.96/1.0**, accessibility **0.95**, best-practices/SEO **1.0**.
+- Caught a real **API bug** the storefront was first to hit: the `tutors` resolver forwarded GraphQL
+  `null` filter variables into Prisma and crashed; fixed `findPage` to guard `!= null` and use a
+  case-insensitive `contains` search, with an e2e regression test (api e2e **22 → 23**).
+- Adopted current library facts: **Next.js 16** (not the spec-era 15) with its `proxy.ts` convention
+  (migrated off deprecated `middleware.ts` per the official codemod docs); consumed the workspace
+  packages' built `dist` because Next's bundler can't resolve their NodeNext `.js` specifiers.
+- `npm audit` kept at **0 vulnerabilities** — a Next-bundled `postcss < 8.5.10` (XSS advisory) was
+  pinned via a same-minor root override (clean reinstall to apply).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

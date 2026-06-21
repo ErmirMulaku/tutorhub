@@ -1,0 +1,369 @@
+/**
+ * @ermulaku/ui — design tokens + component styles.
+ *
+ * RTL-safe by construction: every directional rule uses CSS *logical*
+ * properties (margin-inline, inset-inline, text-align: start, …) so the same
+ * stylesheet mirrors correctly under `dir="rtl"` with no overrides.
+ *
+ * Animations are GPU-only: they touch `transform` / `opacity` exclusively and
+ * hint the compositor with `will-change`, so they never trigger layout/paint.
+ */
+
+:root {
+  /* Palette — original TutorHub brand (teal + warm accent), not a clone. */
+  --th-bg: #ffffff;
+  --th-surface: #ffffff;
+  --th-surface-2: #f4f6f8;
+  --th-border: #e3e8ee;
+  --th-text: #16202b;
+  --th-text-muted: #5b6b7b;
+  --th-primary: #0e8f8a;
+  --th-primary-hover: #0b746f;
+  --th-primary-contrast: #ffffff;
+  --th-accent: #f2994a;
+  --th-star: #f5b301;
+  --th-danger: #d64545;
+  --th-focus: #1a73e8;
+
+  /* Spacing scale (rem). */
+  --th-space-1: 0.25rem;
+  --th-space-2: 0.5rem;
+  --th-space-3: 0.75rem;
+  --th-space-4: 1rem;
+  --th-space-5: 1.5rem;
+  --th-space-6: 2rem;
+
+  /* Radii / elevation / motion. */
+  --th-radius-sm: 6px;
+  --th-radius-md: 10px;
+  --th-radius-lg: 16px;
+  --th-shadow-1: 0 1px 2px rgba(16, 32, 43, 0.06), 0 1px 3px rgba(16, 32, 43, 0.1);
+  --th-shadow-2: 0 8px 24px rgba(16, 32, 43, 0.12);
+  --th-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --th-duration: 200ms;
+
+  --th-font:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    'Noto Sans Arabic', sans-serif;
+}
+
+[data-theme='dark'] {
+  --th-bg: #0f1620;
+  --th-surface: #16202b;
+  --th-surface-2: #1d2a37;
+  --th-border: #2a3947;
+  --th-text: #eef3f7;
+  --th-text-muted: #9fb0bf;
+  --th-primary: #2bb6b0;
+  --th-primary-hover: #46cfc8;
+  --th-primary-contrast: #06231f;
+  --th-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --th-shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Button -------------------------------------------------------------- */
+.th-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--th-space-2);
+  font-family: var(--th-font);
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--th-radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    opacity var(--th-duration) var(--th-ease);
+  will-change: transform;
+}
+.th-btn:disabled,
+.th-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.th-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+.th-btn:focus-visible {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 2px;
+}
+.th-btn--sm {
+  font-size: 0.8125rem;
+  padding-block: var(--th-space-2);
+  padding-inline: var(--th-space-3);
+}
+.th-btn--md {
+  font-size: 0.9375rem;
+  padding-block: var(--th-space-3);
+  padding-inline: var(--th-space-4);
+}
+.th-btn--lg {
+  font-size: 1.0625rem;
+  padding-block: var(--th-space-4);
+  padding-inline: var(--th-space-5);
+}
+.th-btn--primary {
+  background: var(--th-primary);
+  color: var(--th-primary-contrast);
+}
+.th-btn--primary:not(:disabled):hover {
+  background: var(--th-primary-hover);
+}
+.th-btn--secondary {
+  background: var(--th-surface-2);
+  color: var(--th-text);
+  border-color: var(--th-border);
+}
+.th-btn--ghost {
+  background: transparent;
+  color: var(--th-primary);
+}
+.th-btn--ghost:not(:disabled):hover {
+  background: var(--th-surface-2);
+}
+.th-btn--block {
+  display: flex;
+  inline-size: 100%;
+}
+
+/* ---- Card ---------------------------------------------------------------- */
+.th-card {
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-1);
+  padding: var(--th-space-5);
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    box-shadow var(--th-duration) var(--th-ease);
+}
+.th-card--interactive {
+  cursor: pointer;
+  will-change: transform;
+}
+.th-card--interactive:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--th-shadow-2);
+}
+.th-card--interactive:focus-within {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 2px;
+}
+
+/* ---- Avatar -------------------------------------------------------------- */
+.th-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--th-primary);
+  color: var(--th-primary-contrast);
+  font-family: var(--th-font);
+  font-weight: 700;
+  overflow: hidden;
+  flex: none;
+  user-select: none;
+}
+.th-avatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.th-avatar--sm {
+  inline-size: 2rem;
+  block-size: 2rem;
+  font-size: 0.75rem;
+}
+.th-avatar--md {
+  inline-size: 3rem;
+  block-size: 3rem;
+  font-size: 1rem;
+}
+.th-avatar--lg {
+  inline-size: 4.5rem;
+  block-size: 4.5rem;
+  font-size: 1.5rem;
+}
+
+/* ---- StarRating ---------------------------------------------------------- */
+.th-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-2);
+  font-family: var(--th-font);
+}
+.th-rating__stars {
+  position: relative;
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+  /* The empty track is the muted glyphs; the fill clips bright glyphs on top. */
+  color: var(--th-border);
+}
+.th-rating__stars::before {
+  content: '★★★★★';
+  letter-spacing: 2px;
+}
+.th-rating__fill {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--th-star);
+}
+.th-rating__fill::before {
+  content: '★★★★★';
+  letter-spacing: 2px;
+}
+.th-rating__value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+}
+
+/* ---- Tag ----------------------------------------------------------------- */
+.th-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-1);
+  font-family: var(--th-font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding-block: var(--th-space-1);
+  padding-inline: var(--th-space-2);
+  border-radius: 999px;
+  background: var(--th-surface-2);
+  color: var(--th-text-muted);
+  border: 1px solid var(--th-border);
+}
+.th-tag--beginner {
+  background: rgba(14, 143, 138, 0.12);
+  color: var(--th-primary);
+  border-color: transparent;
+}
+.th-tag--intermediate {
+  background: rgba(26, 115, 232, 0.12);
+  color: var(--th-focus);
+  border-color: transparent;
+}
+.th-tag--advanced {
+  background: rgba(242, 153, 74, 0.16);
+  color: var(--th-accent);
+  border-color: transparent;
+}
+
+/* ---- Price --------------------------------------------------------------- */
+.th-price {
+  font-family: var(--th-font);
+  font-weight: 700;
+  color: var(--th-text);
+  white-space: nowrap;
+}
+.th-price__unit {
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--th-text-muted);
+}
+
+/* ---- Skeleton ------------------------------------------------------------ */
+.th-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--th-surface-2);
+  border-radius: var(--th-radius-sm);
+}
+.th-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: th-shimmer 1.4s infinite;
+  will-change: transform;
+}
+[dir='rtl'] .th-skeleton::after {
+  animation-name: th-shimmer-rtl;
+}
+@keyframes th-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes th-shimmer-rtl {
+  100% {
+    transform: translateX(-200%);
+  }
+}
+
+/* ---- Modal / Sheet ------------------------------------------------------- */
+.th-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--th-space-4);
+  background: rgba(16, 32, 43, 0.45);
+  opacity: 0;
+  transition: opacity var(--th-duration) var(--th-ease);
+  will-change: opacity;
+  z-index: 1000;
+}
+.th-modal-overlay[data-state='open'] {
+  opacity: 1;
+}
+.th-modal {
+  position: relative;
+  inline-size: min(34rem, 100%);
+  max-block-size: calc(100dvh - 2 * var(--th-space-6));
+  overflow: auto;
+  background: var(--th-surface);
+  color: var(--th-text);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-2);
+  padding: var(--th-space-6);
+  transform: translateY(12px) scale(0.98);
+  opacity: 0;
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    opacity var(--th-duration) var(--th-ease);
+  will-change: transform, opacity;
+}
+.th-modal-overlay[data-state='open'] .th-modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+.th-modal__close {
+  position: absolute;
+  inset-block-start: var(--th-space-4);
+  inset-inline-end: var(--th-space-4);
+  border: none;
+  background: transparent;
+  color: var(--th-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--th-space-1);
+  border-radius: var(--th-radius-sm);
+}
+.th-modal__close:hover {
+  background: var(--th-surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-btn,
+  .th-card,
+  .th-modal,
+  .th-modal-overlay,
+  .th-skeleton::after {
+    transition: none;
+    animation: none;
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "brand": "TutorHub",
+  "nav": {
+    "discover": "Find a tutor",
+    "home": "Home"
+  },
+  "home": {
+    "heroTitle": "Learn from tutors who fit your schedule",
+    "heroSubtitle": "Browse expert tutors across maths, languages, music and more. See real-time availability in your timezone and book a lesson in seconds.",
+    "ctaBrowse": "Browse tutors",
+    "feature1Title": "Real availability",
+    "feature1Body": "Timezone- and DST-aware slots, so the time you see is the time you get.",
+    "feature2Title": "Book in seconds",
+    "feature2Body": "Pick a slot, confirm, done — no back-and-forth messaging.",
+    "feature3Title": "Every subject",
+    "feature3Body": "From calculus to conversational Arabic, find a tutor for it."
+  },
+  "discover": {
+    "title": "Find a tutor",
+    "subtitle": "{count} tutors available",
+    "searchPlaceholder": "Search by subject…",
+    "filterLevel": "Level",
+    "filterAll": "All levels",
+    "levelBEGINNER": "Beginner",
+    "levelINTERMEDIATE": "Intermediate",
+    "levelADVANCED": "Advanced",
+    "empty": "No tutors match your search.",
+    "error": "We couldn't load tutors right now. Please try again shortly.",
+    "perHour": "/hr",
+    "viewProfile": "View profile",
+    "reviews": "{count} reviews"
+  },
+  "profile": {
+    "notFound": "Tutor not found.",
+    "about": "About",
+    "subjects": "Subjects",
+    "reviews": "Reviews",
+    "noReviews": "No reviews yet.",
+    "availability": "Availability",
+    "selectDate": "Pick a day",
+    "noSlots": "No available slots on this day.",
+    "timezoneNote": "Times shown in {tz}",
+    "perHour": "/hr",
+    "book": "Book this slot",
+    "backToList": "← All tutors"
+  },
+  "booking": {
+    "title": "Confirm your lesson",
+    "summary": "{subject} with {tutor}",
+    "when": "When",
+    "price": "Price",
+    "chooseSubject": "Subject",
+    "confirm": "Confirm booking",
+    "cancel": "Cancel",
+    "signInNote": "Booking as the demo student.",
+    "success": "Lesson booked!",
+    "successBody": "Your {subject} lesson is confirmed for {time}.",
+    "error": "Sorry, we couldn't book that slot. Please try another.",
+    "close": "Done"
+  },
+  "common": {
+    "back": "Back",
+    "loading": "Loading…",
+    "switchLocale": "Language"
+  }
+}
