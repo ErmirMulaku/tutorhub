@@ -62,3 +62,73 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e --workspace @ermulaku/api
+
+  marketplace-e2e:
+    name: Marketplace · Cypress · Lighthouse
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
+      DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
+      JWT_SECRET: test-secret
+      API_URL: http://localhost:4000
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tutorhub
+          POSTGRES_PASSWORD: tutorhub
+          POSTGRES_DB: tutorhub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tutorhub -d tutorhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build API and marketplace
+        run: npx nx run-many -t build -p @ermulaku/api @ermulaku/marketplace
+
+      - name: Migrate and seed the database
+        run: |
+          npm run db:deploy --workspace @ermulaku/api
+          npm run db:seed --workspace @ermulaku/api
+
+      - name: Start the API
+        run: |
+          node services/api/dist/main.js &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null -X POST http://localhost:4000/graphql \
+              -H 'content-type: application/json' -d '{"query":"{__typename}"}'; then
+              echo "API is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start" >&2; exit 1
+
+      - name: Lighthouse budget
+        run: npm run lhci --workspace @ermulaku/marketplace
+
+      - name: Re-seed before the booking E2E
+        run: npm run db:seed --workspace @ermulaku/api
+
+      - name: Cypress search-to-book E2E
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: apps/marketplace
+          install: false
+          start: npm run start
+          wait-on: 'http://localhost:3200/en'
+          wait-on-timeout: 120
