@@ -57,7 +57,8 @@ This file documents how I work with AI and, crucially, **how I verify what it pr
 
 - **Claude Code** — multi-file implementation from spec, refactors, tests.
 - **Cursor / Copilot** — inline completions and quick edits.
-- Prompts used per phase are recorded in `SPEC.md` §17 for traceability.
+- Each phase started from one scoped build prompt; what was built and **how it was verified** is
+  recorded per phase in the Phase log below for traceability.
 
 ## Commit & PR convention
 
@@ -187,6 +188,33 @@ search→book E2E, and a **Lighthouse CI** budget.
   packages' built `dist` because Next's bundler can't resolve their NodeNext `.js` specifiers.
 - `npm audit` kept at **0 vulnerabilities** — a Next-bundled `postcss < 8.5.10` (XSS advisory) was
   pinned via a same-minor root override (clean reinstall to apply).
+
+### Phase 6 — AI + monitoring ✅
+
+**Built (in three reviewed commits):** **monitoring** for the API — a hand-written Prometheus layer
+(`/metrics` via `prom-client`: default process metrics + an `http_requests_total` counter and
+`http_request_duration_seconds` histogram fed by a global request middleware that also emits
+structured JSON access logs), a DB-checked readiness probe (`/ready`) beside the existing liveness
+`/health`, and a self-contained `/status` page that polls both. And the **OpenAI booking assistant**
+(SPEC §12B): `POST /assistant/chat` runs an OpenAI function-calling loop where the model chooses
+among `searchTutors` / `getAvailability` / `bookLesson` and **the server executes** each through the
+existing service layer (same validation as any other request). The OpenAI key stays server-side; the
+endpoint returns `503` when unconfigured.
+
+**Verified (not just generated):**
+
+- **Live, with a real key:** one chat ("find a maths tutor and book Monday") drove the model through
+  all three tools in order and persisted a real `PENDING` booking (Ben Carter / Mathematics) — proving
+  the model decides and the server executes.
+- **Mocked in CI:** the assistant e2e overrides the OpenAI seam with a scripted client (no key, no
+  network) and asserts the tool-call → server-execution → booking path, plus the `503`-when-unconfigured
+  case; a `ToolDispatcher` unit test covers arg parsing and error mapping. Monitoring has unit
+  (`normalizeRoute`) + e2e (`/ready`, `/metrics`, `/status`) coverage. API e2e **23 → 28**.
+- **Security-reviewed the generated AI code by hand:** the model never executes anything itself — it
+  only returns tool names + JSON args, which the dispatcher validates and routes to typed services;
+  booking is scoped to a resolved student id; the key is read from env and never logged or returned.
+- A dedicated `marketplace-e2e` CI job runs Cypress + Lighthouse; the main job's `nx run-many` builds
+  and tests every project including the new modules. `npm audit` stayed at **0 vulnerabilities**.
 
 ---
 

@@ -73,6 +73,26 @@ describe('API (e2e)', () => {
     expect(res.body).toEqual({ status: 'ok' });
   });
 
+  it('GET /ready → ready with the database up', async () => {
+    const res = await http().get('/ready').expect(200);
+    expect(res.body).toEqual({ status: 'ready', checks: { database: 'up' } });
+  });
+
+  it('GET /metrics exposes Prometheus request metrics', async () => {
+    // Make a request so the counter is non-empty, then scrape.
+    await http().get('/health').expect(200);
+    const res = await http().get('/metrics').expect(200);
+    expect(res.headers['content-type']).toContain('text/plain');
+    expect(res.text).toContain('http_requests_total');
+    expect(res.text).toContain('process_cpu_seconds_total');
+  });
+
+  it('GET /status serves the HTML status page', async () => {
+    const res = await http().get('/status').expect(200);
+    expect(res.headers['content-type']).toContain('text/html');
+    expect(res.text).toContain('TutorHub API');
+  });
+
   it('POST /tutors creates a tutor', async () => {
     const res = await http()
       .post('/tutors')

@@ -11,7 +11,7 @@ calendar, bookings, and earnings. Built as a TypeScript monorepo with a Next.js 
 a custom-Webpack React/Redux dashboard, an Expo mobile app, and a NestJS API exposing the same
 domain over **REST, GraphQL, and gRPC**.
 
-> Status: 🚧 Phase 5 (Marketplace) complete — see [Roadmap](#roadmap).
+> Status: 🚧 Phase 6 (AI assistant + monitoring) complete — see [Roadmap](#roadmap).
 > Live demo: _TODO_ · API docs: [`docs/API.md`](./docs/API.md) · Storybook: _TODO_
 
 ## Why this project
@@ -57,10 +57,11 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + C
 
 ## Getting started
 
-> **Built so far (Phases 1–5):** `packages/types`, `packages/slot-engine`, `packages/ui`
+> **Built so far (Phases 1–6):** `packages/types`, `packages/slot-engine`, `packages/ui`
 > (RTL-safe components + Storybook), the `services/api` NestJS API (Postgres + Prisma)
-> exposing the domain over **REST, GraphQL, and gRPC**, `apps/dashboard` — a React/Redux
-> SPA on a custom Webpack build with a live availability calendar — and `apps/marketplace`,
+> exposing the domain over **REST, GraphQL, and gRPC** — with health/readiness probes,
+> Prometheus metrics, and an **OpenAI booking assistant** — `apps/dashboard`, a React/Redux
+> SPA on a custom Webpack build with a live availability calendar, and `apps/marketplace`,
 > a **Next.js 16** SSR/PWA storefront (discover, profile, booking) with an Arabic **RTL**
 > locale and GPU-only animations. The mobile app lands in a later phase.
 
@@ -122,8 +123,17 @@ lint → typecheck → test → build on every PR, plus a Lighthouse CI budget o
 
 ## Operations
 
-Health: `GET /health` (liveness), `GET /ready` (readiness). Metrics: Prometheus at `/metrics`.
-Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime/SLO notes.
+The API exposes a liveness probe `GET /health`, a DB-checked readiness probe `GET /ready`,
+Prometheus metrics at `GET /metrics` (process metrics + request rate/latency), and a small
+self-contained status page at `GET /status`. See [`docs/operations.md`](./docs/operations.md)
+for how I'd own uptime in production (probes, alerts, SLOs, dashboards).
+
+## AI booking assistant
+
+`POST /assistant/chat` is an OpenAI function-calling assistant: the model picks among
+`searchTutors` / `getAvailability` / `bookLesson` and **the server executes** each via the same
+service layer (validation server-side; the key never leaves the server). Set `OPENAI_API_KEY` to
+enable it — unset, the endpoint returns `503`. Tests mock the model, so CI needs no key.
 
 ## Roadmap
 
@@ -132,7 +142,7 @@ Status page: _TODO_. See [`docs/operations.md`](./docs/operations.md) for uptime
 - [x] **Phase 3** — GraphQL + gRPC + API docs
 - [x] **Phase 4** — Dashboard SPA (custom Webpack) + real-time
 - [x] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
-- [ ] **Phase 6** — AI booking assistant + monitoring
+- [x] **Phase 6** — AI booking assistant + monitoring
 - [ ] **Phase 7** — Elixir notifications + Expo mobile + publish slot-engine to npm
 
 ## License

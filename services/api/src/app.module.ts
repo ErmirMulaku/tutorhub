@@ -4,10 +4,12 @@ import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import './graphql/register-enums.js';
+import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { HealthController } from './health/health.controller.js';
+import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
@@ -31,6 +33,8 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     SubjectsModule,
     BookingsModule,
     AvailabilityModule,
+    MonitoringModule,
+    AssistantModule,
   ],
   controllers: [HealthController],
 })

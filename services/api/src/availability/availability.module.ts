@@ -4,5 +4,6 @@ import { AvailabilityService } from './availability.service.js';
 
 @Module({
   providers: [AvailabilityService, AvailabilityResolver],
+  exports: [AvailabilityService],
 })
 export class AvailabilityModule {}

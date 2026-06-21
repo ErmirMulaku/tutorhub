@@ -30,6 +30,10 @@ Send it as `Authorization: Bearer <token>`.
 | Method & path                                                  | Purpose                          | Errors       |
 | -------------------------------------------------------------- | -------------------------------- | ------------ |
 | `GET /health`                                                  | Liveness probe                   | —            |
+| `GET /ready`                                                   | Readiness probe (checks DB)      | `503`        |
+| `GET /metrics`                                                 | Prometheus metrics               | —            |
+| `GET /status`                                                  | HTML status page                 | —            |
+| `POST /assistant/chat`                                         | OpenAI booking assistant (§12B)  | `400`, `503` |
 | `POST /tutors` · `GET /tutors`                                 | Create / list tutors             | `400`        |
 | `GET·PATCH·DELETE /tutors/:id`                                 | Read / update / delete a tutor   | `404`        |
 | `POST /subjects` · `GET /subjects?tutorId=`                    | Create / list subjects           | `400`, `404` |
@@ -51,6 +55,19 @@ curl -X POST localhost:4000/bookings -H 'content-type: application/json' -d '{
 
 All input is validated (`class-validator`). Errors: **400** validation,
 **404** not found, **409** illegal status transition.
+
+### AI booking assistant
+
+`POST /assistant/chat` runs an OpenAI function-calling loop. The model may call `searchTutors`,
+`getAvailability`, and `bookLesson`; the **server** executes each against the service layer. Requires
+`OPENAI_API_KEY` server-side (else `503`).
+
+```bash
+curl -X POST localhost:4000/assistant/chat -H 'content-type: application/json' -d '{
+  "messages": [{ "role": "user", "content": "Find a maths tutor and book Monday at 10:00." }]
+}'
+# → 201 { "reply": "I've booked …", "toolsUsed": ["searchTutors","getAvailability","bookLesson"] }
+```
 
 ---
 
