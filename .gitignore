@@ -148,6 +148,8 @@ vite.config.ts.timestamp-*
 
 # Storybook static build
 storybook-static
+# Lighthouse CI output
+.lighthouseci
 # Next.js build output
 .next
 next-env.d.ts

@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint app src",
     "e2e": "cypress run",
-    "e2e:open": "cypress open"
+    "e2e:open": "cypress open",
+    "lhci": "lhci autorun"
   },
   "dependencies": {
     "@ermulaku/types": "*",
@@ -21,6 +22,7 @@
     "react-dom": "19.2.7"
   },
   "devDependencies": {
+    "@lhci/cli": "0.15.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "cypress": "15.17.0"
