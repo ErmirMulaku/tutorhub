@@ -47,6 +47,74 @@ const TUTORS_QUERY = /* GraphQL */ `
   }
 `;
 
+/** A review shown on a tutor profile. */
+export interface TutorReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+}
+
+/** Full tutor detail for the profile page. */
+export interface ProfileTutor extends DiscoverTutor {
+  reviews: TutorReview[];
+}
+
+/** A bookable time slot from the availability engine (ISO-8601 UTC instants). */
+export interface Slot {
+  start: string;
+  end: string;
+}
+
+const TUTOR_QUERY = /* GraphQL */ `
+  query Tutor($id: ID!) {
+    tutor(id: $id) {
+      id
+      name
+      bio
+      hourlyCents
+      rating
+      timezone
+      subjects {
+        id
+        name
+        level
+      }
+      reviews {
+        id
+        rating
+        comment
+      }
+    }
+  }
+`;
+
+const AVAILABILITY_QUERY = /* GraphQL */ `
+  query Availability($tutorId: ID!, $date: String!) {
+    availability(tutorId: $tutorId, date: $date) {
+      start
+      end
+    }
+  }
+`;
+
+/** SSR fetch for a single tutor profile; `null` when the id is unknown. */
+export async function getTutor(id: string): Promise<ProfileTutor | null> {
+  const data = await graphqlRequest<{ tutor: ProfileTutor | null }>(TUTOR_QUERY, {
+    variables: { id },
+    next: { revalidate: 60 },
+  });
+  return data.tutor;
+}
+
+/** Availability for a tutor on a given `YYYY-MM-DD` date. Always fresh. */
+export async function getAvailability(tutorId: string, date: string): Promise<Slot[]> {
+  const data = await graphqlRequest<{ availability: Slot[] }>(AVAILABILITY_QUERY, {
+    variables: { tutorId, date },
+    cache: 'no-store',
+  });
+  return data.availability;
+}
+
 export interface GetTutorsArgs {
   subject?: string | undefined;
   level?: Level | undefined;

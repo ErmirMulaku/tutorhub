@@ -30,6 +30,34 @@
     "viewProfile": "View profile",
     "reviews": "{count} reviews"
   },
+  "profile": {
+    "notFound": "Tutor not found.",
+    "about": "About",
+    "subjects": "Subjects",
+    "reviews": "Reviews",
+    "noReviews": "No reviews yet.",
+    "availability": "Availability",
+    "selectDate": "Pick a day",
+    "noSlots": "No available slots on this day.",
+    "timezoneNote": "Times shown in {tz}",
+    "perHour": "/hr",
+    "book": "Book this slot",
+    "backToList": "← All tutors"
+  },
+  "booking": {
+    "title": "Confirm your lesson",
+    "summary": "{subject} with {tutor}",
+    "when": "When",
+    "price": "Price",
+    "chooseSubject": "Subject",
+    "confirm": "Confirm booking",
+    "cancel": "Cancel",
+    "signInNote": "Booking as the demo student.",
+    "success": "Lesson booked!",
+    "successBody": "Your {subject} lesson is confirmed for {time}.",
+    "error": "Sorry, we couldn't book that slot. Please try another.",
+    "close": "Done"
+  },
   "common": {
     "back": "Back",
     "loading": "Loading…",

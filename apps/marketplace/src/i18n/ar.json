@@ -30,6 +30,34 @@
     "viewProfile": "عرض الملف",
     "reviews": "{count} تقييم"
   },
+  "profile": {
+    "notFound": "لم يتم العثور على المعلّم.",
+    "about": "نبذة",
+    "subjects": "المواد",
+    "reviews": "التقييمات",
+    "noReviews": "لا توجد تقييمات بعد.",
+    "availability": "التوافر",
+    "selectDate": "اختر يومًا",
+    "noSlots": "لا توجد مواعيد متاحة في هذا اليوم.",
+    "timezoneNote": "المواعيد بتوقيت {tz}",
+    "perHour": "/ساعة",
+    "book": "احجز هذا الموعد",
+    "backToList": "→ كل المعلّمين"
+  },
+  "booking": {
+    "title": "أكّد درسك",
+    "summary": "{subject} مع {tutor}",
+    "when": "الموعد",
+    "price": "السعر",
+    "chooseSubject": "المادة",
+    "confirm": "تأكيد الحجز",
+    "cancel": "إلغاء",
+    "signInNote": "الحجز بصفتك الطالب التجريبي.",
+    "success": "تم حجز الدرس!",
+    "successBody": "تم تأكيد درس {subject} في {time}.",
+    "error": "عذرًا، تعذّر حجز هذا الموعد. جرّب موعدًا آخر.",
+    "close": "تم"
+  },
   "common": {
     "back": "رجوع",
     "loading": "جارٍ التحميل…",
