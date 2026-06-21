@@ -44,16 +44,16 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + C
 
 ## Monorepo
 
-| Path                                    | What                                                       |
-| --------------------------------------- | ---------------------------------------------------------- |
-| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)   |
-| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)             |
-| `apps/mobile`                           | Expo / React Native student app                            |
-| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres               |
-| `services/notifications`                | Elixir/Phoenix — lesson reminders                          |
-| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](#)) |
-| `packages/ui`                           | shared component library + Storybook                       |
-| `packages/types`, `packages/api-client` | shared TS types & typed client                             |
+| Path                                    | What                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                     |
+| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)                                                               |
+| `apps/mobile`                           | Expo / React Native student app                                                                              |
+| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                 |
+| `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                            |
+| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](https://www.npmjs.com/package/@ermulaku/slot-engine)) |
+| `packages/ui`                           | shared component library + Storybook                                                                         |
+| `packages/types`, `packages/api-client` | shared TS types & typed client                                                                               |
 
 ## Getting started
 
