@@ -11,8 +11,9 @@ calendar, bookings, and earnings. Built as a TypeScript monorepo with a Next.js 
 a custom-Webpack React/Redux dashboard, an Expo mobile app, and a NestJS API exposing the same
 domain over **REST, GraphQL, and gRPC**.
 
-> Status: 🚧 Phase 6 (AI assistant + monitoring) complete — see [Roadmap](#roadmap).
-> Live demo: _TODO_ · API docs: [`docs/API.md`](./docs/API.md) · Storybook: _TODO_
+> Status: ✅ All phases (1–7) complete — see [Roadmap](#roadmap).
+> API docs: [`docs/API.md`](./docs/API.md) · Storybook: `npm run storybook` · npm:
+> [`@ermulaku/slot-engine`](https://www.npmjs.com/package/@ermulaku/slot-engine)
 
 ## Why this project
 
@@ -33,37 +34,38 @@ real scheduling platforms (timezone-correct slots, no-show handling, real-time u
    real-time: WebSocket events → dashboard (live bookings)
 ```
 
-Full design and decisions: [`SPEC.md`](./SPEC.md) and [`docs/`](./docs).
+Per-phase build log and decisions: [`AGENTS.md`](./AGENTS.md) and [`docs/`](./docs).
 
 ## Tech stack
 
-TypeScript · React 19 + Redux Toolkit · Next.js 15 (SSR/PWA) · custom Webpack 5 + esbuild ·
+TypeScript · React 19 + Redux Toolkit · Next.js 16 (SSR/PWA) · custom Webpack 5 ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
 Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + Cloud SQL.
 
 ## Monorepo
 
-| Path                                    | What                                                       |
-| --------------------------------------- | ---------------------------------------------------------- |
-| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)   |
-| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)             |
-| `apps/mobile`                           | Expo / React Native student app                            |
-| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres               |
-| `services/notifications`                | Elixir/Phoenix — lesson reminders                          |
-| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](#)) |
-| `packages/ui`                           | shared component library + Storybook                       |
-| `packages/types`, `packages/api-client` | shared TS types & typed client                             |
+| Path                                    | What                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                     |
+| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)                                                               |
+| `apps/mobile`                           | Expo / React Native student app                                                                              |
+| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                 |
+| `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                            |
+| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](https://www.npmjs.com/package/@ermulaku/slot-engine)) |
+| `packages/ui`                           | shared component library + Storybook                                                                         |
+| `packages/types`, `packages/api-client` | shared TS types & typed client                                                                               |
 
 ## Getting started
 
-> **Built so far (Phases 1–6):** `packages/types`, `packages/slot-engine`, `packages/ui`
-> (RTL-safe components + Storybook), the `services/api` NestJS API (Postgres + Prisma)
-> exposing the domain over **REST, GraphQL, and gRPC** — with health/readiness probes,
-> Prometheus metrics, and an **OpenAI booking assistant** — `apps/dashboard`, a React/Redux
-> SPA on a custom Webpack build with a live availability calendar, and `apps/marketplace`,
-> a **Next.js 16** SSR/PWA storefront (discover, profile, booking) with an Arabic **RTL**
-> locale and GPU-only animations. The mobile app lands in a later phase.
+> **Built (Phases 1–7):** `packages/types`, `packages/slot-engine` (**published to npm**),
+> `packages/ui` (RTL-safe components + Storybook), `packages/api-client`; the `services/api`
+> NestJS API (Postgres + Prisma) exposing the domain over **REST, GraphQL, and gRPC** — with
+> health/readiness probes, Prometheus metrics, and an **OpenAI booking assistant**;
+> `apps/dashboard`, a React/Redux SPA on a custom Webpack build; `apps/marketplace`, a
+> **Next.js 16** SSR/PWA storefront with an Arabic **RTL** locale and GPU-only animations;
+> `apps/mobile`, an **Expo** student app; and `services/notifications`, an **Elixir/Phoenix**
+> reminders service.
 
 ```bash
 # prerequisites: Node 22+, npm, Docker (for Postgres)
@@ -82,7 +84,7 @@ See [`services/api/README.md`](./services/api/README.md) for the full API guide.
 
 | Service            | Local URL                     |
 | ------------------ | ----------------------------- |
-| Marketplace        | http://localhost:3000         |
+| Marketplace        | http://localhost:3200         |
 | Dashboard          | http://localhost:3100         |
 | API (REST/Swagger) | http://localhost:4000/docs    |
 | GraphQL            | http://localhost:4000/graphql |
@@ -104,17 +106,16 @@ npm run storybook    # component catalog
 
 This repo is built with an **AI-augmented workflow** (Claude Code) under senior review — AI handles
 mechanical work; architecture, correctness, and security stay human-owned. The approach,
-verification checklist, and security process live in [`AGENTS.md`](./AGENTS.md), and the per-phase
-prompts are recorded in [`SPEC.md` §17](./SPEC.md) as evidence.
+verification checklist, security process, and a per-phase build log (what was built and **how it was
+verified**) all live in [`AGENTS.md`](./AGENTS.md) as evidence.
 
 ## Documentation
 
-- [`SPEC.md`](./SPEC.md) — full build spec & phases
-- [`AGENTS.md`](./AGENTS.md) — AI-augmented workflow & verification process
+- [`AGENTS.md`](./AGENTS.md) — AI-augmented workflow, verification process & per-phase build log
 - [`docs/API.md`](./docs/API.md) — REST / GraphQL / gRPC reference
 - [`docs/schema.graphql`](./docs/schema.graphql) — generated GraphQL SDL
+- [`docs/operations.md`](./docs/operations.md) — health, metrics & uptime ownership
 - [`proto/booking.proto`](./proto/booking.proto) — gRPC contract
-- [`docs/adr/`](./docs/adr) — architecture decision records
 
 ## Testing & CI
 
@@ -143,7 +144,7 @@ enable it — unset, the endpoint returns `503`. Tests mock the model, so CI nee
 - [x] **Phase 4** — Dashboard SPA (custom Webpack) + real-time
 - [x] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
 - [x] **Phase 6** — AI booking assistant + monitoring
-- [ ] **Phase 7** — Elixir notifications + Expo mobile + publish slot-engine to npm
+- [x] **Phase 7** — Elixir notifications + Expo mobile + published slot-engine to npm
 
 ## License
 

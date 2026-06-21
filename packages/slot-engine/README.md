@@ -1,5 +1,9 @@
 # @ermulaku/slot-engine
 
+[![npm version](https://img.shields.io/npm/v/@ermulaku/slot-engine.svg)](https://www.npmjs.com/package/@ermulaku/slot-engine)
+[![license](https://img.shields.io/npm/l/@ermulaku/slot-engine.svg)](./LICENSE)
+[![types](https://img.shields.io/npm/types/@ermulaku/slot-engine.svg)](./dist/index.d.ts)
+
 A **zero-dependency**, timezone- and DST-aware availability engine. Given a
 tutor's weekly working hours, existing bookings, and a target day, it computes
 the bookable lesson slots — correctly, deterministically, and without pulling in

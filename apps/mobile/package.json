@@ -1,0 +1,26 @@
+{
+  "name": "@ermulaku/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TutorHub student app — Expo / React Native, reusing @ermulaku/api-client.",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint App.tsx index.ts src"
+  },
+  "dependencies": {
+    "@ermulaku/api-client": "*",
+    "@ermulaku/types": "*",
+    "@expo/metro-runtime": "~56.0.15",
+    "expo": "~56.0.0",
+    "expo-status-bar": "~56.0.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-web": "^0.21.2"
+  }
+}

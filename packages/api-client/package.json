@@ -1,0 +1,28 @@
+{
+  "name": "@ermulaku/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed client for the TutorHub API — GraphQL reads + booking, REST dev-login.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "dependencies": {
+    "@ermulaku/types": "*"
+  }
+}

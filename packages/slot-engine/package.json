@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "Zero-dependency, timezone- and DST-aware availability slot engine.",
   "license": "MIT",
+  "author": "Ermir Mulaku",
+  "homepage": "https://github.com/ErmirMulaku/tutorhub/tree/master/packages/slot-engine#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ErmirMulaku/tutorhub.git",
+    "directory": "packages/slot-engine"
+  },
+  "bugs": {
+    "url": "https://github.com/ErmirMulaku/tutorhub/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,7 +27,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "sideEffects": false,
   "keywords": [
@@ -33,6 +47,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "prepublishOnly": "npm run build"
   }
 }
