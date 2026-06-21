@@ -6,6 +6,8 @@ import { type MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { DomainExceptionFilter } from './common/domain-exception.filter.js';
+import { MetricsService } from './monitoring/metrics.service.js';
+import { createRequestMetrics } from './monitoring/request-metrics.js';
 
 const PROTO_PATH = fileURLToPath(new URL('../../../proto/booking.proto', import.meta.url));
 
@@ -14,6 +16,9 @@ async function bootstrap(): Promise<void> {
 
   // Allow the dashboard (separate origin in dev) to call REST + connect via Socket.IO.
   app.enableCors({ origin: true });
+
+  // Record request metrics + structured access logs for every HTTP request.
+  app.use(createRequestMetrics(app.get(MetricsService)));
 
   // Validate and strip every inbound payload (SPEC §7: validate all input).
   app.useGlobalPipes(
