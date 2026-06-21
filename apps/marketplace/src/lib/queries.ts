@@ -115,6 +115,34 @@ export async function getAvailability(tutorId: string, date: string): Promise<Sl
   return data.availability;
 }
 
+export interface BookLessonInput {
+  tutorId: string;
+  subjectId: string;
+  /** Lesson start as an ISO-8601 UTC instant (a slot's `start`). */
+  startTime: string;
+}
+
+const BOOK_LESSON_MUTATION = /* GraphQL */ `
+  mutation Book($input: BookInput!) {
+    bookLesson(input: $input) {
+      id
+      status
+    }
+  }
+`;
+
+/** Authenticated booking mutation; `token` is a student JWT. */
+export async function bookLesson(
+  input: BookLessonInput,
+  token: string,
+): Promise<{ id: string; status: string }> {
+  const data = await graphqlRequest<{ bookLesson: { id: string; status: string } }>(
+    BOOK_LESSON_MUTATION,
+    { variables: { input }, token, cache: 'no-store' },
+  );
+  return data.bookLesson;
+}
+
 export interface GetTutorsArgs {
   subject?: string | undefined;
   level?: Level | undefined;

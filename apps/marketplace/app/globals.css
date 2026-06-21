@@ -360,6 +360,94 @@ h3 {
   border-radius: var(--th-radius-md);
   padding-block: var(--th-space-3);
 }
+.slot--btn {
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--th-duration) var(--th-ease);
+  will-change: transform;
+}
+.slot--btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--th-primary);
+  color: var(--th-primary);
+}
+.slot--btn:focus-visible {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 2px;
+}
+
+/* ---- Booking sheet ------------------------------------------------------- */
+.booking {
+  display: grid;
+  gap: var(--th-space-4);
+  margin-block-start: var(--th-space-4);
+}
+.booking__summary {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--th-text-muted);
+}
+.booking__field {
+  display: grid;
+  gap: var(--th-space-1);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.booking__field select {
+  font: inherit;
+  font-weight: 500;
+  color: var(--th-text);
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-md);
+  padding-block: var(--th-space-3);
+  padding-inline: var(--th-space-4);
+}
+.booking__details {
+  margin: 0;
+  display: grid;
+  gap: var(--th-space-3);
+}
+.booking__details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--th-space-4);
+  border-block-end: 1px solid var(--th-border);
+  padding-block-end: var(--th-space-2);
+}
+.booking__details dt {
+  color: var(--th-text-muted);
+  font-size: 0.875rem;
+}
+.booking__details dd {
+  margin: 0;
+  font-weight: 600;
+}
+.booking__note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--th-text-muted);
+}
+.booking__error {
+  margin: 0;
+  color: var(--th-danger);
+  font-weight: 600;
+}
+.booking__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--th-space-3);
+}
+.booking__success {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--th-primary);
+}
+.booking__line {
+  margin: 0;
+  color: var(--th-text);
+}
 
 /* ---- Page scaffolding ---------------------------------------------------- */
 .page {

@@ -4,8 +4,9 @@ import { Avatar, Card, Price, StarRating, Tag, type TagTone } from '@ermulaku/ui
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary, interpolate } from '@/i18n/dictionaries';
 import { getAvailability, getTutor, type Slot } from '@/lib/queries';
-import { formatSlotTime, upcomingDates } from '@/lib/datetime';
+import { upcomingDates } from '@/lib/datetime';
 import { DateTabs } from '@/components/DateTabs';
+import { BookingPanel } from '@/components/BookingPanel';
 
 function levelTone(level: string): TagTone {
   switch (level) {
@@ -113,17 +114,17 @@ export default async function TutorProfilePage({
             <h2 className="profile__h">{t.availability}</h2>
             <p className="profile__muted">{interpolate(t.timezoneNote, { tz: tutor.timezone })}</p>
             <DateTabs dates={dates} selected={selectedDate} locale={locale} />
-            {slots.length > 0 ? (
-              <div className="slots">
-                {slots.map((slot) => (
-                  <span key={slot.start} className="slot">
-                    {formatSlotTime(slot.start, tutor.timezone, locale)}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="profile__muted">{t.noSlots}</p>
-            )}
+            <BookingPanel
+              tutorId={tutor.id}
+              tutorName={tutor.name}
+              timezone={tutor.timezone}
+              hourlyCents={tutor.hourlyCents}
+              subjects={tutor.subjects}
+              slots={slots}
+              locale={locale}
+              currency={currency}
+              dict={dict}
+            />
           </section>
         </aside>
       </div>
