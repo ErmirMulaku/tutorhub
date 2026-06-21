@@ -153,6 +153,10 @@ storybook-static
 # Next.js build output
 .next
 next-env.d.ts
+# Expo
+.expo
+expo-env.d.ts
+apps/mobile/dist
 
 # Prisma generated client (run `npm run db:generate`)
 **/src/generated/

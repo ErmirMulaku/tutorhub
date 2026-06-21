@@ -26,6 +26,12 @@
       "runtimeExecutable": "/Users/ermir/.nvm/versions/node/v22.22.2/bin/node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "apps/marketplace", "-p", "3200"],
       "port": 3200
+    },
+    {
+      "name": "mobile-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8082", "--directory", "apps/mobile/dist"],
+      "port": 8082
     }
   ]
 }
