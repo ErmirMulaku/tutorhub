@@ -13,6 +13,8 @@ export default tseslint.config(
       '**/generated/**',
       '**/.next/**',
       '**/storybook-static/**',
+      '**/cypress/**',
+      '**/cypress.config.ts',
       '.nx/**',
     ],
   },

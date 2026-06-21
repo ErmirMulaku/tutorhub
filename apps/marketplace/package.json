@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start -p 3200",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint app src"
+    "lint": "eslint app src",
+    "e2e": "cypress run",
+    "e2e:open": "cypress open"
   },
   "dependencies": {
     "@ermulaku/types": "*",
@@ -20,6 +22,7 @@
   },
   "devDependencies": {
     "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "cypress": "15.17.0"
   }
 }
