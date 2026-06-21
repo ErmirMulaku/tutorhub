@@ -12,8 +12,9 @@ function toJsonWorkingHours(workingHours: WorkingHoursDto[]): Prisma.InputJsonVa
 }
 
 export interface TutorPageFilter {
-  subject?: string;
-  level?: Level;
+  /** Free-text subject search (case-insensitive substring). */
+  subject?: string | null;
+  level?: Level | null;
   limit: number;
   offset: number;
 }
@@ -41,10 +42,17 @@ export class TutorsService {
 
   /** Paginated, optionally filtered by subject name and/or level (GraphQL `tutors`). */
   async findPage(filter: TutorPageFilter): Promise<{ items: Tutor[]; total: number }> {
-    const where: Prisma.TutorWhereInput = {};
-    if (filter.subject !== undefined || filter.level !== undefined) {
-      where.subjects = { some: { name: filter.subject, level: filter.level } };
+    // Only constrain on fields that were actually supplied. GraphQL nullable
+    // variables arrive as `null` (not `undefined`), so guard with `!= null`.
+    const some: Prisma.SubjectWhereInput = {};
+    if (filter.subject != null && filter.subject !== '') {
+      some.name = { contains: filter.subject, mode: 'insensitive' };
     }
+    if (filter.level != null) {
+      some.level = filter.level;
+    }
+    const where: Prisma.TutorWhereInput =
+      Object.keys(some).length > 0 ? { subjects: { some } } : {};
     const [items, total] = await this.prisma.$transaction([
       this.prisma.tutor.findMany({
         where,

@@ -160,6 +160,33 @@ describe('API (e2e)', () => {
     }
   });
 
+  it('GraphQL tutors: null filters return all; subject is case-insensitive contains', async () => {
+    const query = `query D($subject: String, $level: Level) {
+      tutors(subject: $subject, level: $level, limit: 50, offset: 0) { total items { id } }
+    }`;
+
+    // Regression: GraphQL nullable variables arrive as `null`, which used to be
+    // forwarded into the Prisma where-clause and crash the query.
+    const all = await http()
+      .post('/graphql')
+      .send({ query, variables: { subject: null, level: null } })
+      .expect(200);
+    const allBody = all.body as {
+      data: { tutors: { total: number; items: { id: string }[] } };
+      errors?: unknown[];
+    };
+    expect(allBody.errors).toBeUndefined();
+    expect(allBody.data.tutors.items.map((i) => i.id)).toContain(tutorId);
+
+    // Substring, case-insensitive match against the "E2E Guitar" subject.
+    const search = await http()
+      .post('/graphql')
+      .send({ query, variables: { subject: 'guitar', level: null } })
+      .expect(200);
+    const searchBody = search.body as { data: { tutors: { items: { id: string }[] } } };
+    expect(searchBody.data.tutors.items.map((i) => i.id)).toContain(tutorId);
+  });
+
   it('dev-login mints a JWT and the guarded `me` query returns the student', async () => {
     const login = await http().post('/auth/dev-login').send({ email: studentEmail }).expect(200);
     token = (login.body as { accessToken: string }).accessToken;
