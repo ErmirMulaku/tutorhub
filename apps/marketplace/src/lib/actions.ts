@@ -11,7 +11,10 @@ import {
   leaveReview as leaveReviewMutation,
   markAllNotificationsRead as markAllNotificationsReadMutation,
   markNotificationRead as markNotificationReadMutation,
+  oauthSignin,
   redeemGiftCard as redeemGiftCardMutation,
+  resendVerificationCode,
+  verifyEmail,
   rescheduleBooking as rescheduleBookingMutation,
   setFavorite as setFavoriteMutation,
   setTwoFactor as setTwoFactorMutation,
@@ -43,17 +46,42 @@ async function run(fn: () => Promise<void>, fallback: string): Promise<ActionRes
 
 /* ---- Auth ---------------------------------------------------------------- */
 
+export interface SignupActionResult extends ActionResult {
+  /** Non-production helper so the verify step can prefill the emailed code. */
+  devCode?: string | null;
+}
+
+/** Step 1–2: create the account and start email verification (no session yet). */
 export async function signupAction(
   fullName: string,
   email: string,
   password: string,
-): Promise<ActionResult> {
+): Promise<SignupActionResult> {
   try {
-    const { accessToken } = await signup(fullName, email, password);
+    const { devCode } = await signup(fullName, email, password);
+    return { ok: true, devCode };
+  } catch (err) {
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'SIGNUP_FAILED' };
+  }
+}
+
+/** Step 3: confirm the 6-digit code, which establishes the session. */
+export async function verifyEmailAction(email: string, code: string): Promise<ActionResult> {
+  try {
+    const { accessToken } = await verifyEmail(email, code);
     await setSessionToken(accessToken);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'SIGNUP_FAILED' };
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'VERIFY_FAILED' };
+  }
+}
+
+export async function resendCodeAction(email: string): Promise<SignupActionResult> {
+  try {
+    const { devCode } = await resendVerificationCode(email);
+    return { ok: true, devCode };
+  } catch (err) {
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'RESEND_FAILED' };
   }
 }
 
@@ -64,6 +92,25 @@ export async function signinAction(email: string, password: string): Promise<Act
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'SIGNIN_FAILED' };
+  }
+}
+
+/**
+ * Sign in via a social provider. The provider handshake is simulated client-
+ * side (no external secret); the backend upsert + session are real.
+ */
+export async function oauthSigninAction(
+  provider: 'GOOGLE' | 'APPLE',
+  providerUserId: string,
+  email: string,
+  fullName: string,
+): Promise<ActionResult> {
+  try {
+    const { accessToken } = await oauthSignin(provider, providerUserId, email, fullName);
+    await setSessionToken(accessToken);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'OAUTH_FAILED' };
   }
 }
 

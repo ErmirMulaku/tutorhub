@@ -475,11 +475,19 @@ export interface AuthResult {
   studentId: string;
 }
 
+export interface SignupResult {
+  studentId: string;
+  requiresVerification: boolean;
+  /** Non-production only — surfaced so the verify step can prefill the code. */
+  devCode: string | null;
+}
+
 const SIGNUP_MUTATION = /* GraphQL */ `
   mutation Signup($fullName: String!, $email: String!, $password: String!) {
     signup(fullName: $fullName, email: $email, password: $password) {
-      accessToken
       studentId
+      requiresVerification
+      devCode
     }
   }
 `;
@@ -488,12 +496,79 @@ export async function signup(
   fullName: string,
   email: string,
   password: string,
-): Promise<AuthResult> {
-  const data = await graphqlRequest<{ signup: AuthResult }>(SIGNUP_MUTATION, {
+): Promise<SignupResult> {
+  const data = await graphqlRequest<{ signup: SignupResult }>(SIGNUP_MUTATION, {
     variables: { fullName, email, password },
     cache: 'no-store',
   });
   return data.signup;
+}
+
+const VERIFY_EMAIL_MUTATION = /* GraphQL */ `
+  mutation VerifyEmail($email: String!, $code: String!) {
+    verifyEmail(email: $email, code: $code) {
+      accessToken
+      studentId
+    }
+  }
+`;
+
+export async function verifyEmail(email: string, code: string): Promise<AuthResult> {
+  const data = await graphqlRequest<{ verifyEmail: AuthResult }>(VERIFY_EMAIL_MUTATION, {
+    variables: { email, code },
+    cache: 'no-store',
+  });
+  return data.verifyEmail;
+}
+
+const RESEND_CODE_MUTATION = /* GraphQL */ `
+  mutation ResendCode($email: String!) {
+    resendVerificationCode(email: $email) {
+      devCode
+    }
+  }
+`;
+
+export async function resendVerificationCode(email: string): Promise<{ devCode: string | null }> {
+  const data = await graphqlRequest<{ resendVerificationCode: { devCode: string | null } }>(
+    RESEND_CODE_MUTATION,
+    { variables: { email }, cache: 'no-store' },
+  );
+  return data.resendVerificationCode;
+}
+
+export type OAuthProvider = 'GOOGLE' | 'APPLE';
+
+const OAUTH_SIGNIN_MUTATION = /* GraphQL */ `
+  mutation OauthSignin(
+    $provider: OAuthProvider!
+    $providerUserId: String!
+    $email: String!
+    $fullName: String!
+  ) {
+    oauthSignin(
+      provider: $provider
+      providerUserId: $providerUserId
+      email: $email
+      fullName: $fullName
+    ) {
+      accessToken
+      studentId
+    }
+  }
+`;
+
+export async function oauthSignin(
+  provider: OAuthProvider,
+  providerUserId: string,
+  email: string,
+  fullName: string,
+): Promise<AuthResult> {
+  const data = await graphqlRequest<{ oauthSignin: AuthResult }>(OAUTH_SIGNIN_MUTATION, {
+    variables: { provider, providerUserId, email, fullName },
+    cache: 'no-store',
+  });
+  return data.oauthSignin;
 }
 
 const SIGNIN_MUTATION = /* GraphQL */ `
