@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button, Card } from '@ermulaku/ui';
 import { isLocale, localeCurrency } from '@/i18n/config';
-import { getDictionary } from '@/i18n/dictionaries';
+import { getDictionary, interpolate } from '@/i18n/dictionaries';
 import { getTutors } from '@/lib/queries';
 import { TutorCard } from '@/components/TutorCard';
 
@@ -16,13 +16,14 @@ const CATEGORY_QUERY: Record<string, string> = {
   testprep: 'Physics',
 };
 
-const CATEGORY_ICON: Record<string, string> = {
-  academic: '📐',
-  languages: '🗣️',
-  music: '🎵',
-  humanities: '📚',
-  coding: '💻',
-  testprep: '🎯',
+/** Per-category glyph, colour tone and indicative tutor count (from the design). */
+const CATEGORY_META: Record<string, { glyph: string; tone: string; count: number }> = {
+  academic: { glyph: '∑', tone: 'teal', count: 670 },
+  languages: { glyph: '文', tone: 'rose', count: 540 },
+  music: { glyph: '♪', tone: 'amber', count: 340 },
+  humanities: { glyph: '✎', tone: 'violet', count: 420 },
+  coding: { glyph: '</>', tone: 'blue', count: 210 },
+  testprep: { glyph: '✓', tone: 'green', count: 300 },
 };
 
 export default async function HomePage({
@@ -52,18 +53,40 @@ export default async function HomePage({
 
   return (
     <>
-      <section className="hero">
-        <h1 className="hero__title">{t.heroTitle}</h1>
-        <p className="hero__subtitle">{t.heroSubtitle}</p>
-        <div className="hero__actions">
-          <Link href={`/${locale}/tutors`}>
-            <Button size="lg">{t.ctaBrowse}</Button>
-          </Link>
-          <Link href="#how" className="hero__link">
-            {t.ctaHow}
-          </Link>
-        </div>
-      </section>
+      <div className="hero-wrap">
+        <section className="hero">
+          <h1 className="hero__title">{t.heroTitle}</h1>
+          <p className="hero__subtitle">{t.heroSubtitle}</p>
+          <div className="hero__actions">
+            <Link href={`/${locale}/tutors`}>
+              <Button size="lg">{t.ctaBrowse}</Button>
+            </Link>
+            <Link href="#how" className="hero__link">
+              {t.ctaHow}
+            </Link>
+          </div>
+        </section>
+
+        <section className="trust" aria-label={t.categoriesTitle}>
+          <div className="trust__cell">
+            <span className="trust__value">
+              {t.trustRatingValue}
+              <span className="trust__star" aria-hidden="true">
+                ★
+              </span>
+            </span>
+            <span className="trust__label">{t.trustRatingLabel}</span>
+          </div>
+          <div className="trust__cell">
+            <span className="trust__value">{t.trustSubjectsValue}</span>
+            <span className="trust__label">{t.trustSubjectsLabel}</span>
+          </div>
+          <div className="trust__cell">
+            <span className="trust__value">{t.trustTutorsValue}</span>
+            <span className="trust__label">{t.trustTutorsLabel}</span>
+          </div>
+        </section>
+      </div>
 
       <section className="home-section" aria-labelledby="cat-h">
         <div className="home-section__head">
@@ -75,18 +98,26 @@ export default async function HomePage({
           </div>
         </div>
         <div className="category-grid">
-          {categories.map((key) => (
-            <Link
-              key={key}
-              href={`/${locale}/tutors?query=${encodeURIComponent(CATEGORY_QUERY[key] as string)}`}
-              className="category-card"
-            >
-              <span className="category-card__icon" aria-hidden="true">
-                {CATEGORY_ICON[key]}
-              </span>
-              <span className="category-card__label">{dict.categories[key]}</span>
-            </Link>
-          ))}
+          {categories.map((key) => {
+            const meta = CATEGORY_META[key];
+            return (
+              <Link
+                key={key}
+                href={`/${locale}/tutors?query=${encodeURIComponent(CATEGORY_QUERY[key] as string)}`}
+                className="category-card"
+              >
+                <span className="category-card__icon" data-tone={meta?.tone} aria-hidden="true">
+                  {meta?.glyph}
+                </span>
+                <span className="category-card__label">{dict.categories[key]}</span>
+                <span className="category-card__count">
+                  {interpolate(t.categoryTutors, {
+                    count: new Intl.NumberFormat(locale).format(meta?.count ?? 0),
+                  })}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
