@@ -10,6 +10,25 @@
     "signIn": "تسجيل الدخول",
     "signOut": "تسجيل الخروج"
   },
+  "theme": {
+    "toLight": "التبديل إلى الوضع الفاتح",
+    "toDark": "التبديل إلى الوضع الداكن"
+  },
+  "notif": {
+    "title": "الإشعارات",
+    "markAll": "تعليم الكل كمقروء",
+    "empty": "لا جديد لديك",
+    "viewAll": "عرض كل النشاط",
+    "open": "الإشعارات",
+    "bookingConfirmedTitle": "تم تأكيد الحجز",
+    "bookingConfirmedBody": "تم تأكيد درس {subject} مع {tutor}.",
+    "lessonReminderTitle": "تذكير بالدرس",
+    "lessonReminderBody": "درس {subject} مع {tutor} يقترب. أضفه إلى تقويمك حتى لا تفوّته.",
+    "reviewPromptTitle": "كيف كان درسك؟",
+    "reviewPromptBody": "اكتب تقييمًا لدرس {subject} مع {tutor} وساعد طلابًا آخرين.",
+    "giftReceivedTitle": "أُضيفت بطاقة هدية",
+    "giftReceivedBody": "أُضيفت بطاقة هدية بقيمة {detail} من {tutor} إلى محفظتك."
+  },
   "home": {
     "heroTitle": "تعلّم من معلّمين يناسبون جدولك",
     "heroSubtitle": "تصفّح معلّمين خبراء في الرياضيات واللغات والموسيقى وغيرها. شاهد التوافر اللحظي بتوقيتك واحجز درسًا في ثوانٍ.",

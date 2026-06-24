@@ -396,6 +396,78 @@ export async function getWallet(token: string): Promise<Wallet> {
   return data.wallet;
 }
 
+/* ---- Notifications ------------------------------------------------------- */
+
+export type NotificationType =
+  | 'BOOKING_CONFIRMED'
+  | 'LESSON_REMINDER'
+  | 'REVIEW_PROMPT'
+  | 'GIFT_RECEIVED';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  actorName: string | null;
+  detail: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+const NOTIFICATIONS_QUERY = /* GraphQL */ `
+  query Notifications {
+    unreadNotificationCount
+    notifications {
+      id
+      type
+      actorName
+      detail
+      read
+      createdAt
+    }
+  }
+`;
+
+export interface NotificationFeed {
+  items: Notification[];
+  unread: number;
+}
+
+export async function getNotifications(token: string): Promise<NotificationFeed> {
+  try {
+    const data = await graphqlRequest<{
+      unreadNotificationCount: number;
+      notifications: Notification[];
+    }>(NOTIFICATIONS_QUERY, { token, cache: 'no-store' });
+    return { items: data.notifications, unread: data.unreadNotificationCount };
+  } catch {
+    return { items: [], unread: 0 };
+  }
+}
+
+const MARK_ALL_READ_MUTATION = /* GraphQL */ `
+  mutation MarkAllRead {
+    markAllNotificationsRead {
+      id
+    }
+  }
+`;
+
+export async function markAllNotificationsRead(token: string): Promise<void> {
+  await graphqlRequest(MARK_ALL_READ_MUTATION, { token, cache: 'no-store' });
+}
+
+const MARK_READ_MUTATION = /* GraphQL */ `
+  mutation MarkRead($id: ID!) {
+    markNotificationRead(id: $id) {
+      id
+    }
+  }
+`;
+
+export async function markNotificationRead(id: string, token: string): Promise<void> {
+  await graphqlRequest(MARK_READ_MUTATION, { variables: { id }, token, cache: 'no-store' });
+}
+
 /* ---- Mutations ----------------------------------------------------------- */
 
 export interface AuthResult {

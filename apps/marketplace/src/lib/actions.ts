@@ -9,6 +9,8 @@ import {
   cancelBooking as cancelBookingMutation,
   changePassword as changePasswordMutation,
   leaveReview as leaveReviewMutation,
+  markAllNotificationsRead as markAllNotificationsReadMutation,
+  markNotificationRead as markNotificationReadMutation,
   redeemGiftCard as redeemGiftCardMutation,
   rescheduleBooking as rescheduleBookingMutation,
   setFavorite as setFavoriteMutation,
@@ -68,6 +70,24 @@ export async function signinAction(email: string, password: string): Promise<Act
 export async function logoutAction(): Promise<void> {
   await clearSession();
   revalidatePath('/', 'layout');
+}
+
+/* ---- Notifications ------------------------------------------------------- */
+
+export async function markAllNotificationsReadAction(): Promise<ActionResult> {
+  const result = await run(async () => {
+    await markAllNotificationsReadMutation(await getTokenOrDemo());
+  }, 'NOTIFS_FAILED');
+  if (result.ok) revalidatePath('/', 'layout');
+  return result;
+}
+
+export async function markNotificationReadAction(id: string): Promise<ActionResult> {
+  const result = await run(async () => {
+    await markNotificationReadMutation(id, await getTokenOrDemo());
+  }, 'NOTIF_FAILED');
+  if (result.ok) revalidatePath('/', 'layout');
+  return result;
 }
 
 /* ---- Booking & lessons --------------------------------------------------- */

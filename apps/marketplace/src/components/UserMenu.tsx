@@ -11,11 +11,57 @@ import { logoutAction } from '@/lib/actions';
 interface UserMenuProps {
   locale: Locale;
   name: string;
+  email: string;
   dict: Dictionary;
 }
 
-/** Avatar button that opens an account dropdown (account / wallet / log out). */
-export function UserMenu({ locale, name, dict }: UserMenuProps): React.JSX.Element {
+type IconName = 'lessons' | 'favourites' | 'wallet' | 'account';
+
+function MenuIcon({ name }: { name: IconName }): React.JSX.Element {
+  const common = {
+    width: 17,
+    height: 17,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+  switch (name) {
+    case 'lessons':
+      return (
+        <svg {...common}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      );
+    case 'favourites':
+      return (
+        <svg {...common}>
+          <path d="M19 14c1.5-1.5 3-3.3 3-5.5A3.5 3.5 0 0 0 18.5 5 4 4 0 0 0 12 6 4 4 0 0 0 5.5 5 3.5 3.5 0 0 0 2 8.5C2 10.7 3.5 12.5 5 14l7 7z" />
+        </svg>
+      );
+    case 'wallet':
+      return (
+        <svg {...common}>
+          <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <path d="M16 12h.01M3 9h18" />
+        </svg>
+      );
+    case 'account':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+      );
+  }
+}
+
+/** Avatar button that opens an account dropdown (account / lessons / wallet / log out). */
+export function UserMenu({ locale, name, email, dict }: UserMenuProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -39,11 +85,11 @@ export function UserMenu({ locale, name, dict }: UserMenuProps): React.JSX.Eleme
     });
   };
 
-  const items: Array<{ href: string; label: string }> = [
-    { href: `/${locale}/lessons`, label: dict.nav.lessons },
-    { href: `/${locale}/favourites`, label: dict.nav.favourites },
-    { href: `/${locale}/wallet`, label: dict.nav.wallet },
-    { href: `/${locale}/account`, label: dict.nav.account },
+  const items: Array<{ href: string; label: string; icon: IconName }> = [
+    { href: `/${locale}/account`, label: dict.nav.account, icon: 'account' },
+    { href: `/${locale}/lessons`, label: dict.nav.lessons, icon: 'lessons' },
+    { href: `/${locale}/favourites`, label: dict.nav.favourites, icon: 'favourites' },
+    { href: `/${locale}/wallet`, label: dict.nav.wallet, icon: 'wallet' },
   ];
 
   return (
@@ -56,21 +102,46 @@ export function UserMenu({ locale, name, dict }: UserMenuProps): React.JSX.Eleme
         onClick={() => setOpen((v) => !v)}
       >
         <Avatar name={name} size="sm" />
+        <svg
+          className="user-menu__chevron"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
       {open && (
-        <div className="user-menu__panel" role="menu">
-          <p className="user-menu__name">{name}</p>
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              role="menuitem"
-              className="user-menu__item"
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+        <div className="user-menu__panel th-fade-up" role="menu">
+          <div className="user-menu__header">
+            <Avatar name={name} size="md" />
+            <div className="user-menu__id">
+              <p className="user-menu__name">{name}</p>
+              <p className="user-menu__email">{email}</p>
+            </div>
+          </div>
+          <div className="user-menu__items">
+            {items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                className="user-menu__item"
+                onClick={() => setOpen(false)}
+              >
+                <span className="user-menu__item-icon" aria-hidden="true">
+                  <MenuIcon name={item.icon} />
+                </span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
           <button
             type="button"
             role="menuitem"
@@ -78,6 +149,21 @@ export function UserMenu({ locale, name, dict }: UserMenuProps): React.JSX.Eleme
             onClick={logout}
             disabled={isPending}
           >
+            <span className="user-menu__item-icon" aria-hidden="true">
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+            </span>
             {dict.nav.signOut}
           </button>
         </div>
