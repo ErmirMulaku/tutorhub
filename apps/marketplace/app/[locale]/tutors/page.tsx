@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { Level } from '@ermulaku/types';
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary, interpolate } from '@/i18n/dictionaries';
-import { getTutors } from '@/lib/queries';
+import { getMyFavoriteIds, getTutors, type TutorSort } from '@/lib/queries';
+import { getTokenOrDemo } from '@/lib/session';
 import { DiscoverFilters } from '@/components/DiscoverFilters';
 import { TutorCard } from '@/components/TutorCard';
 
@@ -11,6 +12,19 @@ function asLevel(value: string | string[] | undefined): Level | undefined {
   return typeof value === 'string' && (Object.values(Level) as string[]).includes(value)
     ? (value as Level)
     : undefined;
+}
+
+function asSort(value: string | string[] | undefined): TutorSort | undefined {
+  const sorts: TutorSort[] = ['relevance', 'priceAsc', 'priceDesc', 'rating'];
+  return typeof value === 'string' && (sorts as string[]).includes(value)
+    ? (value as TutorSort)
+    : undefined;
+}
+
+function asNumber(value: string | string[] | undefined): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 export default async function TutorsPage({
@@ -24,8 +38,12 @@ export default async function TutorsPage({
   if (!isLocale(locale)) notFound();
 
   const sp = await searchParams;
+  const query = typeof sp['query'] === 'string' ? sp['query'] : undefined;
   const subject = typeof sp['subject'] === 'string' ? sp['subject'] : undefined;
   const level = asLevel(sp['level']);
+  const maxPrice = asNumber(sp['maxPrice']);
+  const minRating = asNumber(sp['minRating']);
+  const sort = asSort(sp['sort']);
 
   const dict = getDictionary(locale);
   const t = dict.discover;
@@ -34,13 +52,21 @@ export default async function TutorsPage({
   let total = 0;
   let items: Awaited<ReturnType<typeof getTutors>>['items'] = [];
   let failed = false;
+  let favoriteIds: string[] = [];
   try {
-    const page = await getTutors({ subject, level });
+    const token = await getTokenOrDemo();
+    const [page, favs] = await Promise.all([
+      getTutors({ subject, query, level, maxPrice, minRating, sort }),
+      getMyFavoriteIds(token),
+    ]);
     total = page.total;
     items = page.items;
+    favoriteIds = favs;
   } catch {
     failed = true;
   }
+
+  const favSet = new Set(favoriteIds);
 
   return (
     <div className="page">
@@ -62,6 +88,7 @@ export default async function TutorsPage({
               locale={locale}
               currency={currency}
               dict={dict}
+              favorited={favSet.has(tutor.id)}
             />
           ))}
         </div>

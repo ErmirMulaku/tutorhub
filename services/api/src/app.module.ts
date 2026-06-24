@@ -4,15 +4,19 @@ import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import './graphql/register-enums.js';
+import { AccountModule } from './account/account.module.js';
 import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
+import { FavoritesModule } from './favorites/favorites.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
+import { WalletModule } from './wallet/wallet.module.js';
 
 // Written to the repo-root docs/ on boot; committed as the GraphQL SDL (SPEC §9).
 const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
@@ -29,10 +33,14 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     }),
     PrismaModule,
     AuthModule,
+    AccountModule,
     TutorsModule,
     SubjectsModule,
     BookingsModule,
     AvailabilityModule,
+    FavoritesModule,
+    WalletModule,
+    NotificationsModule,
     MonitoringModule,
     AssistantModule,
   ],

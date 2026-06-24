@@ -162,6 +162,9 @@ apps/mobile/dist
 **/src/generated/
 
 
+# macOS Finder metadata
+.DS_Store
+
 # ingore file Spec.md
 Spec.md
 HANDOFF.md

@@ -7,6 +7,8 @@ import { direction, isLocale, locales } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { Header } from '@/components/Header';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { getMe } from '@/lib/queries';
+import { getTokenOrDemo } from '@/lib/session';
 
 export const metadata: Metadata = {
   title: 'TutorHub — find and book a tutor',
@@ -36,12 +38,20 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const dict = getDictionary(locale);
+  // The header must never hard-crash if the API is unreachable: degrade to the
+  // logged-out state instead. `getTokenOrDemo` itself can throw (dev-login fetch).
+  let me: Awaited<ReturnType<typeof getMe>>;
+  try {
+    me = await getMe(await getTokenOrDemo());
+  } catch {
+    me = null;
+  }
 
   return (
     <html lang={locale} dir={direction[locale]}>
       <body>
         <ServiceWorkerRegister />
-        <Header locale={locale} dict={dict} />
+        <Header locale={locale} dict={dict} userName={me?.fullName ?? null} />
         <main className="container">{children}</main>
       </body>
     </html>

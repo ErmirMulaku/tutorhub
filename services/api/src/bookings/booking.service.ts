@@ -94,6 +94,24 @@ export class BookingService {
     });
   }
 
+  /** Move a student's own upcoming booking to a new start time (same duration). */
+  async rescheduleForStudent(id: string, studentId: string, startTime: Date): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (booking.studentId !== studentId) {
+      throw new EntityNotFoundError('Booking', id);
+    }
+    if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
+      throw new BadRequestDomainError('Only upcoming bookings can be rescheduled.');
+    }
+    const duration = booking.endTime.getTime() - booking.startTime.getTime();
+    const updated = await this.prisma.booking.update({
+      where: { id },
+      data: { startTime, endTime: new Date(startTime.getTime() + duration) },
+    });
+    this.events.emit(updated);
+    return updated;
+  }
+
   /** Cancel a booking the student owns (hidden as 404 if it is not theirs). */
   async cancelForStudent(id: string, studentId: string): Promise<Booking> {
     const booking = await this.findById(id);

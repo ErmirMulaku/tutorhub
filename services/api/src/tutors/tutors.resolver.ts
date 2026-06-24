@@ -5,7 +5,7 @@ import { ReviewModel } from '../graphql/models/review.model.js';
 import { SubjectModel } from '../graphql/models/subject.model.js';
 import { TutorPageModel } from '../graphql/models/tutor-page.model.js';
 import { TutorModel } from '../graphql/models/tutor.model.js';
-import { TutorsService } from './tutors.service.js';
+import { TutorsService, type TutorSort } from './tutors.service.js';
 
 interface TutorPage {
   items: Tutor[];
@@ -20,11 +20,24 @@ export class TutorsResolver {
   @Query(() => TutorPageModel, { name: 'tutors' })
   async tutorsPage(
     @Args('subject', { type: () => String, nullable: true }) subject: string | undefined,
+    @Args('query', { type: () => String, nullable: true }) query: string | undefined,
     @Args('level', { type: () => Level, nullable: true }) level: Level | undefined,
+    @Args('maxPrice', { type: () => Int, nullable: true }) maxPrice: number | undefined,
+    @Args('minRating', { type: () => Float, nullable: true }) minRating: number | undefined,
+    @Args('sort', { type: () => String, nullable: true }) sort: string | undefined,
     @Args('limit', { type: () => Int, defaultValue: 20 }) limit: number,
     @Args('offset', { type: () => Int, defaultValue: 0 }) offset: number,
   ): Promise<TutorPage> {
-    const { items, total } = await this.tutors.findPage({ subject, level, limit, offset });
+    const { items, total } = await this.tutors.findPage({
+      subject,
+      query,
+      level,
+      maxPrice,
+      minRating,
+      sort: sort as TutorSort | undefined,
+      limit,
+      offset,
+    });
     return { items, total, hasMore: offset + items.length < total };
   }
 
@@ -46,5 +59,10 @@ export class TutorsResolver {
   @ResolveField(() => Float, { nullable: true })
   rating(@Parent() tutor: Tutor): Promise<number | null> {
     return this.tutors.ratingOf(tutor.id);
+  }
+
+  @ResolveField(() => Int)
+  reviewCount(@Parent() tutor: Tutor): Promise<number> {
+    return this.tutors.reviewCountOf(tutor.id);
   }
 }
