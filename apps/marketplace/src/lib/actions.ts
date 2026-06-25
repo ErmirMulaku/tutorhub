@@ -8,6 +8,7 @@ import {
   buyGiftCard as buyGiftCardMutation,
   cancelBooking as cancelBookingMutation,
   changePassword as changePasswordMutation,
+  deleteAccount as deleteAccountMutation,
   leaveReview as leaveReviewMutation,
   markAllNotificationsRead as markAllNotificationsReadMutation,
   markNotificationRead as markNotificationReadMutation,
@@ -267,4 +268,15 @@ export async function changePasswordAction(
   return run(async () => {
     await changePasswordMutation(currentPassword, newPassword, await getTokenOrDemo());
   }, 'PASSWORD_FAILED');
+}
+
+export async function deleteAccountAction(): Promise<ActionResult> {
+  const result = await run(async () => {
+    await deleteAccountMutation(await getTokenOrDemo());
+  }, 'DELETE_FAILED');
+  if (result.ok) {
+    await clearSession();
+    revalidatePath('/', 'layout');
+  }
+  return result;
 }

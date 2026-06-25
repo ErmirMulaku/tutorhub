@@ -849,3 +849,13 @@ export async function changePassword(
     cache: 'no-store',
   });
 }
+
+const DELETE_ACCOUNT_MUTATION = /* GraphQL */ `
+  mutation DeleteAccount {
+    deleteAccount
+  }
+`;
+
+export async function deleteAccount(token: string): Promise<void> {
+  await graphqlRequest(DELETE_ACCOUNT_MUTATION, { token, cache: 'no-store' });
+}

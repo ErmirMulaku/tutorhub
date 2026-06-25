@@ -91,9 +91,26 @@ export function BookingWizard({
     );
   }
 
+  const steps: Array<{ n: Step; label: string }> = [
+    { n: 1, label: t.stepperSubject },
+    { n: 2, label: t.stepperTime },
+    { n: 3, label: t.stepperConfirm },
+  ];
+
   return (
     <div className="wizard">
-      <p className="wizard__step">{interpolate(t.step, { n: String(step) })}</p>
+      <ol className="auth-stepper wizard__stepper" aria-label={t.stepConfirm}>
+        {steps.map((s) => (
+          <li
+            key={s.n}
+            className="auth-stepper__item"
+            data-state={step === s.n ? 'active' : step > s.n ? 'done' : 'todo'}
+          >
+            <span className="auth-stepper__circle">{step > s.n ? '✓' : s.n}</span>
+            <span className="auth-stepper__label">{s.label}</span>
+          </li>
+        ))}
+      </ol>
 
       {step === 1 && (
         <div className="wizard__body">

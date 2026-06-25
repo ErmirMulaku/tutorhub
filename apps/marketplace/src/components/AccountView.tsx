@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card } from '@ermulaku/ui';
+import { Avatar, Button, Card, Modal } from '@ermulaku/ui';
+import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
 import {
   changePasswordAction,
+  deleteAccountAction,
   setTwoFactorAction,
   updateNotificationPrefsAction,
   updateProfileAction,
@@ -46,15 +48,32 @@ function Toggle({ label, sub, checked, onChange }: ToggleProps): React.JSX.Eleme
 /** Account settings with personal / security / notifications tabs. */
 export function AccountView({
   me,
+  locale,
   dict,
 }: {
   me: StudentMe;
+  locale: Locale;
   dict: Dictionary;
 }): React.JSX.Element {
   const t = dict.account;
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('personal');
   const [, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = (): void => {
+    setDeleting(true);
+    startTransition(async () => {
+      const res = await deleteAccountAction();
+      if (res.ok) {
+        router.push(`/${locale}`);
+        router.refresh();
+      } else {
+        setDeleting(false);
+      }
+    });
+  };
 
   const [name, setName] = useState(me.fullName);
   const [phone, setPhone] = useState(me.phone ?? '');
@@ -141,6 +160,14 @@ export function AccountView({
 
       {tab === 'personal' && (
         <Card>
+          <div className="account-id">
+            <Avatar name={me.fullName} size="lg" />
+            <div>
+              <button type="button" className="link-btn">
+                {t.changePhoto}
+              </button>
+            </div>
+          </div>
           <form className="auth-form" onSubmit={saveProfile}>
             <label className="field">
               <span>{t.name}</span>
@@ -209,12 +236,31 @@ export function AccountView({
           <Card className="danger-zone">
             <h3 className="danger-zone__title">{t.danger}</h3>
             <p className="danger-zone__sub">{t.dangerSub}</p>
-            <Button variant="secondary" disabled>
+            <button type="button" className="danger-zone__btn" onClick={() => setDeleteOpen(true)}>
               {t.delete}
-            </Button>
+            </button>
           </Card>
         </div>
       )}
+
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title={t.deleteConfirmTitle}>
+        <div className="dialog">
+          <p>{t.deleteConfirmBody}</p>
+          <div className="booking__actions">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              {dict.common.cancel}
+            </Button>
+            <button
+              type="button"
+              className="danger-zone__btn"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? dict.common.loading : t.delete}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {tab === 'notifs' && (
         <Card>

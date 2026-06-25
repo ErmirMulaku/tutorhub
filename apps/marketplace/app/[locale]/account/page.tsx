@@ -25,7 +25,7 @@ export default async function AccountPage({
         <h1 className="page__title">{t.title}</h1>
         <p className="page__subtitle">{t.subtitle}</p>
       </header>
-      <AccountView me={me} dict={dict} />
+      <AccountView me={me} locale={locale} dict={dict} />
     </div>
   );
 }
