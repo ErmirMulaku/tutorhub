@@ -44,6 +44,19 @@ export function formatSlotTime(iso: string, timeZone: string, locale: string): s
   }).format(new Date(iso));
 }
 
+/** A localised relative timestamp, e.g. "2h ago" / "3d ago", for notifications. */
+export function relativeTime(iso: string, locale: string, now: Date = new Date()): string {
+  const sec = Math.round((new Date(iso).getTime() - now.getTime()) / 1000);
+  const abs = Math.abs(sec);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'narrow' });
+  if (abs < 60) return rtf.format(sec, 'second');
+  if (abs < 3600) return rtf.format(Math.round(sec / 60), 'minute');
+  if (abs < 86400) return rtf.format(Math.round(sec / 3600), 'hour');
+  if (abs < 2592000) return rtf.format(Math.round(sec / 86400), 'day');
+  if (abs < 31536000) return rtf.format(Math.round(sec / 2592000), 'month');
+  return rtf.format(Math.round(sec / 31536000), 'year');
+}
+
 /** A full, human date-time of an instant in a timezone, for confirmations. */
 export function formatFullDateTime(iso: string, timeZone: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {

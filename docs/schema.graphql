@@ -2,6 +2,11 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AuthPayload {
+  accessToken: String!
+  studentId: ID!
+}
+
 input BookInput {
   startTime: DateTime!
   subjectId: ID!
@@ -31,6 +36,18 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type GiftCard {
+  amountCents: Int!
+  balanceCents: Int!
+  code: String!
+  createdAt: DateTime!
+  design: Int!
+  fromName: String
+  id: ID!
+  message: String
+  toName: String
+}
+
 enum Level {
   ADVANCED
   BEGINNER
@@ -38,17 +55,74 @@ enum Level {
 }
 
 type Mutation {
+  addFavorite(tutorId: ID!): [Tutor!]!
+  addPaymentMethod(brand: String!, expMonth: Int!, expYear: Int!, last4: String!): PaymentMethod!
   bookLesson(input: BookInput!): Booking!
+  buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
+  changePassword(currentPassword: String!, newPassword: String!): Student!
+  deleteAccount: Boolean!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
+  markAllNotificationsRead: [Notification!]!
+  markNotificationRead(id: ID!): [Notification!]!
+  oauthSignin(email: String!, fullName: String!, provider: OAuthProvider!, providerUserId: String!): AuthPayload!
+  redeemGiftCard(code: String!): Wallet!
+  removeFavorite(tutorId: ID!): [Tutor!]!
+  removePaymentMethod(id: ID!): Boolean!
+  rescheduleBooking(id: ID!, startTime: String!): Booking!
+  resendVerificationCode(email: String!): ResendPayload!
+  setTwoFactor(enabled: Boolean!): Student!
+  signin(email: String!, password: String!): AuthPayload!
+  signup(email: String!, fullName: String!, password: String!): SignupPayload!
+  updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
+  updateProfile(avatarColor: String, fullName: String, phone: String): Student!
+  verifyEmail(code: String!, email: String!): AuthPayload!
+}
+
+type Notification {
+  actorName: String
+  createdAt: DateTime!
+  detail: String
+  id: ID!
+  read: Boolean!
+  type: NotificationType!
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  GIFT_RECEIVED
+  LESSON_REMINDER
+  REVIEW_PROMPT
+}
+
+enum OAuthProvider {
+  APPLE
+  GOOGLE
+}
+
+type PaymentMethod {
+  brand: String!
+  expMonth: Int!
+  expYear: Int!
+  id: ID!
+  last4: String!
 }
 
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
   me: Student!
   myBookings(status: BookingStatus): [Booking!]!
+  myFavoriteIds: [ID!]!
+  myFavorites: [Tutor!]!
+  notifications: [Notification!]!
   tutor(id: ID!): Tutor
-  tutors(level: Level, limit: Int! = 20, offset: Int! = 0, subject: String): TutorPage!
+  tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
+  unreadNotificationCount: Int!
+  wallet: Wallet!
+}
+
+type ResendPayload {
+  devCode: String
 }
 
 type Review {
@@ -57,15 +131,30 @@ type Review {
   rating: Int!
 }
 
+type SignupPayload {
+  devCode: String
+  requiresVerification: Boolean!
+  studentId: ID!
+}
+
 type Slot {
   end: DateTime!
   start: DateTime!
 }
 
 type Student {
+  avatarColor: String
   email: String!
+  emailVerified: Boolean!
   fullName: String!
   id: ID!
+  notifyEmail: Boolean!
+  notifyPromos: Boolean!
+  notifyReminders: Boolean!
+  notifySms: Boolean!
+  phone: String
+  twoFactorEnabled: Boolean!
+  walletCents: Int!
 }
 
 type Subject {
@@ -75,18 +164,31 @@ type Subject {
 }
 
 type Tutor {
+  avatarColor: String
+  badges: [String!]!
   bio: String
+  headline: String
   hourlyCents: Int!
   id: ID!
+  languages: [String!]!
   name: String!
   rating: Float
+  responseTime: String
+  reviewCount: Int!
   reviews: [Review!]!
   subjects: [Subject!]!
   timezone: String!
+  totalLessons: Int!
 }
 
 type TutorPage {
   hasMore: Boolean!
   items: [Tutor!]!
   total: Int!
+}
+
+type Wallet {
+  balanceCents: Int!
+  giftCards: [GiftCard!]!
+  paymentMethods: [PaymentMethod!]!
 }

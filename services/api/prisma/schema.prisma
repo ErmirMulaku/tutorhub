@@ -32,18 +32,37 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum NotificationType {
+  BOOKING_CONFIRMED
+  LESSON_REMINDER
+  REVIEW_PROMPT
+  GIFT_RECEIVED
+}
+
+enum OAuthProvider {
+  GOOGLE
+  APPLE
+}
+
 model Tutor {
-  id           String    @id @default(uuid())
+  id           String     @id @default(uuid())
   name         String
   bio          String?
+  headline     String? // one-line pitch shown on cards/profile
   timezone     String // IANA, e.g. "Europe/Belgrade"
   hourlyCents  Int
   workingHours Json // WorkingHours[] — [{ day, start, end }]
-  isActive     Boolean   @default(true)
+  isActive     Boolean    @default(true)
+  avatarColor  String? // UI avatar palette key (teal, amber, …)
+  languages    String[]   @default([])
+  badges       String[]   @default([]) // e.g. "Top rated", "Fast responder", "Verified"
+  responseTime String? // human label, e.g. "~1 hr"
+  totalLessons Int        @default(0)
   subjects     Subject[]
   bookings     Booking[]
   reviews      Review[]
-  createdAt    DateTime  @default(now())
+  favoritedBy  Favorite[]
+  createdAt    DateTime   @default(now())
 }
 
 model Subject {
@@ -56,11 +75,101 @@ model Subject {
 }
 
 model Student {
-  id        String    @id @default(uuid())
-  fullName  String
-  email     String    @unique
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
+  id           String          @id @default(uuid())
+  fullName     String
+  email        String          @unique
+  passwordHash String? // null for seeded/dev students (dev-login)
+  phone        String?
+  avatarColor  String? // UI avatar palette key
+  walletCents  Int             @default(0)
+  // Notification preferences (account → notifications screen).
+  notifyEmail     Boolean @default(true)
+  notifySms       Boolean @default(false)
+  notifyReminders Boolean @default(true)
+  notifyPromos    Boolean @default(false)
+  twoFactorEnabled Boolean @default(false)
+  emailVerified   Boolean @default(false)
+  bookings        Booking[]
+  favorites       Favorite[]
+  giftCards       GiftCard[]
+  paymentMethods  PaymentMethod[]
+  notifications   Notification[]
+  emailCodes      EmailVerification[]
+  oauthAccounts   OAuthAccount[]
+  createdAt       DateTime        @default(now())
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  type      NotificationType
+  // Denormalised params the client renders into localised title/body templates.
+  actorName String? // tutor or gift sender, e.g. "Priya", "Mum"
+  detail    String? // subject or amount, e.g. "Computer Science", "$50"
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  code      String // 6-digit numeric code
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model OAuthAccount {
+  id             String        @id @default(uuid())
+  provider       OAuthProvider
+  providerUserId String
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId      String
+  createdAt      DateTime      @default(now())
+
+  @@unique([provider, providerUserId])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId   String
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, tutorId])
+}
+
+model GiftCard {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  amountCents Int
+  balanceCents Int
+  design      Int      @default(0) // index into the UI design palette
+  fromName    String?
+  toName      String?
+  message     String?
+  // The student who currently owns/redeemed the card (null = unredeemed).
+  owner       Student? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId     String?
+  createdAt   DateTime @default(now())
+}
+
+model PaymentMethod {
+  id        String   @id @default(uuid())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  brand     String // "visa", "mastercard", …
+  last4     String
+  expMonth  Int
+  expYear   Int
+  createdAt DateTime @default(now())
 }
 
 model Booking {

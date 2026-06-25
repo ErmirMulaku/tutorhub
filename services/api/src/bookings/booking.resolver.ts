@@ -37,6 +37,16 @@ export class BookingResolver {
     return this.bookings.bookLesson(input, user.studentId);
   }
 
+  @Mutation(() => BookingModel, { name: 'rescheduleBooking' })
+  @UseGuards(JwtAuthGuard)
+  rescheduleBooking(
+    @CurrentUser() user: AuthUser,
+    @Args('id', { type: () => ID }) id: string,
+    @Args('startTime') startTime: string,
+  ): Promise<Booking> {
+    return this.bookings.rescheduleForStudent(id, user.studentId, new Date(startTime));
+  }
+
   @Mutation(() => BookingModel, { name: 'cancelBooking' })
   @UseGuards(JwtAuthGuard)
   cancelBooking(

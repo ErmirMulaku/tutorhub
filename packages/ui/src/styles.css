@@ -20,9 +20,22 @@
   --th-primary: #0e8f8a;
   --th-primary-hover: #0b746f;
   --th-primary-contrast: #ffffff;
+  --th-primary-50: #f0f9f8;
+  --th-primary-100: #d9efed;
+  --th-primary-700: #0b746f;
   --th-accent: #f2994a;
+  --th-accent-ink: #c2752b;
+  --th-accent-tint: #fcecdb;
   --th-star: #f5b301;
-  --th-danger: #d64545;
+  --th-danger: #e5484d;
+  --th-danger-tint: #fbe6e7;
+  --th-success: #1fa463;
+  --th-success-tint: #e2f5ea;
+  --th-warn-ink: #b67d12;
+  --th-warn-tint: #fdf3e0;
+  --th-blue-ink: #2f6fd0;
+  --th-blue-tint: #e8f0fb;
+  --th-border-soft: #eef2f6;
   --th-focus: #1a73e8;
 
   /* Spacing scale (rem). */
@@ -39,8 +52,13 @@
   --th-radius-lg: 16px;
   --th-shadow-1: 0 1px 2px rgba(16, 32, 43, 0.06), 0 1px 3px rgba(16, 32, 43, 0.1);
   --th-shadow-2: 0 8px 24px rgba(16, 32, 43, 0.12);
+  --th-shadow-md: 0 8px 24px rgba(22, 32, 43, 0.09);
+  --th-shadow-lg: 0 22px 54px rgba(22, 32, 43, 0.18);
   --th-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --th-duration: 200ms;
+
+  /* Hero wash behind the home headline (teal tint fading to page bg). */
+  --th-hero-grad: linear-gradient(165deg, #e6f6f4 0%, #f4faf9 45%, var(--th-bg) 100%);
 
   --th-font:
     system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
@@ -57,8 +75,25 @@
   --th-primary: #2bb6b0;
   --th-primary-hover: #46cfc8;
   --th-primary-contrast: #06231f;
+  --th-primary-50: #13262a;
+  --th-primary-100: #15343a;
+  --th-primary-700: #46cfc8;
+  --th-accent-ink: #f0a85f;
+  --th-accent-tint: #33271a;
+  --th-danger: #f06a6e;
+  --th-danger-tint: #3a1f21;
+  --th-success: #46cf8a;
+  --th-success-tint: #16302a;
+  --th-warn-ink: #e7b964;
+  --th-warn-tint: #33280f;
+  --th-blue-ink: #7fb0ee;
+  --th-blue-tint: #1b2a3d;
+  --th-border-soft: #223040;
   --th-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --th-shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --th-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --th-shadow-lg: 0 22px 54px rgba(0, 0, 0, 0.55);
+  --th-hero-grad: linear-gradient(165deg, #13262a 0%, #111c27 50%, var(--th-bg) 100%);
 }
 
 /* ---- Button -------------------------------------------------------------- */
@@ -357,11 +392,61 @@
   background: var(--th-surface-2);
 }
 
+/* ---- Status pill --------------------------------------------------------- */
+.th-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-1);
+  font-family: var(--th-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding-block: 3px;
+  padding-inline: 11px;
+  border-radius: 999px;
+  background: var(--th-surface-2);
+  color: var(--th-text-muted);
+  white-space: nowrap;
+}
+.th-pill--success {
+  background: var(--th-success-tint);
+  color: var(--th-success);
+}
+.th-pill--warn {
+  background: var(--th-warn-tint);
+  color: var(--th-warn-ink);
+}
+.th-pill--danger {
+  background: var(--th-danger-tint);
+  color: var(--th-danger);
+}
+.th-pill--info {
+  background: var(--th-blue-tint);
+  color: var(--th-blue-ink);
+}
+
+/* ---- fadeUp (dropdowns, menus, inline panels) ---------------------------- */
+@keyframes th-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.th-fade-up {
+  animation: th-fade-up 0.2s var(--th-ease);
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .th-btn,
   .th-card,
   .th-modal,
   .th-modal-overlay,
+  .th-fade-up,
   .th-skeleton::after {
     transition: none;
     animation: none;
