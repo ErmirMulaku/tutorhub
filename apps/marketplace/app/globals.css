@@ -1821,24 +1821,56 @@ h3 {
 /* ---- Wallet -------------------------------------------------------------- */
 .wallet {
   display: grid;
-  gap: var(--th-space-5);
+  gap: var(--th-space-6);
+  max-inline-size: 57.5rem;
 }
 .balance-card {
   display: grid;
   gap: var(--th-space-3);
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #13a39d, #0a5f5b);
 }
 .balance-card__label {
-  color: var(--th-text-muted);
   font-size: 0.875rem;
+  opacity: 0.9;
 }
 .balance-card__amount {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: 2.75rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .redeem-form {
   display: flex;
   gap: var(--th-space-3);
   flex-wrap: wrap;
+  margin-block-start: var(--th-space-2);
+}
+.redeem-form__input {
+  flex: 1;
+  min-inline-size: 10rem;
+  padding: var(--th-space-3);
+  border-radius: var(--th-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.redeem-form__input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Gift-card design palette (shared by grid cards, swatches and preview). */
+.giftcard--d0 {
+  background: linear-gradient(135deg, #13a39d, #0a5f5b);
+}
+.giftcard--d1 {
+  background: linear-gradient(135deg, #f2994a, #c2752b);
+}
+.giftcard--d2 {
+  background: linear-gradient(135deg, #6b4fc9, #c23e63);
+}
+.giftcard--d3 {
+  background: linear-gradient(135deg, #16202b, #2a3947);
 }
 .giftcard-grid {
   display: grid;
@@ -1847,42 +1879,51 @@ h3 {
 }
 .giftcard {
   display: grid;
-  gap: var(--th-space-2);
+  gap: 2px;
   color: #fff;
-  min-block-size: 8rem;
-  border: none;
+  min-block-size: 9rem;
+  padding: var(--th-space-5);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-md);
 }
-.giftcard--d0 {
-  background: linear-gradient(135deg, #0e8f8a, #0b746f);
-}
-.giftcard--d1 {
-  background: linear-gradient(135deg, #6b4fc9, #2f6fd0);
-}
-.giftcard--d2 {
-  background: linear-gradient(135deg, #c2752b, #c23e63);
+.giftcard__label {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
 }
 .giftcard__amount {
-  font-size: 1.5rem;
+  font-size: 1.875rem;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .giftcard__code {
   font-family: ui-monospace, monospace;
   letter-spacing: 0.05em;
+  opacity: 0.92;
 }
 .giftcard__from {
   margin-block-start: auto;
   font-size: 0.8125rem;
   opacity: 0.9;
 }
+.swatch-row {
+  display: flex;
+  gap: var(--th-space-3);
+}
 .giftcard-swatch {
-  inline-size: 2.5rem;
-  block-size: 2.5rem;
+  inline-size: 3rem;
+  block-size: 3rem;
   border-radius: var(--th-radius-md);
-  border: 2px solid transparent;
+  border: none;
   cursor: pointer;
+  box-shadow: 0 0 0 0 var(--th-primary-50);
+  transition: box-shadow var(--th-duration) var(--th-ease);
 }
 .giftcard-swatch[data-active='true'] {
-  border-color: var(--th-text);
+  box-shadow:
+    0 0 0 2px var(--th-surface),
+    0 0 0 4px var(--th-primary);
 }
 .payment-row {
   display: flex;
@@ -1893,4 +1934,95 @@ h3 {
 .payment-row__exp {
   color: var(--th-text-muted);
   font-size: 0.875rem;
+}
+.payment-add {
+  inline-size: 100%;
+  font: inherit;
+  font-weight: 600;
+  color: var(--th-primary);
+  background: none;
+  border: 1.5px dashed var(--th-border);
+  border-radius: var(--th-radius-lg);
+  padding: var(--th-space-4);
+  cursor: pointer;
+}
+.payment-add:hover {
+  border-color: var(--th-primary);
+  background: var(--th-primary-50);
+}
+
+/* ---- Gift buy flow (form + sticky live preview) -------------------------- */
+.gift-buy {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  gap: var(--th-space-6);
+  align-items: start;
+  max-inline-size: 57.5rem;
+}
+.gift-buy__form {
+  display: grid;
+  gap: var(--th-space-4);
+}
+.gift-buy__preview {
+  position: sticky;
+  inset-block-start: 5.5rem;
+}
+.gift-preview {
+  display: grid;
+  gap: var(--th-space-2);
+  color: #fff;
+  min-block-size: 11rem;
+  padding: var(--th-space-5);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-md);
+}
+.gift-preview__label {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+.gift-preview__amount {
+  font-size: 2.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.gift-preview__people {
+  display: grid;
+  gap: 2px;
+  font-size: 0.875rem;
+  opacity: 0.92;
+}
+.gift-preview__msg {
+  margin: var(--th-space-2) 0 0;
+  font-size: 0.8125rem;
+  opacity: 0.9;
+}
+.gift-review {
+  display: grid;
+  gap: var(--th-space-3);
+  margin: 0;
+}
+.gift-review div {
+  display: flex;
+  justify-content: space-between;
+  border-block-end: 1px solid var(--th-border-soft);
+  padding-block-end: var(--th-space-2);
+}
+.gift-review dt {
+  color: var(--th-text-muted);
+}
+.gift-review dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+@media (max-width: 46rem) {
+  .gift-buy {
+    grid-template-columns: 1fr;
+  }
+  .gift-buy__preview {
+    position: static;
+    order: -1;
+  }
 }
