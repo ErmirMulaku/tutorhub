@@ -1,8 +1,10 @@
 import { randomInt } from 'node:crypto';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
-import type { OAuthProvider } from '../generated/prisma/client.js';
+import { OAuthProvider } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { hashPassword, verifyPassword } from './password.js';
 
@@ -22,6 +24,12 @@ export interface SignupResult {
 const CODE_TTL_MS = 15 * 60 * 1000;
 const isProd = (): boolean => process.env.NODE_ENV === 'production';
 
+// Provider JWKS endpoints (jose caches the fetched keys internally).
+const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
+const APPLE_JWKS = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
+const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
+const APPLE_ISSUER = 'https://appleid.apple.com';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -29,6 +37,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   private signFor(studentId: string): Promise<string> {
@@ -122,6 +131,56 @@ export class AuthService {
       data: { provider, providerUserId, studentId: student.id },
     });
     return { accessToken: await this.signFor(student.id), studentId: student.id };
+  }
+
+  /**
+   * Verify a provider-issued OpenID Connect ID token against the provider's
+   * published JWKS, enforcing audience (our client id) and issuer.
+   */
+  private async verifyIdToken(
+    idToken: string,
+    jwks: ReturnType<typeof createRemoteJWKSet>,
+    audience: string,
+    issuer: string | string[],
+  ): Promise<JWTPayload> {
+    try {
+      const { payload } = await jwtVerify(idToken, jwks, { audience, issuer });
+      return payload;
+    } catch {
+      throw new UnauthorizedException('Could not verify the social sign-in token.');
+    }
+  }
+
+  /** Real Google sign-in: verify the GIS ID token, then upsert the account. */
+  async googleSignin(idToken: string): Promise<AuthResult> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    if (clientId === undefined || clientId === '') {
+      throw new BadRequestDomainError('Google sign-in is not configured.');
+    }
+    const payload = await this.verifyIdToken(idToken, GOOGLE_JWKS, clientId, GOOGLE_ISSUERS);
+    const email = typeof payload.email === 'string' ? payload.email : null;
+    if (payload.sub === undefined || email === null) {
+      throw new UnauthorizedException('Google token is missing required claims.');
+    }
+    const name = typeof payload.name === 'string' ? payload.name : email;
+    return this.oauthSignin(OAuthProvider.GOOGLE, payload.sub, email, name);
+  }
+
+  /** Real Apple sign-in: verify the Sign in with Apple id_token, then upsert. */
+  async appleSignin(idToken: string): Promise<AuthResult> {
+    const clientId = this.config.get<string>('APPLE_CLIENT_ID');
+    if (clientId === undefined || clientId === '') {
+      throw new BadRequestDomainError('Apple sign-in is not configured.');
+    }
+    const payload = await this.verifyIdToken(idToken, APPLE_JWKS, clientId, APPLE_ISSUER);
+    const email = typeof payload.email === 'string' ? payload.email : null;
+    if (payload.sub === undefined || email === null) {
+      throw new UnauthorizedException('Apple token is missing required claims.');
+    }
+    // Apple only returns the display name on the first authorization (and not in
+    // the token), so derive a sensible fallback from the email local-part.
+    const name = email.split('@')[0] ?? email;
+    return this.oauthSignin(OAuthProvider.APPLE, payload.sub, email, name);
   }
 
   /** Verify email + password and return a session token. */

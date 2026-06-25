@@ -57,4 +57,14 @@ export class AuthResolver {
   ): Promise<AuthResult> {
     return this.auth.oauthSignin(provider, providerUserId, email, fullName);
   }
+
+  @Mutation(() => AuthPayloadModel, { name: 'googleSignin' })
+  googleSignin(@Args('idToken') idToken: string): Promise<AuthResult> {
+    return this.auth.googleSignin(idToken);
+  }
+
+  @Mutation(() => AuthPayloadModel, { name: 'appleSignin' })
+  appleSignin(@Args('idToken') idToken: string): Promise<AuthResult> {
+    return this.auth.appleSignin(idToken);
+  }
 }

@@ -57,11 +57,13 @@ enum Level {
 type Mutation {
   addFavorite(tutorId: ID!): [Tutor!]!
   addPaymentMethod(brand: String!, expMonth: Int!, expYear: Int!, last4: String!): PaymentMethod!
+  appleSignin(idToken: String!): AuthPayload!
   bookLesson(input: BookInput!): Booking!
   buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
   deleteAccount: Boolean!
+  googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
   markAllNotificationsRead: [Notification!]!
   markNotificationRead(id: ID!): [Notification!]!
