@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, Button, Card, Modal, StarRating } from '@ermulaku/ui';
 import type { Locale } from '@/i18n/config';
@@ -20,6 +21,14 @@ interface LessonsViewProps {
 }
 
 const UPCOMING = new Set(['PENDING', 'CONFIRMED']);
+
+const PILL_TONE: Record<MyBooking['status'], string> = {
+  PENDING: 'th-pill--warn',
+  CONFIRMED: 'th-pill--success',
+  COMPLETED: '',
+  CANCELLED: 'th-pill--danger',
+  NO_SHOW: 'th-pill--danger',
+};
 
 type Dialog =
   | { kind: 'cancel'; booking: MyBooking }
@@ -123,51 +132,60 @@ export function LessonsView({ bookings, locale, dict }: LessonsViewProps): React
         <ul className="lesson-list">
           {shown.map((b) => (
             <li key={b.id}>
-              <Card className="lesson-card">
-                <Avatar name={b.tutor.name} size="md" />
-                <div className="lesson-card__main">
-                  <strong className="lesson-card__subject">{b.subject.name}</strong>
-                  <span className="lesson-card__sub">
-                    {interpolate(t.with, { tutor: b.tutor.name })}
-                  </span>
-                  <span className="lesson-card__when">
-                    {formatFullDateTime(b.startTime, b.tutor.timezone, locale)}
-                  </span>
-                </div>
-                <div className="lesson-card__side">
-                  <span className={`status-pill status-pill--${b.status.toLowerCase()}`}>
-                    {statusLabel(b.status)}
-                  </span>
-                  <div className="lesson-card__actions">
-                    {UPCOMING.has(b.status) ? (
-                      <>
+              <Link href={`/${locale}/lessons/${b.id}`} className="lesson-card-link">
+                <Card className="lesson-card lesson-card--interactive">
+                  <Avatar name={b.tutor.name} size="md" />
+                  <div className="lesson-card__main">
+                    <strong className="lesson-card__subject">{b.subject.name}</strong>
+                    <span className="lesson-card__sub">
+                      {interpolate(t.with, { tutor: b.tutor.name })}
+                    </span>
+                    <span className="lesson-card__when">
+                      {formatFullDateTime(b.startTime, b.tutor.timezone, locale)}
+                    </span>
+                  </div>
+                  <div className="lesson-card__side">
+                    <span className={`th-pill ${PILL_TONE[b.status]}`}>{statusLabel(b.status)}</span>
+                    <div className="lesson-card__actions">
+                      {UPCOMING.has(b.status) ? (
+                        <>
+                          <button
+                            type="button"
+                            className="link-btn"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setDialog({ kind: 'reschedule', booking: b });
+                            }}
+                          >
+                            {t.reschedule}
+                          </button>
+                          <button
+                            type="button"
+                            className="link-btn link-btn--danger"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setDialog({ kind: 'cancel', booking: b });
+                            }}
+                          >
+                            {t.cancel}
+                          </button>
+                        </>
+                      ) : b.status === 'COMPLETED' ? (
                         <button
                           type="button"
                           className="link-btn"
-                          onClick={() => setDialog({ kind: 'reschedule', booking: b })}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setDialog({ kind: 'review', booking: b });
+                          }}
                         >
-                          {t.reschedule}
+                          {t.review}
                         </button>
-                        <button
-                          type="button"
-                          className="link-btn link-btn--danger"
-                          onClick={() => setDialog({ kind: 'cancel', booking: b })}
-                        >
-                          {t.cancel}
-                        </button>
-                      </>
-                    ) : b.status === 'COMPLETED' ? (
-                      <button
-                        type="button"
-                        className="link-btn"
-                        onClick={() => setDialog({ kind: 'review', booking: b })}
-                      >
-                        {t.review}
-                      </button>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </Link>
             </li>
           ))}
         </ul>

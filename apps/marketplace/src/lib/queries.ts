@@ -261,6 +261,7 @@ export interface BookingTutorRef {
   name: string;
   avatarColor: string | null;
   timezone: string;
+  hourlyCents: number;
 }
 
 export interface MyBooking {
@@ -284,6 +285,7 @@ const MY_BOOKINGS_QUERY = /* GraphQL */ `
         name
         avatarColor
         timezone
+        hourlyCents
       }
       subject {
         id

@@ -176,7 +176,17 @@
     "detailTitle": "Lesson details",
     "subject": "Subject",
     "tutor": "Tutor",
-    "status": "Status"
+    "status": "Status",
+    "detailBack": "Back to lessons",
+    "dateTime": "Date & time",
+    "format": "Format",
+    "online": "Online · video call",
+    "price": "Price",
+    "joinNote": "The join link activates 10 minutes before your lesson.",
+    "pickTime": "Pick a new time",
+    "confirmReschedule": "Confirm new time",
+    "noSlots": "No times available on this day.",
+    "rescheduled": "Lesson rescheduled."
   },
   "favourites": {
     "title": "Favourites",
