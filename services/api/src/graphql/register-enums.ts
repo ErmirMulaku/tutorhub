@@ -4,6 +4,7 @@ import {
   Level,
   NotificationType,
   OAuthProvider,
+  SenderKind,
   ServiceType,
 } from '../generated/prisma/client.js';
 
@@ -15,3 +16,4 @@ registerEnumType(BookingStatus, { name: 'BookingStatus' });
 registerEnumType(NotificationType, { name: 'NotificationType' });
 registerEnumType(OAuthProvider, { name: 'OAuthProvider' });
 registerEnumType(ServiceType, { name: 'ServiceType' });
+registerEnumType(SenderKind, { name: 'SenderKind' });

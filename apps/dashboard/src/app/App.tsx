@@ -6,6 +6,7 @@ import { CalendarScreen } from '../features/calendar/CalendarScreen';
 import { CatalogScreen } from '../features/catalog/CatalogScreen';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { LessonsScreen } from '../features/lessons/LessonsScreen';
+import { MessagesScreen } from '../features/messages/MessagesScreen';
 import { AppShell } from './AppShell';
 import { Placeholder } from './Placeholder';
 import { useTheme } from './use-theme';
@@ -22,7 +23,7 @@ export function App(): JSX.Element {
         <Route path="/dashboard" element={<DashboardScreen />} />
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/lessons" element={<LessonsScreen />} />
-        <Route path="/messages" element={<Placeholder title="Messages" />} />
+        <Route path="/messages" element={<MessagesScreen />} />
         <Route path="/catalog" element={<CatalogScreen />} />
         <Route path="/availability" element={<AvailabilityScreen />} />
         <Route path="/earnings" element={<Placeholder title="Earnings" />} />

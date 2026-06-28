@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BookingStatus, type Booking } from '../generated/prisma/client.js';
+import { MessagingService } from '../messaging/messaging.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DAY_MS, startOfDayInZone, startOfWeekInZone } from './zoned-dates.js';
 
@@ -15,7 +16,10 @@ export interface DashboardSummary {
 /** Read-only KPI aggregations for the tutor dashboard. */
 @Injectable()
 export class TutorDashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messaging: MessagingService,
+  ) {}
 
   /** Bookings on the tutor's current calendar day (their timezone), in order. */
   async todaySchedule(tutorId: string, now: Date = new Date()): Promise<Booking[]> {
@@ -37,28 +41,30 @@ export class TutorDashboardService {
     const dayStart = startOfDayInZone(now, tutor.timezone);
     const weekStart = startOfWeekInZone(now, tutor.timezone);
 
-    const [lessonsToday, completedThisWeek, ratings, pendingCount] = await Promise.all([
-      this.prisma.booking.count({
-        where: {
-          tutorId,
-          startTime: { gte: dayStart, lt: new Date(dayStart.getTime() + DAY_MS) },
-          status: { notIn: [BookingStatus.CANCELLED, BookingStatus.NO_SHOW] },
-        },
-      }),
-      this.prisma.booking.count({
-        where: {
-          tutorId,
-          status: BookingStatus.COMPLETED,
-          startTime: { gte: weekStart, lt: new Date(weekStart.getTime() + 7 * DAY_MS) },
-        },
-      }),
-      this.prisma.review.aggregate({
-        where: { tutorId },
-        _avg: { rating: true },
-        _count: true,
-      }),
-      this.prisma.booking.count({ where: { tutorId, status: BookingStatus.PENDING } }),
-    ]);
+    const [lessonsToday, completedThisWeek, ratings, pendingCount, unreadMessages] =
+      await Promise.all([
+        this.prisma.booking.count({
+          where: {
+            tutorId,
+            startTime: { gte: dayStart, lt: new Date(dayStart.getTime() + DAY_MS) },
+            status: { notIn: [BookingStatus.CANCELLED, BookingStatus.NO_SHOW] },
+          },
+        }),
+        this.prisma.booking.count({
+          where: {
+            tutorId,
+            status: BookingStatus.COMPLETED,
+            startTime: { gte: weekStart, lt: new Date(weekStart.getTime() + 7 * DAY_MS) },
+          },
+        }),
+        this.prisma.review.aggregate({
+          where: { tutorId },
+          _avg: { rating: true },
+          _count: true,
+        }),
+        this.prisma.booking.count({ where: { tutorId, status: BookingStatus.PENDING } }),
+        this.messaging.unreadCount(tutorId),
+      ]);
 
     return {
       lessonsToday,
@@ -68,7 +74,7 @@ export class TutorDashboardService {
       avgRating: ratings._avg.rating,
       reviewCount: ratings._count,
       pendingCount,
-      unreadMessages: 0, // wired in the Messaging phase
+      unreadMessages,
     };
   }
 }

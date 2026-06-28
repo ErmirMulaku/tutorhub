@@ -307,6 +307,21 @@ tests** (owner-scoped `myServices`, cross-tutor delete rejected, working-hours/r
 `nx run-many` green across 8 projects, `npm audit` **0**. (Caught a real gotcha: a dev token is
 invalidated by a reseed because it regenerates the tutor id — re-login fixes it.)
 
+**8.3 Messaging (real-time) ✅** — **Built:** `Conversation` + `Message` models + `SenderKind`
+(migration), and a `MessagingModule` mirroring the booking real-time pattern exactly — a
+`MessageEvents` RxJS bus and a `MessagingGateway` that fans `sendMessage` out to per-tutor and
+per-conversation Socket.IO rooms (`messageReceived`). `MessagingService` gives owner-scoped
+`conversations` (with preview + unread count), `messages`, `sendMessage`, `markConversationRead`,
+and `unreadCount` — now feeding the dashboard's `unreadMessages` KPI/sidebar badge. Seed gained
+three threads with unread student messages. Frontend: a two-pane `ChatPane` (thread list + bubble
+conversation + composer) and a `use-live-messages` hook beside `use-live-bookings`.
+
+**Verified (not just generated):** **in a real browser** — the thread list showed unread badges
+(Tom 1, Mia 2) and the sidebar Messages badge read 3; opening a thread marked it read; and a
+message sent from **another device** (curl) appeared **live in the open conversation with no
+interaction**. **3 e2e tests** (unread count, `markRead` clears it, and a real `socket.io-client`
+receiving `messageReceived`); `nx run-many` green across 8 projects, `npm audit` **0**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

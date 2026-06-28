@@ -89,9 +89,10 @@ model Tutor {
   bookings    Booking[]
   reviews     Review[]
   favoritedBy Favorite[]
-  services    Service[]
-  timeOff     TimeOff[]
-  createdAt   DateTime   @default(now())
+  services      Service[]
+  timeOff       TimeOff[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
 }
 
 enum ServiceType {
@@ -143,6 +144,40 @@ model Subject {
   services Service[]
 }
 
+enum SenderKind {
+  TUTOR
+  STUDENT
+}
+
+// A 1:1 conversation between a tutor and a student.
+model Conversation {
+  id            String    @id @default(uuid())
+  tutor         Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  subjectName   String? // denormalised header label, e.g. "Mathematics student"
+  lastMessageAt DateTime  @default(now())
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+
+  @@unique([tutorId, studentId])
+  @@index([tutorId, lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  senderKind     SenderKind
+  body           String
+  readByTutor    Boolean      @default(false)
+  readByStudent  Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
 model Student {
   id           String          @id @default(uuid())
   fullName     String
@@ -165,6 +200,7 @@ model Student {
   notifications   Notification[]
   emailCodes      EmailVerification[]
   oauthAccounts   OAuthAccount[]
+  conversations   Conversation[]
   createdAt       DateTime        @default(now())
 }
 

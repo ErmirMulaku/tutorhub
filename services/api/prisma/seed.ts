@@ -220,6 +220,8 @@ async function main(): Promise<void> {
   await prisma.oAuthAccount.deleteMany();
   await prisma.review.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.conversation.deleteMany();
   await prisma.timeOff.deleteMany();
   await prisma.service.deleteMany();
   await prisma.booking.deleteMany();
@@ -535,6 +537,71 @@ async function main(): Promise<void> {
     await prisma.timeOff.create({
       data: { tutorId: lena.id, label: '🏖 Summer break', startDate: offStart, endDate: offEnd },
     });
+
+    // Conversations with a few students (some unread messages from students).
+    const minute = 60 * 1000;
+    const threads: {
+      student: Stu;
+      subjectName: string;
+      messages: { from: 'TUTOR' | 'STUDENT'; body: string; readByTutor?: boolean }[];
+    }[] = [
+      {
+        student: mia,
+        subjectName: 'Mathematics',
+        messages: [
+          {
+            from: 'STUDENT',
+            body: 'Hi Lena! Could we focus on integration by parts next time?',
+            readByTutor: false,
+          },
+          { from: 'STUDENT', body: 'Also — is Tuesday still okay?', readByTutor: false },
+        ],
+      },
+      {
+        student: tom,
+        subjectName: 'Physics',
+        messages: [
+          { from: 'TUTOR', body: 'Great work on the projectile motion problems today!' },
+          { from: 'STUDENT', body: 'Thank you! That really helped.', readByTutor: false },
+        ],
+      },
+      {
+        student: sofia,
+        subjectName: 'Mathematics',
+        messages: [
+          { from: 'STUDENT', body: 'Sent over the past paper you mentioned.', readByTutor: true },
+          { from: 'TUTOR', body: "Perfect — I'll mark it before our session." },
+        ],
+      },
+    ];
+
+    for (const thread of threads) {
+      const convo = await prisma.conversation.create({
+        data: {
+          tutorId: lena.id,
+          studentId: thread.student.id,
+          subjectName: thread.subjectName,
+        },
+      });
+      let when = Date.now() - thread.messages.length * 30 * minute;
+      for (const m of thread.messages) {
+        when += 30 * minute;
+        await prisma.message.create({
+          data: {
+            conversationId: convo.id,
+            senderKind: m.from,
+            body: m.body,
+            readByTutor: m.readByTutor ?? m.from === 'TUTOR',
+            readByStudent: m.from === 'STUDENT',
+            createdAt: new Date(when),
+          },
+        });
+      }
+      await prisma.conversation.update({
+        where: { id: convo.id },
+        data: { lastMessageAt: new Date(when) },
+      });
+    }
   }
 }
 

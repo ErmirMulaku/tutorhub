@@ -37,6 +37,16 @@ enum BookingStatus {
   PENDING
 }
 
+type Conversation {
+  id: ID!
+  lastMessageAt: DateTime!
+  preview: String
+  studentAvatarColor: String
+  studentName: String!
+  subjectName: String
+  unread: Int!
+}
+
 input CreateServiceInput {
   description: String
   durationMin: Int! = 60
@@ -80,6 +90,13 @@ enum Level {
   INTERMEDIATE
 }
 
+type Message {
+  body: String!
+  createdAt: DateTime!
+  id: ID!
+  senderKind: SenderKind!
+}
+
 type Mutation {
   acceptBooking(id: ID!): Booking!
   addFavorite(tutorId: ID!): [Tutor!]!
@@ -98,6 +115,7 @@ type Mutation {
   googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
   markAllNotificationsRead: [Notification!]!
+  markConversationRead(conversationId: ID!): [Conversation!]!
   markNotificationRead(id: ID!): [Notification!]!
   oauthSignin(email: String!, fullName: String!, provider: OAuthProvider!, providerUserId: String!): AuthPayload!
   redeemGiftCard(code: String!): Wallet!
@@ -106,6 +124,7 @@ type Mutation {
   removeTimeOff(id: ID!): MyAvailability!
   rescheduleBooking(id: ID!, startTime: String!): Booking!
   resendVerificationCode(email: String!): ResendPayload!
+  sendMessage(body: String!, conversationId: ID!): Message!
   setServiceActive(id: ID!, isActive: Boolean!): Service!
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
@@ -158,9 +177,11 @@ type PaymentMethod {
 
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
+  conversations: [Conversation!]!
   dashboardSummary: DashboardSummary!
   me: Student!
   meTutor: Tutor!
+  messages(conversationId: ID!): [Message!]!
   myAvailability: MyAvailability!
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
@@ -183,6 +204,11 @@ type Review {
   comment: String
   id: ID!
   rating: Int!
+}
+
+enum SenderKind {
+  STUDENT
+  TUTOR
 }
 
 type Service {

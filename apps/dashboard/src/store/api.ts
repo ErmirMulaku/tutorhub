@@ -85,6 +85,22 @@ export interface MyAvailability {
   timeOff: TimeOff[];
 }
 
+export interface Conversation {
+  id: string;
+  studentName: string;
+  studentAvatarColor: string | null;
+  subjectName: string | null;
+  lastMessageAt: string;
+  preview: string | null;
+  unread: number;
+}
+export interface ChatMessage {
+  id: string;
+  senderKind: 'TUTOR' | 'STUDENT';
+  body: string;
+  createdAt: string;
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -147,7 +163,16 @@ const baseQuery: BaseQueryFn<
 export const api = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['Tutor', 'Booking', 'MeTutor', 'DashboardSummary', 'Service', 'Availability'],
+  tagTypes: [
+    'Tutor',
+    'Booking',
+    'MeTutor',
+    'DashboardSummary',
+    'Service',
+    'Availability',
+    'Conversation',
+    'Message',
+  ],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
     getMeTutor: build.query<{ id: string; name: string; headline: string | null }, void>({
@@ -309,6 +334,45 @@ export const api = createApi({
       invalidatesTags: ['Availability'],
     }),
 
+    // --- Messaging (tutor GraphQL) ---
+    getConversations: build.query<Conversation[], void>({
+      query: () => ({
+        graphql: {
+          document: `{ conversations { id studentName studentAvatarColor subjectName lastMessageAt preview unread } }`,
+        },
+      }),
+      transformResponse: (r: { conversations: Conversation[] }) => r.conversations,
+      providesTags: ['Conversation'],
+    }),
+    getMessages: build.query<ChatMessage[], string>({
+      query: (conversationId) => ({
+        graphql: {
+          document: `query($id: ID!){ messages(conversationId: $id){ id senderKind body createdAt } }`,
+          variables: { id: conversationId },
+        },
+      }),
+      transformResponse: (r: { messages: ChatMessage[] }) => r.messages,
+      providesTags: ['Message'],
+    }),
+    sendMessage: build.mutation<{ id: string }, { conversationId: string; body: string }>({
+      query: ({ conversationId, body }) => ({
+        graphql: {
+          document: `mutation($id: ID!, $body: String!){ sendMessage(conversationId: $id, body: $body){ id } }`,
+          variables: { id: conversationId, body },
+        },
+      }),
+      invalidatesTags: ['Message', 'Conversation'],
+    }),
+    markConversationRead: build.mutation<unknown, string>({
+      query: (conversationId) => ({
+        graphql: {
+          document: `mutation($id: ID!){ markConversationRead(conversationId: $id){ id } }`,
+          variables: { id: conversationId },
+        },
+      }),
+      invalidatesTags: ['Conversation', 'DashboardSummary'],
+    }),
+
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
     getTutors: build.query<Tutor[], void>({
       query: () => '/tutors',
@@ -354,6 +418,10 @@ export const {
   useUpdateBookingRulesMutation,
   useAddTimeOffMutation,
   useRemoveTimeOffMutation,
+  useGetConversationsQuery,
+  useGetMessagesQuery,
+  useSendMessageMutation,
+  useMarkConversationReadMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,
