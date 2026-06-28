@@ -72,6 +72,14 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type EarningsSummary {
+  availableCents: Int!
+  lifetimeCents: Int!
+  payoutMethod: String
+  payoutSchedule: PayoutSchedule!
+  pendingCents: Int!
+}
+
 type GiftCard {
   amountCents: Int!
   balanceCents: Int!
@@ -95,6 +103,11 @@ type Message {
   createdAt: DateTime!
   id: ID!
   senderKind: SenderKind!
+}
+
+type MonthlyEarning {
+  month: String!
+  netCents: Int!
 }
 
 type Mutation {
@@ -125,6 +138,8 @@ type Mutation {
   rescheduleBooking(id: ID!, startTime: String!): Booking!
   resendVerificationCode(email: String!): ResendPayload!
   sendMessage(body: String!, conversationId: ID!): Message!
+  setPayoutMethod(method: String!): EarningsSummary!
+  setPayoutSchedule(schedule: PayoutSchedule!): EarningsSummary!
   setServiceActive(id: ID!, isActive: Boolean!): Service!
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
@@ -136,6 +151,7 @@ type Mutation {
   updateService(input: UpdateServiceInput!): Service!
   updateWorkingHours(hours: [WorkingHourInput!]!): MyAvailability!
   verifyEmail(code: String!, email: String!): AuthPayload!
+  withdraw: EarningsSummary!
 }
 
 type MyAvailability {
@@ -175,10 +191,18 @@ type PaymentMethod {
   last4: String!
 }
 
+enum PayoutSchedule {
+  DAILY
+  MONTHLY
+  WEEKLY
+}
+
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
   conversations: [Conversation!]!
   dashboardSummary: DashboardSummary!
+  earningsByMonth: [MonthlyEarning!]!
+  earningsSummary: EarningsSummary!
   me: Student!
   meTutor: Tutor!
   messages(conversationId: ID!): [Message!]!
@@ -189,6 +213,7 @@ type Query {
   myServices: [Service!]!
   notifications: [Notification!]!
   todaySchedule: [Booking!]!
+  transactions: [Transaction!]!
   tutor(id: ID!): Tutor
   tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
@@ -273,6 +298,16 @@ input TimeOffInput {
   endDate: DateTime!
   label: String!
   startDate: DateTime!
+}
+
+type Transaction {
+  date: DateTime!
+  feeCents: Int!
+  id: ID!
+  netCents: Int!
+  status: String!
+  studentName: String!
+  subjectName: String!
 }
 
 type Tutor {

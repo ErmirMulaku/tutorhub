@@ -220,6 +220,7 @@ async function main(): Promise<void> {
   await prisma.oAuthAccount.deleteMany();
   await prisma.review.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.payout.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.timeOff.deleteMany();
@@ -600,6 +601,79 @@ async function main(): Promise<void> {
       await prisma.conversation.update({
         where: { id: convo.id },
         data: { lastMessageAt: new Date(when) },
+      });
+    }
+
+    // --- Earnings history: completed bookings + payments over ~32 weeks ---
+    await prisma.tutor.update({
+      where: { id: lena.id },
+      data: { payoutMethod: 'Visa •••• 4242' },
+    });
+
+    const PRICE = 5500;
+    const fee = (amount: number): number => Math.round(amount * 0.15); // 15% platform fee
+    const roster2 = [mia, tom, sofia, noah];
+    // One "paid out" payout for everything older than ~4 weeks (so lifetime > available).
+    const payout = await prisma.payout.create({
+      data: { tutorId: lena.id, amountCents: 0, status: 'PAID', method: 'Visa •••• 4242' },
+    });
+    let paidOutTotal = 0;
+
+    for (let week = 1; week <= 32; week++) {
+      // 1–2 lessons per week, deterministic-ish spread.
+      const perWeek = week % 3 === 0 ? 2 : 1;
+      for (let n = 0; n < perWeek; n++) {
+        const start = new Date();
+        start.setDate(start.getDate() - week * 7 - n * 2);
+        start.setHours(10 + n * 3, 0, 0, 0);
+        const student = roster2[(week + n) % roster2.length];
+        const subjectId = (week + n) % 2 === 0 ? maths : physics;
+        if (!student) continue;
+        const booking = await prisma.booking.create({
+          data: {
+            tutorId: lena.id,
+            studentId: student.id,
+            subjectId,
+            startTime: start,
+            endTime: new Date(start.getTime() + 60 * 60 * 1000),
+            status: 'COMPLETED',
+          },
+        });
+        const olderThan4Weeks = week > 4;
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            tutorId: lena.id,
+            amountCents: PRICE,
+            feeCents: fee(PRICE),
+            status: 'PAID',
+            payoutId: olderThan4Weeks ? payout.id : null, // recent PAID = available
+          },
+        });
+        if (olderThan4Weeks) paidOutTotal += PRICE - fee(PRICE);
+      }
+    }
+    await prisma.payout.update({
+      where: { id: payout.id },
+      data: { amountCents: paidOutTotal },
+    });
+
+    // Payments for the recent completed lessons (available), plus a couple still
+    // clearing (PENDING) for the "pending clearance" figure.
+    const recentCompleted = await prisma.booking.findMany({
+      where: { tutorId: lena.id, status: 'COMPLETED', payment: null },
+    });
+    for (let i = 0; i < recentCompleted.length; i++) {
+      const b = recentCompleted[i];
+      if (!b) continue;
+      await prisma.payment.create({
+        data: {
+          bookingId: b.id,
+          tutorId: lena.id,
+          amountCents: PRICE,
+          feeCents: fee(PRICE),
+          status: i === 0 ? 'PENDING' : 'PAID', // one still clearing
+        },
       });
     }
   }

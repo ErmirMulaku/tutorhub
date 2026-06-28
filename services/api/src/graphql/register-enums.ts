@@ -4,6 +4,7 @@ import {
   Level,
   NotificationType,
   OAuthProvider,
+  PayoutSchedule,
   SenderKind,
   ServiceType,
 } from '../generated/prisma/client.js';
@@ -17,3 +18,4 @@ registerEnumType(NotificationType, { name: 'NotificationType' });
 registerEnumType(OAuthProvider, { name: 'OAuthProvider' });
 registerEnumType(ServiceType, { name: 'ServiceType' });
 registerEnumType(SenderKind, { name: 'SenderKind' });
+registerEnumType(PayoutSchedule, { name: 'PayoutSchedule' });

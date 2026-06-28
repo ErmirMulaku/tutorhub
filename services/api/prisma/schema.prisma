@@ -84,6 +84,7 @@ model Tutor {
   minNoticeHours   Int            @default(4)
   maxLessonsPerDay Int            @default(6)
   payoutSchedule   PayoutSchedule @default(WEEKLY)
+  payoutMethod     String? // human label, e.g. "Visa •••• 4242"
 
   subjects    Subject[]
   bookings    Booking[]
@@ -92,7 +93,28 @@ model Tutor {
   services      Service[]
   timeOff       TimeOff[]
   conversations Conversation[]
+  payouts       Payout[]
   createdAt     DateTime       @default(now())
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+// A withdrawal of cleared earnings to the tutor's payout method.
+model Payout {
+  id          String       @id @default(uuid())
+  tutor       Tutor        @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId     String
+  amountCents Int
+  status      PayoutStatus @default(PAID)
+  method      String?
+  payments    Payment[]
+  createdAt   DateTime     @default(now())
+
+  @@index([tutorId, createdAt])
 }
 
 enum ServiceType {
@@ -309,5 +331,12 @@ model Payment {
   booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   bookingId   String        @unique
   amountCents Int
+  feeCents    Int           @default(0) // platform fee; net = amountCents - feeCents
   status      PaymentStatus @default(PENDING)
+  // Denormalised for earnings aggregation (cheaper than joining through booking).
+  tutorId     String?
+  payout      Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  payoutId    String?
+
+  @@index([tutorId, status])
 }

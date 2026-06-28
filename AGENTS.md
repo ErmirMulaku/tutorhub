@@ -322,6 +322,21 @@ message sent from **another device** (curl) appeared **live in the open conversa
 interaction**. **3 e2e tests** (unread count, `markRead` clears it, and a real `socket.io-client`
 receiving `messageReceived`); `nx run-many` green across 8 projects, `npm audit` **0**.
 
+**8.4 Earnings + Payouts ✅** — **Built:** a `Payout` model + `Payment` fields (`feeCents`,
+denormalised `tutorId`, `payoutId`) + `Tutor.payoutMethod` (migration); an `EarningsModule` with
+`earningsSummary` (available = PAID & un-paid-out net, pending = PENDING net, lifetime = all PAID
+net), `earningsByMonth` (8-month buckets from booking dates), `transactions`, and `withdraw`
+(sweeps available into a new `Payout`) / `setPayoutSchedule` / `setPayoutMethod`. Seed generates
+~40 historical completed bookings with payments across 8 months (older ones grouped into a paid-out
+payout, recent ones available, one PENDING). Frontend: a gradient `BalanceCard` with Withdraw, a
+reusable `BarChart`, a payout-method card, and a transactions table with CSV export.
+
+**Verified (not just generated):** **in a real browser** — figures matched the seed (available
+$374, pending $47, lifetime $2,104), the 8-month chart rendered with the current month highlighted,
+and **Withdraw swept available to $0 with a toast**. **3 e2e tests** (net summary math, 8 monthly
+buckets, withdraw zeroes available while lifetime holds); `nx run-many` green across 8 projects,
+`npm audit` **0**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

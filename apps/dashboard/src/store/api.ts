@@ -101,6 +101,28 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export type PayoutSchedule = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export interface EarningsSummary {
+  availableCents: number;
+  pendingCents: number;
+  lifetimeCents: number;
+  payoutMethod: string | null;
+  payoutSchedule: PayoutSchedule;
+}
+export interface MonthlyEarning {
+  month: string;
+  netCents: number;
+}
+export interface Transaction {
+  id: string;
+  date: string;
+  studentName: string;
+  subjectName: string;
+  netCents: number;
+  feeCents: number;
+  status: string;
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -172,6 +194,7 @@ export const api = createApi({
     'Availability',
     'Conversation',
     'Message',
+    'Earnings',
   ],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
@@ -373,6 +396,37 @@ export const api = createApi({
       invalidatesTags: ['Conversation', 'DashboardSummary'],
     }),
 
+    // --- Earnings (tutor GraphQL) ---
+    getEarningsSummary: build.query<EarningsSummary, void>({
+      query: () => ({
+        graphql: {
+          document: `{ earningsSummary { availableCents pendingCents lifetimeCents payoutMethod payoutSchedule } }`,
+        },
+      }),
+      transformResponse: (r: { earningsSummary: EarningsSummary }) => r.earningsSummary,
+      providesTags: ['Earnings'],
+    }),
+    getEarningsByMonth: build.query<MonthlyEarning[], void>({
+      query: () => ({ graphql: { document: `{ earningsByMonth { month netCents } }` } }),
+      transformResponse: (r: { earningsByMonth: MonthlyEarning[] }) => r.earningsByMonth,
+      providesTags: ['Earnings'],
+    }),
+    getTransactions: build.query<Transaction[], void>({
+      query: () => ({
+        graphql: {
+          document: `{ transactions { id date studentName subjectName netCents feeCents status } }`,
+        },
+      }),
+      transformResponse: (r: { transactions: Transaction[] }) => r.transactions,
+      providesTags: ['Earnings'],
+    }),
+    withdraw: build.mutation<EarningsSummary, void>({
+      query: () => ({
+        graphql: { document: `mutation { withdraw { availableCents } }` },
+      }),
+      invalidatesTags: ['Earnings'],
+    }),
+
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
     getTutors: build.query<Tutor[], void>({
       query: () => '/tutors',
@@ -422,6 +476,10 @@ export const {
   useGetMessagesQuery,
   useSendMessageMutation,
   useMarkConversationReadMutation,
+  useGetEarningsSummaryQuery,
+  useGetEarningsByMonthQuery,
+  useGetTransactionsQuery,
+  useWithdrawMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,

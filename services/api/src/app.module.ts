@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { EarningsModule } from './earnings/earnings.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MessagingModule } from './messaging/messaging.module.js';
@@ -43,6 +44,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     AvailabilityModule,
     CatalogModule,
     MessagingModule,
+    EarningsModule,
     FavoritesModule,
     WalletModule,
     NotificationsModule,
