@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import './graphql/register-enums.js';
 import { AccountModule } from './account/account.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
@@ -18,8 +19,10 @@ import { MessagingModule } from './messaging/messaging.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
 import { TutorDashboardModule } from './tutor-dashboard/tutor-dashboard.module.js';
+import { TutorSettingsModule } from './tutor-settings/tutor-settings.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
 
@@ -47,6 +50,9 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     MessagingModule,
     EarningsModule,
     MarketingModule,
+    ReviewsModule,
+    AnalyticsModule,
+    TutorSettingsModule,
     FavoritesModule,
     WalletModule,
     NotificationsModule,

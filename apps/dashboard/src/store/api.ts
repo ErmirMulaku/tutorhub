@@ -152,6 +152,57 @@ export interface CreatePromotionInput {
   discountValue: number;
 }
 
+export interface TutorReview {
+  id: string;
+  studentName: string;
+  studentAvatarColor: string | null;
+  subjectName: string;
+  rating: number;
+  comment: string | null;
+  reply: string | null;
+  createdAt: string;
+}
+export interface ReviewSummary {
+  average: number;
+  count: number;
+  distribution: number[];
+}
+export interface AnalyticsSummary {
+  lessonsThisMonth: number;
+  newStudents: number;
+  repeatRatePct: number;
+  utilizationPct: number;
+}
+export interface MonthCount {
+  month: string;
+  count: number;
+}
+export interface SubjectShare {
+  name: string;
+  pct: number;
+}
+export interface DayCount {
+  day: string;
+  count: number;
+}
+export interface StudentMix {
+  returningPct: number;
+  newPct: number;
+}
+export interface TutorSettings {
+  name: string;
+  headline: string | null;
+  about: string | null;
+  timezone: string;
+  languages: string[];
+  isActive: boolean;
+  notifyBookings: boolean;
+  notifyReminders: boolean;
+  notifyMessages: boolean;
+  notifyPayouts: boolean;
+  notifyTips: boolean;
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -225,6 +276,9 @@ export const api = createApi({
     'Message',
     'Earnings',
     'Marketing',
+    'Reviews',
+    'Analytics',
+    'Settings',
   ],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
@@ -456,6 +510,15 @@ export const api = createApi({
       }),
       invalidatesTags: ['Earnings'],
     }),
+    setPayoutSchedule: build.mutation<EarningsSummary, PayoutSchedule>({
+      query: (schedule) => ({
+        graphql: {
+          document: `mutation($s: PayoutSchedule!){ setPayoutSchedule(schedule: $s){ payoutSchedule } }`,
+          variables: { s: schedule },
+        },
+      }),
+      invalidatesTags: ['Earnings', 'Settings'],
+    }),
 
     // --- Marketing (tutor GraphQL) ---
     getMarketingSummary: build.query<MarketingSummary, void>({
@@ -500,6 +563,104 @@ export const api = createApi({
         },
       }),
       invalidatesTags: ['Marketing'],
+    }),
+
+    // --- Reviews (tutor GraphQL) ---
+    getReviewSummary: build.query<ReviewSummary, void>({
+      query: () => ({ graphql: { document: `{ reviewSummary { average count distribution } }` } }),
+      transformResponse: (r: { reviewSummary: ReviewSummary }) => r.reviewSummary,
+      providesTags: ['Reviews'],
+    }),
+    getMyReviews: build.query<TutorReview[], string | void>({
+      query: (filter) => ({
+        graphql: {
+          document: `query($filter: String){ myReviews(filter: $filter){ id studentName studentAvatarColor subjectName rating comment reply createdAt } }`,
+          variables: { filter: filter ?? 'all' },
+        },
+      }),
+      transformResponse: (r: { myReviews: TutorReview[] }) => r.myReviews,
+      providesTags: ['Reviews'],
+    }),
+    replyToReview: build.mutation<unknown, { id: string; reply: string }>({
+      query: ({ id, reply }) => ({
+        graphql: {
+          document: `mutation($id: ID!, $reply: String!){ replyToReview(id: $id, reply: $reply){ id } }`,
+          variables: { id, reply },
+        },
+      }),
+      invalidatesTags: ['Reviews'],
+    }),
+
+    // --- Analytics (tutor GraphQL) ---
+    getAnalyticsSummary: build.query<AnalyticsSummary, void>({
+      query: () => ({
+        graphql: {
+          document: `{ analyticsSummary { lessonsThisMonth newStudents repeatRatePct utilizationPct } }`,
+        },
+      }),
+      transformResponse: (r: { analyticsSummary: AnalyticsSummary }) => r.analyticsSummary,
+      providesTags: ['Analytics'],
+    }),
+    getLessonsOverTime: build.query<MonthCount[], void>({
+      query: () => ({ graphql: { document: `{ lessonsOverTime { month count } }` } }),
+      transformResponse: (r: { lessonsOverTime: MonthCount[] }) => r.lessonsOverTime,
+      providesTags: ['Analytics'],
+    }),
+    getTopSubjects: build.query<SubjectShare[], void>({
+      query: () => ({ graphql: { document: `{ topSubjects { name pct } }` } }),
+      transformResponse: (r: { topSubjects: SubjectShare[] }) => r.topSubjects,
+      providesTags: ['Analytics'],
+    }),
+    getLessonsByDayOfWeek: build.query<DayCount[], void>({
+      query: () => ({ graphql: { document: `{ lessonsByDayOfWeek { day count } }` } }),
+      transformResponse: (r: { lessonsByDayOfWeek: DayCount[] }) => r.lessonsByDayOfWeek,
+      providesTags: ['Analytics'],
+    }),
+    getStudentMix: build.query<StudentMix, void>({
+      query: () => ({ graphql: { document: `{ studentMix { returningPct newPct } }` } }),
+      transformResponse: (r: { studentMix: StudentMix }) => r.studentMix,
+      providesTags: ['Analytics'],
+    }),
+
+    // --- Settings + Onboarding (tutor GraphQL) ---
+    getTutorSettings: build.query<TutorSettings, void>({
+      query: () => ({
+        graphql: {
+          document: `{ tutorSettings { name headline about timezone languages isActive notifyBookings notifyReminders notifyMessages notifyPayouts notifyTips } }`,
+        },
+      }),
+      transformResponse: (r: { tutorSettings: TutorSettings }) => r.tutorSettings,
+      providesTags: ['Settings'],
+    }),
+    updateTutorProfile: build.mutation<TutorSettings, Partial<TutorSettings>>({
+      query: (input) => ({
+        graphql: {
+          document: `mutation($input: UpdateTutorProfileInput!){ updateTutorProfile(input: $input){ name } }`,
+          variables: {
+            input: {
+              name: input.name,
+              headline: input.headline,
+              about: input.about,
+              timezone: input.timezone,
+              languages: input.languages,
+            },
+          },
+        },
+      }),
+      invalidatesTags: ['Settings', 'MeTutor'],
+    }),
+    updateNotificationPrefs: build.mutation<TutorSettings, Record<string, boolean>>({
+      query: (input) => ({
+        graphql: {
+          document: `mutation($input: UpdateNotificationPrefsInput!){ updateTutorNotificationPrefs(input: $input){ name } }`,
+          variables: { input },
+        },
+      }),
+      invalidatesTags: ['Settings'],
+    }),
+    publishProfile: build.mutation<unknown, void>({
+      query: () => ({ graphql: { document: `mutation { publishProfile { isActive } }` } }),
+      invalidatesTags: ['Settings', 'MeTutor'],
     }),
 
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
@@ -555,11 +716,24 @@ export const {
   useGetEarningsByMonthQuery,
   useGetTransactionsQuery,
   useWithdrawMutation,
+  useSetPayoutScheduleMutation,
   useGetMarketingSummaryQuery,
   useGetPromotionsQuery,
   useGetReferralProgramQuery,
   useCreatePromotionMutation,
   useEndPromotionMutation,
+  useGetReviewSummaryQuery,
+  useGetMyReviewsQuery,
+  useReplyToReviewMutation,
+  useGetAnalyticsSummaryQuery,
+  useGetLessonsOverTimeQuery,
+  useGetTopSubjectsQuery,
+  useGetLessonsByDayOfWeekQuery,
+  useGetStudentMixQuery,
+  useGetTutorSettingsQuery,
+  useUpdateTutorProfileMutation,
+  useUpdateNotificationPrefsMutation,
+  usePublishProfileMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,

@@ -361,13 +361,16 @@ model Booking {
 }
 
 model Review {
-  id        String  @id @default(uuid())
-  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingId String  @unique
-  tutor     Tutor   @relation(fields: [tutorId], references: [id])
+  id        String    @id @default(uuid())
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String    @unique
+  tutor     Tutor     @relation(fields: [tutorId], references: [id])
   tutorId   String
   rating    Int // 1–5
   comment   String?
+  reply     String? // the tutor's public response
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model Payment {

@@ -2,6 +2,13 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AnalyticsSummary {
+  lessonsThisMonth: Int!
+  newStudents: Int!
+  repeatRatePct: Int!
+  utilizationPct: Int!
+}
+
 type AuthPayload {
   accessToken: String!
   studentId: ID!
@@ -80,6 +87,11 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type DayCount {
+  count: Int!
+  day: String!
+}
+
 enum DiscountType {
   FIXED
   PERCENT
@@ -124,6 +136,11 @@ type Message {
   senderKind: SenderKind!
 }
 
+type MonthCount {
+  count: Int!
+  month: String!
+}
+
 type MonthlyEarning {
   month: String!
   netCents: Int!
@@ -152,10 +169,12 @@ type Mutation {
   markConversationRead(conversationId: ID!): [Conversation!]!
   markNotificationRead(id: ID!): [Notification!]!
   oauthSignin(email: String!, fullName: String!, provider: OAuthProvider!, providerUserId: String!): AuthPayload!
+  publishProfile: TutorSettings!
   redeemGiftCard(code: String!): Wallet!
   removeFavorite(tutorId: ID!): [Tutor!]!
   removePaymentMethod(id: ID!): Boolean!
   removeTimeOff(id: ID!): MyAvailability!
+  replyToReview(id: ID!, reply: String!): [TutorReview!]!
   rescheduleBooking(id: ID!, startTime: String!): Booking!
   resendVerificationCode(email: String!): ResendPayload!
   sendMessage(body: String!, conversationId: ID!): Message!
@@ -170,6 +189,8 @@ type Mutation {
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
   updateService(input: UpdateServiceInput!): Service!
+  updateTutorNotificationPrefs(input: UpdateNotificationPrefsInput!): TutorSettings!
+  updateTutorProfile(input: UpdateTutorProfileInput!): TutorSettings!
   updateWorkingHours(hours: [WorkingHourInput!]!): MyAvailability!
   verifyEmail(code: String!, email: String!): AuthPayload!
   withdraw: EarningsSummary!
@@ -236,11 +257,14 @@ enum PromotionState {
 }
 
 type Query {
+  analyticsSummary: AnalyticsSummary!
   availability(date: String!, tutorId: ID!): [Slot!]!
   conversations: [Conversation!]!
   dashboardSummary: DashboardSummary!
   earningsByMonth: [MonthlyEarning!]!
   earningsSummary: EarningsSummary!
+  lessonsByDayOfWeek: [DayCount!]!
+  lessonsOverTime: [MonthCount!]!
   marketingSummary: MarketingSummary!
   me: Student!
   meTutor: Tutor!
@@ -249,14 +273,19 @@ type Query {
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
+  myReviews(filter: String): [TutorReview!]!
   myServices: [Service!]!
   notifications: [Notification!]!
   promotions: [Promotion!]!
   referralProgram: ReferralProgram!
+  reviewSummary: ReviewSummary!
+  studentMix: StudentMix!
   todaySchedule: [Booking!]!
+  topSubjects: [SubjectShare!]!
   transactions: [Transaction!]!
   tutor(id: ID!): Tutor
   tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
+  tutorSettings: TutorSettings!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
   unreadNotificationCount: Int!
   wallet: Wallet!
@@ -276,6 +305,12 @@ type Review {
   comment: String
   id: ID!
   rating: Int!
+}
+
+type ReviewSummary {
+  average: Float!
+  count: Int!
+  distribution: [Int!]!
 }
 
 enum SenderKind {
@@ -328,10 +363,20 @@ type Student {
   walletCents: Int!
 }
 
+type StudentMix {
+  newPct: Int!
+  returningPct: Int!
+}
+
 type Subject {
   id: ID!
   level: Level!
   name: String!
+}
+
+type SubjectShare {
+  name: String!
+  pct: Int!
 }
 
 type TimeOff {
@@ -386,6 +431,39 @@ type TutorPage {
   total: Int!
 }
 
+type TutorReview {
+  comment: String
+  createdAt: DateTime!
+  id: ID!
+  rating: Int!
+  reply: String
+  studentAvatarColor: String
+  studentName: String!
+  subjectName: String!
+}
+
+type TutorSettings {
+  about: String
+  headline: String
+  isActive: Boolean!
+  languages: [String!]!
+  name: String!
+  notifyBookings: Boolean!
+  notifyMessages: Boolean!
+  notifyPayouts: Boolean!
+  notifyReminders: Boolean!
+  notifyTips: Boolean!
+  timezone: String!
+}
+
+input UpdateNotificationPrefsInput {
+  notifyBookings: Boolean
+  notifyMessages: Boolean
+  notifyPayouts: Boolean
+  notifyReminders: Boolean
+  notifyTips: Boolean
+}
+
 input UpdateServiceInput {
   description: String
   durationMin: Int
@@ -393,6 +471,14 @@ input UpdateServiceInput {
   isActive: Boolean
   name: String
   priceCents: Int
+}
+
+input UpdateTutorProfileInput {
+  about: String
+  headline: String
+  languages: [String!]
+  name: String
+  timezone: String
 }
 
 type Wallet {

@@ -241,7 +241,7 @@ published to npm** (metadata, `prepublishOnly`, LICENSE, badges).
 - **Adapted to the environment honestly:** Elixir/Erlang weren't installed, so I installed the
   toolchain to actually compile and test the service rather than ship it unverified.
 
-### Phase 8 — Tutor dashboard (in progress)
+### Phase 8 — Tutor dashboard ✅
 
 Recreating the `design_handoff_tutor_dashboard` handoff as the real tutor-facing app in
 `apps/dashboard`: 11 modules + onboarding, full real backend, tutor auth, and the
@@ -349,6 +349,29 @@ cards, plus a create-promotion modal.
 46 redemptions, $145 sold), promotions showed the right state pills, and the code chip copied with
 a toast. **3 e2e tests** (create→summary counts active, cross-tutor end rejected, referral
 auto-created); `nx run-many` green across 8 projects, `npm audit` **0**.
+
+**8.6 Reviews + Analytics + Settings + Onboarding ✅** — **Built:** `Review.reply`/`repliedAt`
+(migration) and four modules — **Reviews** (`reviewSummary` avg + 5★ distribution, `myReviews`
+filterable all/unreplied/replied, `replyToReview`), **Analytics** (`analyticsSummary` —
+lessons-this-month, new students, repeat rate, slot-capacity utilization — plus `lessonsOverTime`,
+`topSubjects`, `lessonsByDayOfWeek`, `studentMix`, all aggregated in-service from completed
+bookings), **Settings** (`tutorSettings`, `updateTutorProfile`, `updateTutorNotificationPrefs`),
+and **Onboarding** (`publishProfile` flips `isActive`). Frontend: Reviews (summary + distribution
+bars + filter tabs + inline reply), Analytics (an SVG `AreaChart`, top-subject bars, day-of-week
+`BarChart`, student-mix split bar), Settings (Profile / Payout / Notifications tabs), and a 6-step
+`OnboardingWizard` overlay.
+
+**Verified (not just generated):** **in a real browser** — reviewing replied to a review (toast +
+"You replied" block), analytics rendered every chart from the seed (8 lessons this month, 100%
+repeat, Maths/Physics split), settings saved profile + toggled notifications, and the onboarding
+wizard stepped to "You're all set, Lena!" and **published → redirected to the dashboard**. **4 new
+e2e tests**; the **whole API e2e suite is green (11 suites / 54 tests)** — no regressions in
+student auth or the earlier phases — and `nx run-many` passes across 8 projects with `npm audit`
+**0**.
+
+**Phase 8 outcome:** all 11 desktop modules + onboarding ship against a real, tutor-scoped backend
+(tutor auth, messaging, payouts, promotions, review replies, analytics, settings) on the
+`@ermulaku/ui` design system with light/dark + Teal/Indigo/Plum theming.
 
 ---
 
