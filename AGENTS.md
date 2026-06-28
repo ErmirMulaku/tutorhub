@@ -337,6 +337,19 @@ and **Withdraw swept available to $0 with a toast**. **3 e2e tests** (net summar
 buckets, withdraw zeroes available while lifetime holds); `nx run-many` green across 8 projects,
 `npm audit` **0**.
 
+**8.5 Marketing ✅** — **Built:** `Promotion` + `Referral` models + `GiftCard.tutorId`
+(migration); a `MarketingModule` with `marketingSummary` (active promos, total redemptions, gift
+cards sold), `promotions`, `referralProgram` (created on first read), `createPromotion`, and
+`endPromotion` (owner-scoped). Seed gained three promotions (Active/Scheduled/Ended), a referral
+record, and gift cards sold under Lena. Frontend: a Marketing screen with stat cards, a promotions
+grid (`PromoCard` with state pills + a copy-to-clipboard `CodeChip`), and gift-card + referral
+cards, plus a create-promotion modal.
+
+**Verified (not just generated):** **in a real browser** — stat cards matched the seed (1 active,
+46 redemptions, $145 sold), promotions showed the right state pills, and the code chip copied with
+a toast. **3 e2e tests** (create→summary counts active, cross-tutor end rejected, referral
+auto-created); `nx run-many` green across 8 projects, `npm audit` **0**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

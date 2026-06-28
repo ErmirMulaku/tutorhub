@@ -7,6 +7,7 @@ import { CatalogScreen } from '../features/catalog/CatalogScreen';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { EarningsScreen } from '../features/earnings/EarningsScreen';
 import { LessonsScreen } from '../features/lessons/LessonsScreen';
+import { MarketingScreen } from '../features/marketing/MarketingScreen';
 import { MessagesScreen } from '../features/messages/MessagesScreen';
 import { AppShell } from './AppShell';
 import { Placeholder } from './Placeholder';
@@ -28,7 +29,7 @@ export function App(): JSX.Element {
         <Route path="/catalog" element={<CatalogScreen />} />
         <Route path="/availability" element={<AvailabilityScreen />} />
         <Route path="/earnings" element={<EarningsScreen />} />
-        <Route path="/marketing" element={<Placeholder title="Marketing" />} />
+        <Route path="/marketing" element={<MarketingScreen />} />
         <Route path="/reviews" element={<Placeholder title="Reviews" />} />
         <Route path="/analytics" element={<Placeholder title="Analytics" />} />
         <Route path="/settings" element={<Placeholder title="Settings" />} />

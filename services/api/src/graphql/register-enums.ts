@@ -1,10 +1,12 @@
 import { registerEnumType } from '@nestjs/graphql';
 import {
   BookingStatus,
+  DiscountType,
   Level,
   NotificationType,
   OAuthProvider,
   PayoutSchedule,
+  PromotionState,
   SenderKind,
   ServiceType,
 } from '../generated/prisma/client.js';
@@ -19,3 +21,5 @@ registerEnumType(OAuthProvider, { name: 'OAuthProvider' });
 registerEnumType(ServiceType, { name: 'ServiceType' });
 registerEnumType(SenderKind, { name: 'SenderKind' });
 registerEnumType(PayoutSchedule, { name: 'PayoutSchedule' });
+registerEnumType(PromotionState, { name: 'PromotionState' });
+registerEnumType(DiscountType, { name: 'DiscountType' });

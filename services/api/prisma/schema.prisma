@@ -94,7 +94,48 @@ model Tutor {
   timeOff       TimeOff[]
   conversations Conversation[]
   payouts       Payout[]
+  promotions    Promotion[]
+  referral      Referral?
+  giftCards     GiftCard[]
   createdAt     DateTime       @default(now())
+}
+
+enum PromotionState {
+  ACTIVE
+  SCHEDULED
+  ENDED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+model Promotion {
+  id            String         @id @default(uuid())
+  tutor         Tutor          @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String
+  name          String
+  code          String         @unique
+  discountType  DiscountType   @default(PERCENT)
+  discountValue Int // percent (0–100) or cents, per discountType
+  state         PromotionState @default(SCHEDULED)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  redemptions   Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  @@index([tutorId])
+}
+
+model Referral {
+  id            String   @id @default(uuid())
+  tutor         Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String   @unique
+  creditCents   Int      @default(1500)
+  referredCount Int      @default(0)
+  issuedCents   Int      @default(0)
+  createdAt     DateTime @default(now())
 }
 
 enum PayoutStatus {
@@ -285,6 +326,9 @@ model GiftCard {
   // The student who currently owns/redeemed the card (null = unredeemed).
   owner       Student? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId     String?
+  // Optional tutor a gift card was sold under (marketing → gift cards sold).
+  tutor       Tutor?   @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+  tutorId     String?
   createdAt   DateTime @default(now())
 }
 

@@ -227,6 +227,8 @@ async function main(): Promise<void> {
   await prisma.service.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.favorite.deleteMany();
+  await prisma.promotion.deleteMany();
+  await prisma.referral.deleteMany();
   await prisma.giftCard.deleteMany();
   await prisma.paymentMethod.deleteMany();
   await prisma.subject.deleteMany();
@@ -676,6 +678,57 @@ async function main(): Promise<void> {
         },
       });
     }
+
+    // --- Marketing: promotions, referral program, gift cards sold ---
+    const in30 = new Date();
+    in30.setDate(in30.getDate() + 30);
+    const ago5 = new Date();
+    ago5.setDate(ago5.getDate() - 5);
+    await prisma.promotion.createMany({
+      data: [
+        {
+          tutorId: lena.id,
+          name: 'Back to school',
+          code: 'SCHOOL15',
+          discountType: 'PERCENT',
+          discountValue: 15,
+          state: 'ACTIVE',
+          startsAt: ago5,
+          expiresAt: in30,
+          redemptions: 24,
+        },
+        {
+          tutorId: lena.id,
+          name: 'Summer intensive',
+          code: 'SUMMER25',
+          discountType: 'PERCENT',
+          discountValue: 25,
+          state: 'SCHEDULED',
+          startsAt: in30,
+          redemptions: 0,
+        },
+        {
+          tutorId: lena.id,
+          name: 'New-year kickoff',
+          code: 'NY2026',
+          discountType: 'FIXED',
+          discountValue: 1000,
+          state: 'ENDED',
+          expiresAt: ago5,
+          redemptions: 22,
+        },
+      ],
+    });
+    await prisma.referral.create({
+      data: { tutorId: lena.id, creditCents: 1500, referredCount: 8, issuedCents: 12000 },
+    });
+    await prisma.giftCard.createMany({
+      data: [
+        { code: 'GC-LENA-AB12', amountCents: 7500, balanceCents: 7500, tutorId: lena.id },
+        { code: 'GC-LENA-CD34', amountCents: 5000, balanceCents: 2500, tutorId: lena.id },
+        { code: 'GC-LENA-EF56', amountCents: 2000, balanceCents: 0, tutorId: lena.id },
+      ],
+    });
   }
 }
 

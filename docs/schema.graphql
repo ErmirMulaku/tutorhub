@@ -47,6 +47,14 @@ type Conversation {
   unread: Int!
 }
 
+input CreatePromotionInput {
+  code: String!
+  discountType: DiscountType!
+  discountValue: Int!
+  expiresAt: DateTime
+  name: String!
+}
+
 input CreateServiceInput {
   description: String
   durationMin: Int! = 60
@@ -71,6 +79,11 @@ type DashboardSummary {
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+enum DiscountType {
+  FIXED
+  PERCENT
+}
 
 type EarningsSummary {
   availableCents: Int!
@@ -98,6 +111,12 @@ enum Level {
   INTERMEDIATE
 }
 
+type MarketingSummary {
+  activePromotions: Int!
+  giftCardsSoldCents: Int!
+  redemptions: Int!
+}
+
 type Message {
   body: String!
   createdAt: DateTime!
@@ -121,10 +140,12 @@ type Mutation {
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
   completeBooking(id: ID!): Booking!
+  createPromotion(input: CreatePromotionInput!): Promotion!
   createService(input: CreateServiceInput!): Service!
   declineBooking(id: ID!): Booking!
   deleteAccount: Boolean!
   deleteService(id: ID!): Boolean!
+  endPromotion(id: ID!): Promotion!
   googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
   markAllNotificationsRead: [Notification!]!
@@ -197,12 +218,30 @@ enum PayoutSchedule {
   WEEKLY
 }
 
+type Promotion {
+  code: String!
+  discountType: DiscountType!
+  discountValue: Int!
+  expiresAt: DateTime
+  id: ID!
+  name: String!
+  redemptions: Int!
+  state: PromotionState!
+}
+
+enum PromotionState {
+  ACTIVE
+  ENDED
+  SCHEDULED
+}
+
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
   conversations: [Conversation!]!
   dashboardSummary: DashboardSummary!
   earningsByMonth: [MonthlyEarning!]!
   earningsSummary: EarningsSummary!
+  marketingSummary: MarketingSummary!
   me: Student!
   meTutor: Tutor!
   messages(conversationId: ID!): [Message!]!
@@ -212,6 +251,8 @@ type Query {
   myFavorites: [Tutor!]!
   myServices: [Service!]!
   notifications: [Notification!]!
+  promotions: [Promotion!]!
+  referralProgram: ReferralProgram!
   todaySchedule: [Booking!]!
   transactions: [Transaction!]!
   tutor(id: ID!): Tutor
@@ -219,6 +260,12 @@ type Query {
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
   unreadNotificationCount: Int!
   wallet: Wallet!
+}
+
+type ReferralProgram {
+  creditCents: Int!
+  issuedCents: Int!
+  referredCount: Int!
 }
 
 type ResendPayload {

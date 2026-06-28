@@ -123,6 +123,35 @@ export interface Transaction {
   status: string;
 }
 
+export type PromotionState = 'ACTIVE' | 'SCHEDULED' | 'ENDED';
+export type DiscountType = 'PERCENT' | 'FIXED';
+export interface Promotion {
+  id: string;
+  name: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  state: PromotionState;
+  expiresAt: string | null;
+  redemptions: number;
+}
+export interface MarketingSummary {
+  activePromotions: number;
+  redemptions: number;
+  giftCardsSoldCents: number;
+}
+export interface ReferralProgram {
+  creditCents: number;
+  referredCount: number;
+  issuedCents: number;
+}
+export interface CreatePromotionInput {
+  name: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -195,6 +224,7 @@ export const api = createApi({
     'Conversation',
     'Message',
     'Earnings',
+    'Marketing',
   ],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
@@ -427,6 +457,51 @@ export const api = createApi({
       invalidatesTags: ['Earnings'],
     }),
 
+    // --- Marketing (tutor GraphQL) ---
+    getMarketingSummary: build.query<MarketingSummary, void>({
+      query: () => ({
+        graphql: {
+          document: `{ marketingSummary { activePromotions redemptions giftCardsSoldCents } }`,
+        },
+      }),
+      transformResponse: (r: { marketingSummary: MarketingSummary }) => r.marketingSummary,
+      providesTags: ['Marketing'],
+    }),
+    getPromotions: build.query<Promotion[], void>({
+      query: () => ({
+        graphql: {
+          document: `{ promotions { id name code discountType discountValue state expiresAt redemptions } }`,
+        },
+      }),
+      transformResponse: (r: { promotions: Promotion[] }) => r.promotions,
+      providesTags: ['Marketing'],
+    }),
+    getReferralProgram: build.query<ReferralProgram, void>({
+      query: () => ({
+        graphql: { document: `{ referralProgram { creditCents referredCount issuedCents } }` },
+      }),
+      transformResponse: (r: { referralProgram: ReferralProgram }) => r.referralProgram,
+      providesTags: ['Marketing'],
+    }),
+    createPromotion: build.mutation<{ id: string }, CreatePromotionInput>({
+      query: (input) => ({
+        graphql: {
+          document: `mutation($input: CreatePromotionInput!){ createPromotion(input: $input){ id } }`,
+          variables: { input },
+        },
+      }),
+      invalidatesTags: ['Marketing'],
+    }),
+    endPromotion: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        graphql: {
+          document: `mutation($id: ID!){ endPromotion(id: $id){ id state } }`,
+          variables: { id },
+        },
+      }),
+      invalidatesTags: ['Marketing'],
+    }),
+
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
     getTutors: build.query<Tutor[], void>({
       query: () => '/tutors',
@@ -480,6 +555,11 @@ export const {
   useGetEarningsByMonthQuery,
   useGetTransactionsQuery,
   useWithdrawMutation,
+  useGetMarketingSummaryQuery,
+  useGetPromotionsQuery,
+  useGetReferralProgramQuery,
+  useCreatePromotionMutation,
+  useEndPromotionMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,
