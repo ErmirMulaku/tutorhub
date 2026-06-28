@@ -11,13 +11,12 @@ import type { GqlAuthContext, JwtPayload } from './auth-user.js';
 const BEARER = 'Bearer ';
 
 /**
- * Verifies a Bearer JWT and attaches `{ studentId }` to the request. Permissive
- * on `kind`: tokens with no `kind` claim (legacy student/marketplace/mobile
- * tokens) are accepted; an explicit `kind: 'tutor'` is rejected so a tutor token
- * can never act as a student.
+ * Verifies a Bearer JWT and attaches `{ tutorId }` to `req.tutor` (never
+ * `req.user`). Strict: only tokens minted with `kind: 'tutor'` are accepted, so
+ * a student token can never reach a tutor-scoped resolver.
  */
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class TutorAuthGuard implements CanActivate {
   constructor(private readonly jwt: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,10 +28,10 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwt.verifyAsync<JwtPayload>(header.slice(BEARER.length));
-      if (payload.kind === 'tutor') {
-        throw new UnauthorizedException('This endpoint requires a student token.');
+      if (payload.kind !== 'tutor') {
+        throw new UnauthorizedException('This endpoint requires a tutor token.');
       }
-      ctx.req.user = { studentId: payload.sub };
+      ctx.req.tutor = { tutorId: payload.sub };
       return true;
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;

@@ -1,0 +1,117 @@
+import type { Server } from 'node:http';
+import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { AppModule } from '../src/app.module.js';
+import { hashPassword } from '../src/auth/password.js';
+import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+
+/**
+ * Tutor (dashboard) authentication: dev-login + password sign-in mint `kind:tutor`
+ * tokens, the tutor guard rejects student tokens, and the student guard rejects
+ * tutor tokens. Creates and deletes its own tutor (safe against a seeded DB).
+ */
+describe('Tutor auth (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let tutorId = '';
+  let studentId = '';
+  let tutorEmail = '';
+  let studentEmail = '';
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalFilters(new DomainExceptionFilter());
+    await app.init();
+
+    prisma = app.get(PrismaService);
+    const stamp = Date.now().toString();
+    tutorEmail = `e2e-tutor+${stamp}@example.com`;
+    studentEmail = `e2e-student+${stamp}@example.com`;
+    const tutor = await prisma.tutor.create({
+      data: {
+        name: 'E2E Tutor',
+        timezone: 'Europe/London',
+        hourlyCents: 4000,
+        workingHours: [],
+        email: tutorEmail,
+        passwordHash: hashPassword('s3cret-pass'),
+        emailVerified: true,
+      },
+    });
+    tutorId = tutor.id;
+    const student = await prisma.student.create({
+      data: { fullName: 'E2E Student', email: studentEmail },
+    });
+    studentId = student.id;
+  });
+
+  afterAll(async () => {
+    if (tutorId !== '') await prisma.tutor.deleteMany({ where: { id: tutorId } });
+    if (studentId !== '') await prisma.student.deleteMany({ where: { id: studentId } });
+    await app.close();
+  });
+
+  const http = (): request.Agent => request(app.getHttpServer() as Server);
+
+  const gql = (query: string, token?: string): request.Test => {
+    const req = http().post('/graphql').send({ query });
+    return token === undefined ? req : req.set('authorization', `Bearer ${token}`);
+  };
+
+  const tutorToken = async (): Promise<string> => {
+    const res = await http().post('/auth/tutor/dev-login').send({ email: tutorEmail }).expect(200);
+    return (res.body as { accessToken: string }).accessToken;
+  };
+  const studentToken = async (): Promise<string> => {
+    const res = await http().post('/auth/dev-login').send({ email: studentEmail }).expect(200);
+    return (res.body as { accessToken: string }).accessToken;
+  };
+
+  it('tutor dev-login returns a token and tutorId', async () => {
+    const res = await http().post('/auth/tutor/dev-login').send({ email: tutorEmail }).expect(200);
+    const body = res.body as { accessToken: string; tutorId: string };
+    expect(body.accessToken).toBeTruthy();
+    expect(body.tutorId).toBe(tutorId);
+  });
+
+  it('tutorSignin verifies the password and returns a token', async () => {
+    const res = await gql(
+      `mutation { tutorSignin(email: "${tutorEmail}", password: "s3cret-pass") { tutorId accessToken } }`,
+    ).expect(200);
+    const data = res.body as { data: { tutorSignin: { tutorId: string; accessToken: string } } };
+    expect(data.data.tutorSignin.tutorId).toBe(tutorId);
+    expect(data.data.tutorSignin.accessToken).toBeTruthy();
+  });
+
+  it('tutorSignin rejects a wrong password', async () => {
+    const res = await gql(
+      `mutation { tutorSignin(email: "${tutorEmail}", password: "wrong") { tutorId } }`,
+    ).expect(200);
+    const body = res.body as { errors?: unknown[] };
+    expect(body.errors).toBeDefined();
+  });
+
+  it('meTutor returns the signed-in tutor', async () => {
+    const res = await gql('{ meTutor { id name } }', await tutorToken()).expect(200);
+    const data = res.body as { data: { meTutor: { id: string; name: string } } };
+    expect(data.data.meTutor.id).toBe(tutorId);
+    expect(data.data.meTutor.name).toBe('E2E Tutor');
+  });
+
+  it('the tutor guard rejects a student token', async () => {
+    const res = await gql('{ meTutor { id } }', await studentToken()).expect(200);
+    const body = res.body as { errors?: { message: string }[] };
+    expect(body.errors?.[0]?.message).toContain('tutor token');
+  });
+
+  it('the student guard rejects a tutor token', async () => {
+    const res = await gql('{ me { id } }', await tutorToken()).expect(200);
+    const body = res.body as { errors?: { message: string }[] };
+    expect(body.errors?.[0]?.message).toContain('student token');
+  });
+});

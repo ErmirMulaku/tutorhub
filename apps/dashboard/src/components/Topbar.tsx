@@ -1,0 +1,79 @@
+import type { JSX } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Button } from '@ermulaku/ui';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { type Accent, setAccent, setOnline, toggleTheme } from '../store/ui-slice';
+import { PAGE_META } from '../app/nav';
+import { BellIcon, MoonIcon, SearchIcon, SunIcon } from './icons';
+
+const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
+  { key: 'teal', label: 'Teal', swatch: '#0e8f8a' },
+  { key: 'indigo', label: 'Indigo', swatch: '#4f56d6' },
+  { key: 'plum', label: 'Plum', swatch: '#8b46c9' },
+];
+
+export function Topbar(): JSX.Element {
+  const dispatch = useAppDispatch();
+  const theme = useAppSelector((s) => s.ui.theme);
+  const accent = useAppSelector((s) => s.ui.accent);
+  const online = useAppSelector((s) => s.ui.online);
+  const { pathname } = useLocation();
+  const meta = PAGE_META[pathname] ?? { title: 'Dashboard', subtitle: '' };
+
+  return (
+    <header className="topbar">
+      <div className="topbar__heading">
+        <h1 className="topbar__title">{meta.title}</h1>
+        {meta.subtitle && <p className="topbar__subtitle">{meta.subtitle}</p>}
+      </div>
+
+      <div className="topbar__actions">
+        <label className="topbar__search">
+          <SearchIcon className="topbar__search-icon" />
+          <input type="search" placeholder="Search students, lessons…" aria-label="Search" />
+        </label>
+
+        <button
+          type="button"
+          className={`topbar__pill${online ? ' topbar__pill--on' : ''}`}
+          onClick={() => dispatch(setOnline(!online))}
+          aria-pressed={online}
+        >
+          <span className="topbar__dot" />
+          {online ? 'Online' : 'Hidden'}
+        </button>
+
+        <div className="topbar__accents" role="group" aria-label="Accent colour">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.key}
+              type="button"
+              className={`topbar__accent${accent === a.key ? ' topbar__accent--active' : ''}`}
+              style={{ background: a.swatch }}
+              title={a.label}
+              aria-label={a.label}
+              aria-pressed={accent === a.key}
+              onClick={() => dispatch(setAccent(a.key))}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="topbar__icon-btn"
+          onClick={() => dispatch(toggleTheme())}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+
+        <button type="button" className="topbar__icon-btn topbar__bell" aria-label="Notifications">
+          <BellIcon />
+          <span className="topbar__bell-dot" />
+        </button>
+
+        <Button size="sm">New lesson</Button>
+      </div>
+    </header>
+  );
+}

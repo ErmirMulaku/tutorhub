@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller.js';
 import { AuthResolver } from './auth.resolver.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { TutorAuthGuard } from './tutor-auth.guard.js';
 
 @Module({
   imports: [
@@ -17,8 +18,8 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthResolver, JwtAuthGuard],
+  providers: [AuthService, AuthResolver, JwtAuthGuard, TutorAuthGuard],
   // Export so other feature modules can guard their resolvers (e.g. bookings).
-  exports: [JwtModule, JwtAuthGuard],
+  exports: [JwtModule, JwtAuthGuard, TutorAuthGuard],
 })
 export class AuthModule {}

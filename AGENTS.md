@@ -241,6 +241,35 @@ published to npm** (metadata, `prepublishOnly`, LICENSE, badges).
 - **Adapted to the environment honestly:** Elixir/Erlang weren't installed, so I installed the
   toolchain to actually compile and test the service rather than ship it unverified.
 
+### Phase 8 — Tutor dashboard (in progress)
+
+Recreating the `design_handoff_tutor_dashboard` handoff as the real tutor-facing app in
+`apps/dashboard`: 11 modules + onboarding, full real backend, tutor auth, and the
+`@ermulaku/ui` design system (light/dark + Teal/Indigo/Plum accents). Built in scoped sub-phases.
+
+**8.0 Foundation ✅** — **Built:** tutor authentication folded into the (previously
+student-only) JWT via a backward-compatible `kind` claim — `AuthService.sign(sub, kind)`, a
+strict `TutorAuthGuard` + `@CurrentTutor` writing to `req.tutor` (never `req.user`), tutor
+`email`/`passwordHash` columns (nullable migration), `tutorSignin`/`tutorDevLogin`
+(GraphQL + REST), `meTutor`, and a seeded persona tutor ("Lena Hartmann"). The student
+`JwtAuthGuard` stays permissive (legacy/marketplace/mobile tokens unaffected) but rejects
+tutor tokens. Frontend: adopted `@ermulaku/ui` tokens in the dashboard via additive
+unprefixed aliases + `[data-accent]` Teal/Indigo/Plum palettes (overriding the `--th-primary`
+ramp so the primitives follow the accent; marketplace never sets `data-accent`, so it's
+unaffected); a React-Router shell (Sidebar/Topbar), theme/accent/online/auth Redux state
+(OS-default theme, `localStorage`-persisted), an auth-aware RTK Query base query that speaks
+both REST and GraphQL and clears the session on 401, a tutor `LoginScreen`, and stubbed
+routes for all 11 modules.
+
+**Verified (not just generated):** drove the whole flow **in a real browser** (Preview tool)
+— signed in as the seed tutor, the shell rendered with the tutor's name resolved via
+`meTutor`, the theme toggle flipped light/dark, the accent switcher recoloured both the
+dashboard and the UI primitives (button/avatar) to plum, navigation changed routes, and
+theme/accent/session **persisted across reload**. **6 tutor-auth e2e tests** assert
+dev-login/signin, `meTutor`, and the cross-token rejection both ways; the existing
+student-auth suite stays green. Whole-workspace `nx run-many -t lint typecheck test build`
+green across 8 projects; `npm audit` **0 vulnerabilities**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

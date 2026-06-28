@@ -63,6 +63,44 @@
   --th-font:
     system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
     'Noto Sans Arabic', sans-serif;
+
+  /**
+   * Unprefixed aliases — let the tutor dashboard (and the design handoff CSS it
+   * mirrors) use `--primary`, `--surface`, `--hero-grad`, … verbatim. These map
+   * onto the canonical `--th-*` tokens, so they auto-switch in dark mode; the
+   * `[data-accent]` blocks below override the brand ramp for Indigo/Plum.
+   */
+  --primary: var(--th-primary);
+  --primary-hover: var(--th-primary-hover);
+  --primary-50: var(--th-primary-50);
+  --primary-100: var(--th-primary-100);
+  --primary-700: var(--th-primary-700);
+  --accent: var(--th-accent);
+  --accent-ink: var(--th-accent-ink);
+  --accent-tint: var(--th-accent-tint);
+  --star: var(--th-star);
+  --ink: var(--th-text);
+  --muted: var(--th-text-muted);
+  --faint: #9fb0bf; /* tertiary text/placeholders — no --th-* equivalent */
+  --surface: var(--th-surface);
+  --surface-2: var(--th-surface-2);
+  --bg: var(--th-bg);
+  --border: var(--th-border);
+  --border-soft: var(--th-border-soft);
+  --blue-tint: var(--th-blue-tint);
+  --blue-ink: var(--th-blue-ink);
+  --success: var(--th-success);
+  --success-tint: var(--th-success-tint);
+  --danger: var(--th-danger);
+  --danger-tint: var(--th-danger-tint);
+  --warn-tint: var(--th-warn-tint);
+  --warn-ink: var(--th-warn-ink);
+  --shadow-sm: var(--th-shadow-1);
+  --shadow-md: var(--th-shadow-md);
+  --shadow-lg: var(--th-shadow-lg);
+  /* Saturated brand hero (dashboard "Up next"/earnings/onboarding panels) —
+     distinct from the pale --th-hero-grad surface wash. Overridden per accent. */
+  --hero-grad: linear-gradient(150deg, #13a39d 0%, #0c6f6a 55%, #0a5550 100%);
 }
 
 [data-theme='dark'] {
@@ -94,6 +132,48 @@
   --th-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
   --th-shadow-lg: 0 22px 54px rgba(0, 0, 0, 0.55);
   --th-hero-grad: linear-gradient(165deg, #13262a 0%, #111c27 50%, var(--th-bg) 100%);
+
+  /* Dark-mode raw aliases (the rest inherit via the var() aliases in :root). */
+  --faint: #6b7d8c;
+  --hero-grad: linear-gradient(150deg, #0f8f89 0%, #0a5f5b 55%, #073f3c 100%);
+}
+
+/* ---- Accent palettes (Teal default · Indigo · Plum) ---------------------- */
+/* These override the canonical --th-primary* ramp, so BOTH the UI primitives
+   (Button, Avatar, Tag, …) and the dashboard's unprefixed aliases follow the
+   accent. Teal needs no block (the :root defaults are teal). Only the dashboard
+   sets [data-accent], so the marketplace is unaffected. */
+[data-accent='indigo'] {
+  --th-primary: #4f56d6;
+  --th-primary-hover: #3f46bf;
+  --th-primary-50: #f1f2fd;
+  --th-primary-100: #e0e2fb;
+  --th-primary-700: #3f46bf;
+  --hero-grad: linear-gradient(150deg, #5b62e0 0%, #3a3fb0 55%, #2c3090 100%);
+}
+[data-theme='dark'][data-accent='indigo'] {
+  --th-primary: #7b81f5;
+  --th-primary-hover: #9aa0ff;
+  --th-primary-50: #1b1e3a;
+  --th-primary-100: #232860;
+  --th-primary-700: #9aa0ff;
+  --hero-grad: linear-gradient(150deg, #4a4fc0 0%, #2c2f80 55%, #1c1f5c 100%);
+}
+[data-accent='plum'] {
+  --th-primary: #8b46c9;
+  --th-primary-hover: #743aad;
+  --th-primary-50: #f7f0fc;
+  --th-primary-100: #ece0f8;
+  --th-primary-700: #743aad;
+  --hero-grad: linear-gradient(150deg, #9b53d8 0%, #6f37a8 55%, #52287f 100%);
+}
+[data-theme='dark'][data-accent='plum'] {
+  --th-primary: #b878e8;
+  --th-primary-hover: #cb9af0;
+  --th-primary-50: #241a30;
+  --th-primary-100: #33224a;
+  --th-primary-700: #cb9af0;
+  --hero-grad: linear-gradient(150deg, #7a3fb0 0%, #52287f 55%, #3a1c5c 100%);
 }
 
 /* ---- Button -------------------------------------------------------------- */

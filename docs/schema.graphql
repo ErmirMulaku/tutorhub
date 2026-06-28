@@ -76,6 +76,7 @@ type Mutation {
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
   signup(email: String!, fullName: String!, password: String!): SignupPayload!
+  tutorSignin(email: String!, password: String!): TutorAuthPayload!
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
   verifyEmail(code: String!, email: String!): AuthPayload!
@@ -113,6 +114,7 @@ type PaymentMethod {
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
   me: Student!
+  meTutor: Tutor!
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
@@ -181,6 +183,11 @@ type Tutor {
   subjects: [Subject!]!
   timezone: String!
   totalLessons: Int!
+}
+
+type TutorAuthPayload {
+  accessToken: String!
+  tutorId: ID!
 }
 
 type TutorPage {

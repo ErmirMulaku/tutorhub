@@ -1,31 +1,32 @@
 import type { JSX } from 'react';
-import Logo from '../assets/logo.svg';
-import { CalendarView } from '../features/availability/CalendarView';
-import { BookingsList } from '../features/bookings/BookingsList';
-import { useLiveBookings } from '../features/live/use-live-bookings';
-import { TutorSelect } from '../features/tutors/TutorSelect';
-import { useAppSelector } from '../store/hooks';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { LoginScreen } from '../features/auth/LoginScreen';
+import { AppShell } from './AppShell';
+import { Placeholder } from './Placeholder';
+import { useTheme } from './use-theme';
 
 export function App(): JSX.Element {
-  const selectedTutorId = useAppSelector((state) => state.ui.selectedTutorId);
-  useLiveBookings(selectedTutorId);
+  useTheme();
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <Logo className="app__logo" />
-        <h1>TutorHub Dashboard</h1>
-      </header>
-      <main className="app__main">
-        <section className="panel">
-          <TutorSelect />
-        </section>
-        <CalendarView />
-        <section className="panel">
-          <h2>Bookings</h2>
-          <BookingsList />
-        </section>
-      </main>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/onboarding" element={<Placeholder title="Onboarding" />} />
+      <Route element={<AppShell />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Placeholder title="Dashboard" />} />
+        <Route path="/calendar" element={<Placeholder title="Calendar" />} />
+        <Route path="/lessons" element={<Placeholder title="Lessons" />} />
+        <Route path="/messages" element={<Placeholder title="Messages" />} />
+        <Route path="/catalog" element={<Placeholder title="Catalog" />} />
+        <Route path="/availability" element={<Placeholder title="Availability" />} />
+        <Route path="/earnings" element={<Placeholder title="Earnings" />} />
+        <Route path="/marketing" element={<Placeholder title="Marketing" />} />
+        <Route path="/reviews" element={<Placeholder title="Reviews" />} />
+        <Route path="/analytics" element={<Placeholder title="Analytics" />} />
+        <Route path="/settings" element={<Placeholder title="Settings" />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }

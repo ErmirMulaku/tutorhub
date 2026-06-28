@@ -13,6 +13,11 @@ export interface AuthResult {
   studentId: string;
 }
 
+export interface TutorAuthResult {
+  accessToken: string;
+  tutorId: string;
+}
+
 export interface SignupResult {
   studentId: string;
   requiresVerification: boolean;
@@ -40,8 +45,13 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
+  /** Mint a JWT for a principal. `kind` discriminates students from tutors. */
+  private sign(sub: string, kind: 'student' | 'tutor'): Promise<string> {
+    return this.jwt.signAsync({ sub, kind });
+  }
+
   private signFor(studentId: string): Promise<string> {
-    return this.jwt.signAsync({ sub: studentId });
+    return this.sign(studentId, 'student');
   }
 
   /**
@@ -207,5 +217,26 @@ export class AuthService {
     }
     const accessToken = await this.jwt.signAsync({ sub: student.id });
     return { accessToken };
+  }
+
+  /** Verify a tutor's email + password and return a tutor session token. */
+  async tutorSignin(email: string, password: string): Promise<TutorAuthResult> {
+    const tutor = await this.prisma.tutor.findUnique({ where: { email } });
+    if (tutor === null || tutor.passwordHash === null) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+    if (!verifyPassword(password, tutor.passwordHash)) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+    return { accessToken: await this.sign(tutor.id, 'tutor'), tutorId: tutor.id };
+  }
+
+  /** Dev-only login: mints a tutor JWT for an existing tutor by email. */
+  async tutorDevLogin(email: string): Promise<TutorAuthResult> {
+    const tutor = await this.prisma.tutor.findUnique({ where: { email } });
+    if (tutor === null) {
+      throw new EntityNotFoundError('Tutor', email);
+    }
+    return { accessToken: await this.sign(tutor.id, 'tutor'), tutorId: tutor.id };
   }
 }

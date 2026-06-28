@@ -44,11 +44,18 @@ enum OAuthProvider {
   APPLE
 }
 
+enum PayoutSchedule {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 model Tutor {
   id           String     @id @default(uuid())
   name         String
   bio          String?
   headline     String? // one-line pitch shown on cards/profile
+  about        String? // long-form profile/settings bio (distinct from short bio)
   timezone     String // IANA, e.g. "Europe/Belgrade"
   hourlyCents  Int
   workingHours Json // WorkingHours[] — [{ day, start, end }]
@@ -58,11 +65,31 @@ model Tutor {
   badges       String[]   @default([]) // e.g. "Top rated", "Fast responder", "Verified"
   responseTime String? // human label, e.g. "~1 hr"
   totalLessons Int        @default(0)
-  subjects     Subject[]
-  bookings     Booking[]
-  reviews      Review[]
-  favoritedBy  Favorite[]
-  createdAt    DateTime   @default(now())
+
+  // Tutor identity (dashboard auth). Nullable so seeded tutors and dev-login work
+  // without credentials; student auth is unaffected.
+  email         String? @unique
+  passwordHash  String?
+  emailVerified Boolean @default(false)
+
+  // Tutor-side notification preferences (settings → notifications).
+  notifyBookings  Boolean @default(true)
+  notifyReminders Boolean @default(true)
+  notifyMessages  Boolean @default(true)
+  notifyPayouts   Boolean @default(true)
+  notifyTips      Boolean @default(false)
+
+  // Booking rules (availability module).
+  bufferMinutes    Int            @default(15)
+  minNoticeHours   Int            @default(4)
+  maxLessonsPerDay Int            @default(6)
+  payoutSchedule   PayoutSchedule @default(WEEKLY)
+
+  subjects    Subject[]
+  bookings    Booking[]
+  reviews     Review[]
+  favoritedBy Favorite[]
+  createdAt   DateTime   @default(now())
 }
 
 model Subject {

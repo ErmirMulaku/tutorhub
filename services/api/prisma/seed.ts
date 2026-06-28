@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hashPassword } from '../src/auth/password.js';
 import { Level, NotificationType, PrismaClient } from '../src/generated/prisma/client.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -25,9 +26,31 @@ interface SeedTutor {
   badges: string[];
   bio: string;
   subjects: SeedSubject[];
+  /** Tutor-dashboard credentials. Only the persona tutor gets these. */
+  email?: string;
+  password?: string;
 }
 
 const TUTORS: SeedTutor[] = [
+  {
+    // The tutor-dashboard persona (design handoff). Signs into apps/dashboard.
+    name: 'Lena Hartmann',
+    avatarColor: 'teal',
+    timezone: 'Europe/Berlin',
+    priceCents: 5500,
+    totalLessons: 214,
+    responseTime: '~30 min',
+    headline: 'Maths & Physics — patient, exam-focused tutoring',
+    languages: ['English', 'German'],
+    badges: ['Top rated', 'Fast responder', 'Verified'],
+    bio: 'Maths and Physics tutor for A-Level, IB and first-year university. I turn intimidating problems into calm, repeatable methods — and every session ends with a clear next step.',
+    subjects: [
+      { name: 'Mathematics', level: Level.ADVANCED },
+      { name: 'Physics', level: Level.ADVANCED },
+    ],
+    email: 'lena@tutor.example.com',
+    password: 'password123',
+  },
   {
     name: 'Sara Khan',
     avatarColor: 'teal',
@@ -220,6 +243,9 @@ async function main(): Promise<void> {
         responseTime: t.responseTime,
         totalLessons: t.totalLessons,
         workingHours: weekdays9to5,
+        email: t.email,
+        passwordHash: t.password ? hashPassword(t.password) : null,
+        emailVerified: t.email ? true : false,
         subjects: { create: t.subjects },
       },
       include: { subjects: true },

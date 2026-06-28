@@ -1,11 +1,10 @@
-:root {
-  --bg: #0f172a;
-  --panel: #1e293b;
-  --text: #e2e8f0;
-  --accent: #38bdf8;
-  --muted: #94a3b8;
-  font-family: system-ui, -apple-system, sans-serif;
-}
+/**
+ * TutorHub dashboard — shell + layout styles.
+ *
+ * Design tokens come from @ermulaku/ui (imported first in main.tsx): the
+ * unprefixed --primary/--surface/--bg/--hero-grad aliases + light/dark theming
+ * via [data-theme] and the Teal/Indigo/Plum [data-accent] palettes.
+ */
 
 * {
   box-sizing: border-box;
@@ -14,219 +13,349 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--text);
-}
-
-.app__header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: var(--panel);
-  border-bottom: 1px solid #334155;
-}
-
-.app__header h1 {
-  font-size: 1.25rem;
-  margin: 0;
-}
-
-.app__logo {
-  width: 28px;
-  height: 28px;
-  color: var(--accent);
-}
-
-.app__main {
-  padding: 1.5rem;
-  display: grid;
-  gap: 1.5rem;
-  max-width: 900px;
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 1.25rem;
-}
-
-.panel h2 {
-  margin: 0 0 1rem;
-  font-size: 1rem;
+  color: var(--ink);
+  font-family: 'Hanken Grotesk', var(--th-font);
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
 }
 
 .muted {
   color: var(--muted);
 }
-
 .error {
-  color: #f87171;
+  color: var(--danger);
 }
 
-.tutor-select {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.tutor-select select {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid #475569;
-  border-radius: 6px;
-  padding: 0.4rem 0.6rem;
-}
-
-.bookings {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.bookings th,
-.bookings td {
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #334155;
-}
-
-.status {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: #334155;
-}
-
-.status--confirmed {
-  background: #166534;
-}
-.status--completed {
-  background: #1e40af;
-}
-.status--cancelled,
-.status--no_show {
-  background: #7f1d1d;
-}
-
-/* Working-hours editor */
-.hours-editor {
+/* ---- Shell --------------------------------------------------------------- */
+.shell {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+}
+.shell__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.shell__content {
+  padding: 24px 28px;
+  max-width: 1300px;
+  width: 100%;
 }
 
-.hours-editor__row {
+/* ---- Sidebar ------------------------------------------------------------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 16px;
+  background: var(--surface);
+  border-inline-end: 1px solid var(--border);
+}
+.sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 10px;
+  padding: 4px 8px 8px;
 }
-
-.hours-editor__day {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: 5rem;
+.sidebar__logo {
+  font-size: 22px;
+  color: var(--primary);
 }
-
-.hours-editor input[type='time'] {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid #475569;
-  border-radius: 5px;
-  padding: 0.2rem 0.4rem;
-}
-
-.btn {
-  margin-top: 0.5rem;
-  justify-self: start;
-  background: var(--accent);
-  color: #04263a;
+.sidebar__wordmark {
+  font-size: 17px;
   font-weight: 600;
+  color: var(--ink);
+}
+.sidebar__eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+}
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+.sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar__group-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 4px 12px;
+}
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+.sidebar__link:hover {
+  background: var(--surface-2);
+}
+.sidebar__link--active {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+.sidebar__badge {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+}
+.sidebar__badge--primary {
+  background: var(--primary);
+}
+.sidebar__badge--danger {
+  background: var(--danger);
+}
+.sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar__profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 13px;
+  background: var(--primary-50);
+  text-decoration: none;
+}
+.sidebar__profile-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.sidebar__profile-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ---- Topbar -------------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar__title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.topbar__subtitle {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.topbar__search input {
   border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.topbar__search-icon {
+  flex: none;
+}
+.topbar__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
 }
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: default;
+.topbar__pill--on {
+  background: var(--success-tint);
+  color: var(--success);
+  border-color: transparent;
 }
-
-.btn--sm {
-  margin: 0 0.25rem 0 0;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.75rem;
-  background: #334155;
-  color: var(--text);
+.topbar__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
-
-.bookings__actions {
-  white-space: nowrap;
+.topbar__accents {
+  display: inline-flex;
+  gap: 5px;
+  padding: 0 4px;
 }
-
-/* Week calendar */
-.availability {
-  display: grid;
-  gap: 1.5rem;
+.topbar__accent {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
 }
-
-.calendar {
-  display: grid;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  overflow: hidden;
-  font-size: 0.8rem;
+.topbar__accent--active {
+  border-color: var(--ink);
 }
-
-.calendar__corner,
-.calendar__head,
-.calendar__time,
-.calendar__cell {
-  border-right: 1px solid #1f2a3a;
-  border-bottom: 1px solid #1f2a3a;
-  min-height: 26px;
-}
-
-.calendar__head {
-  background: #0b1220;
-  text-align: center;
-  font-weight: 600;
-  padding: 0.3rem 0;
-}
-
-.calendar__time {
-  color: var(--muted);
-  text-align: right;
-  padding: 0.1rem 0.4rem;
-}
-
-.calendar__cell {
+.topbar__icon-btn {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+.topbar__icon-btn:hover {
+  color: var(--ink);
+}
+.topbar__bell-dot {
+  position: absolute;
+  top: 9px;
+  inset-inline-end: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
 }
 
-.calendar__cell--open {
-  background: rgba(56, 189, 248, 0.12);
+/* ---- Login --------------------------------------------------------------- */
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
 }
-
-.chip {
-  display: inline-block;
+.login__panel {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  padding: 32px;
+}
+.login__brand {
+  font-size: 17px;
+  font-weight: 600;
+}
+.login__eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  margin-inline-start: 4px;
+}
+.login__title {
+  margin: 18px 0 4px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.login__subtitle {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.login__field input {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  padding: 11px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  outline: none;
+}
+.login__field input:focus {
+  border-color: var(--primary);
+}
+.login__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+.login__dev {
+  margin-top: 14px;
   width: 100%;
-  height: 100%;
-  min-height: 22px;
-  border-radius: 3px;
-}
-
-.chip--pending {
-  background: #475569;
-}
-.chip--confirmed {
-  background: #166534;
-}
-.chip--completed {
-  background: #1e40af;
-}
-.chip--cancelled,
-.chip--no_show {
-  background: #7f1d1d;
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
