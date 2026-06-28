@@ -16,6 +16,42 @@ export interface GraphQLRequest {
   variables?: Record<string, unknown>;
 }
 
+export type TutorBookingStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+
+export interface TutorStudent {
+  id: string;
+  fullName: string;
+  avatarColor: string | null;
+}
+export interface TutorSubject {
+  id: string;
+  name: string;
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+}
+export interface TutorBooking {
+  id: string;
+  startTime: string;
+  endTime: string;
+  status: TutorBookingStatus;
+  student: TutorStudent;
+  subject: TutorSubject;
+}
+export interface DashboardSummary {
+  lessonsToday: number;
+  earningsWeekCents: number;
+  avgRating: number | null;
+  reviewCount: number;
+  pendingCount: number;
+  unreadMessages: number;
+}
+
+/** Reusable GraphQL selection for a tutor-facing booking. */
+const BOOKING_FIELDS = `
+  id startTime endTime status
+  student { id fullName avatarColor }
+  subject { id name level }
+`;
+
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_URL,
   prepareHeaders: (headers, { getState }) => {
@@ -71,7 +107,7 @@ const baseQuery: BaseQueryFn<
 export const api = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['Tutor', 'Booking', 'MeTutor'],
+  tagTypes: ['Tutor', 'Booking', 'MeTutor', 'DashboardSummary'],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
     getMeTutor: build.query<{ id: string; name: string; headline: string | null }, void>({
@@ -81,6 +117,68 @@ export const api = createApi({
       transformResponse: (r: { meTutor: { id: string; name: string; headline: string | null } }) =>
         r.meTutor,
       providesTags: ['MeTutor'],
+    }),
+
+    // --- Dashboard / Calendar / Lessons (tutor GraphQL) ---
+    getDashboardSummary: build.query<DashboardSummary, void>({
+      query: () => ({
+        graphql: {
+          document: `{ dashboardSummary { lessonsToday earningsWeekCents avgRating reviewCount pendingCount unreadMessages } }`,
+        },
+      }),
+      transformResponse: (r: { dashboardSummary: DashboardSummary }) => r.dashboardSummary,
+      providesTags: ['DashboardSummary'],
+    }),
+    getTodaySchedule: build.query<TutorBooking[], void>({
+      query: () => ({ graphql: { document: `{ todaySchedule { ${BOOKING_FIELDS} } }` } }),
+      transformResponse: (r: { todaySchedule: TutorBooking[] }) => r.todaySchedule,
+      providesTags: ['Booking'],
+    }),
+    getTutorBookings: build.query<
+      TutorBooking[],
+      { status?: TutorBookingStatus; from?: string; to?: string } | void
+    >({
+      query: (args) => ({
+        graphql: {
+          document: `query($status: BookingStatus, $from: String, $to: String) {
+            tutorBookings(status: $status, from: $from, to: $to) { ${BOOKING_FIELDS} }
+          }`,
+          variables: {
+            status: args && 'status' in args ? args.status : undefined,
+            from: args && 'from' in args ? args.from : undefined,
+            to: args && 'to' in args ? args.to : undefined,
+          },
+        },
+      }),
+      transformResponse: (r: { tutorBookings: TutorBooking[] }) => r.tutorBookings,
+      providesTags: ['Booking'],
+    }),
+    acceptBooking: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        graphql: {
+          document: `mutation($id: ID!){ acceptBooking(id: $id){ id status } }`,
+          variables: { id },
+        },
+      }),
+      invalidatesTags: ['Booking', 'DashboardSummary'],
+    }),
+    declineBooking: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        graphql: {
+          document: `mutation($id: ID!){ declineBooking(id: $id){ id status } }`,
+          variables: { id },
+        },
+      }),
+      invalidatesTags: ['Booking', 'DashboardSummary'],
+    }),
+    completeBooking: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        graphql: {
+          document: `mutation($id: ID!){ completeBooking(id: $id){ id status } }`,
+          variables: { id },
+        },
+      }),
+      invalidatesTags: ['Booking', 'DashboardSummary'],
     }),
 
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
@@ -113,6 +211,12 @@ export const api = createApi({
 
 export const {
   useGetMeTutorQuery,
+  useGetDashboardSummaryQuery,
+  useGetTodayScheduleQuery,
+  useGetTutorBookingsQuery,
+  useAcceptBookingMutation,
+  useDeclineBookingMutation,
+  useCompleteBookingMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,

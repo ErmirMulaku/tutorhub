@@ -15,6 +15,7 @@ import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
+import { TutorDashboardModule } from './tutor-dashboard/tutor-dashboard.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
 
@@ -43,6 +44,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     NotificationsModule,
     MonitoringModule,
     AssistantModule,
+    TutorDashboardModule,
   ],
   controllers: [HealthController],
 })

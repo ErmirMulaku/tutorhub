@@ -270,6 +270,26 @@ dev-login/signin, `meTutor`, and the cross-token rejection both ways; the existi
 student-auth suite stays green. Whole-workspace `nx run-many -t lint typecheck test build`
 green across 8 projects; `npm audit` **0 vulnerabilities**.
 
+**8.1 Dashboard + Calendar + Lessons ✅** — **Built:** the first three tutor-scoped modules.
+Backend: tutor wrappers on the shared `BookingService` (`acceptForTutor`/`declineForTutor`/
+`completeForTutor`, each asserting `booking.tutorId === tutorId` before going through the same
+state machine + `BookingEvents`), a `TutorDashboardModule` with `dashboardSummary` (KPI
+aggregates), `todaySchedule`, and `tutorBookings(status?, from?, to?)`, plus a timezone-day
+helper (`startOfDayInZone`/`startOfWeekInZone`, `Intl`-based, injectable `now`). The seed gained
+the persona's roster + bookings across every status (today/upcoming/pending/past + reviews).
+Frontend: real Dashboard (KPI row, today's schedule, "Up next" gradient card, quick actions),
+Calendar (CSS-grid week view, events positioned by start/duration), and Lessons (Upcoming/
+Pending/Past tabs with accept/decline/complete + toasts); a `ToastProvider`, `SegmentedTabs`,
+`KPIStat`, `StatusPill`; and a live pending badge in the sidebar fed by `dashboardSummary`.
+
+**Verified (not just generated):** **in a real browser** — KPIs matched the seed (3 lessons
+today, $165 this week, 4.7★/3 reviews, 2 pending), accepting a request fired a toast and dropped
+both the segmented-tab and sidebar badges 2→1 (mutation → DB → cache invalidation → refetch),
+and an **external** accept via curl pushed through Socket.IO and cleared the pending badge/row
+**with no interaction** — proving the live path end-to-end. **4 tutor-dashboard e2e tests**
+(KPIs, tutor-scoped `tutorBookings`, accept transition, cross-tutor accept rejected) + a
+zoned-dates unit test; whole-workspace `nx run-many` green across 8 projects, `npm audit` **0**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

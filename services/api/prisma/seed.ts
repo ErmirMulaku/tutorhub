@@ -374,6 +374,107 @@ async function main(): Promise<void> {
       ],
     });
   }
+
+  // --- Tutor-dashboard data for the persona (Lena Hartmann) ---
+  const lena = tutorsByName.get('Lena Hartmann');
+  if (lena) {
+    const [maths, physics] = lena.subjectIds;
+    // A roster of students who book Lena (varied names/avatars on the dashboard).
+    const roster = await Promise.all(
+      [
+        { fullName: 'Mia Chen', avatarColor: 'rose' },
+        { fullName: 'Tom Becker', avatarColor: 'blue' },
+        { fullName: 'Sofia Ricci', avatarColor: 'amber' },
+        { fullName: 'Noah Schmidt', avatarColor: 'green' },
+      ].map((s, i) =>
+        prisma.student.create({
+          data: {
+            fullName: s.fullName,
+            email: `student${String(i + 1)}@lena.example.com`,
+            avatarColor: s.avatarColor,
+            emailVerified: true,
+          },
+        }),
+      ),
+    );
+    const [mia, tom, sofia, noah] = roster;
+    if (!mia || !tom || !sofia || !noah || maths === undefined || physics === undefined) {
+      throw new Error('Seed invariant: Lena needs four students and two subjects.');
+    }
+
+    /** A booking on `dayOffset` at local `hour`, fixed 60-min slot. */
+    const slot = (dayOffset: number, hour: number): { startTime: Date; endTime: Date } => {
+      const start = new Date();
+      start.setDate(start.getDate() + dayOffset);
+      start.setHours(hour, 0, 0, 0);
+      return { startTime: start, endTime: new Date(start.getTime() + 60 * 60 * 1000) };
+    };
+    type Stu = (typeof roster)[number];
+    const lessons: {
+      student: Stu;
+      subjectId: string;
+      when: { startTime: Date; endTime: Date };
+      status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+      review?: { rating: number; comment: string };
+    }[] = [
+      // Today
+      { student: mia, subjectId: maths, when: slot(0, 9), status: 'COMPLETED' },
+      { student: tom, subjectId: physics, when: slot(0, 14), status: 'CONFIRMED' },
+      { student: sofia, subjectId: maths, when: slot(0, 16), status: 'CONFIRMED' },
+      // Upcoming
+      { student: noah, subjectId: physics, when: slot(1, 10), status: 'CONFIRMED' },
+      { student: mia, subjectId: maths, when: slot(2, 15), status: 'CONFIRMED' },
+      // Pending (the "Pending" badge + accept/decline flow)
+      { student: tom, subjectId: maths, when: slot(2, 11), status: 'PENDING' },
+      { student: sofia, subjectId: physics, when: slot(3, 13), status: 'PENDING' },
+      // Past completed (earnings + reviews + analytics)
+      {
+        student: sofia,
+        subjectId: maths,
+        when: slot(-1, 10),
+        status: 'COMPLETED',
+        review: { rating: 5, comment: 'Lena explained vectors so clearly — finally clicked!' },
+      },
+      {
+        student: noah,
+        subjectId: physics,
+        when: slot(-3, 13),
+        status: 'COMPLETED',
+        review: { rating: 5, comment: 'Calm, patient and incredibly well prepared every week.' },
+      },
+      {
+        student: mia,
+        subjectId: maths,
+        when: slot(-7, 9),
+        status: 'COMPLETED',
+        review: { rating: 4, comment: 'Great session, would have liked a few more practice sums.' },
+      },
+      { student: tom, subjectId: physics, when: slot(-10, 16), status: 'CANCELLED' },
+    ];
+
+    for (const l of lessons) {
+      const booking = await prisma.booking.create({
+        data: {
+          tutorId: lena.id,
+          studentId: l.student.id,
+          subjectId: l.subjectId,
+          startTime: l.when.startTime,
+          endTime: l.when.endTime,
+          status: l.status,
+        },
+      });
+      if (l.review) {
+        await prisma.review.create({
+          data: {
+            bookingId: booking.id,
+            tutorId: lena.id,
+            rating: l.review.rating,
+            comment: l.review.comment,
+          },
+        });
+      }
+    }
+  }
 }
 
 main()

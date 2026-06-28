@@ -31,6 +31,15 @@ enum BookingStatus {
   PENDING
 }
 
+type DashboardSummary {
+  avgRating: Float
+  earningsWeekCents: Int!
+  lessonsToday: Int!
+  pendingCount: Int!
+  reviewCount: Int!
+  unreadMessages: Int!
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -55,6 +64,7 @@ enum Level {
 }
 
 type Mutation {
+  acceptBooking(id: ID!): Booking!
   addFavorite(tutorId: ID!): [Tutor!]!
   addPaymentMethod(brand: String!, expMonth: Int!, expYear: Int!, last4: String!): PaymentMethod!
   appleSignin(idToken: String!): AuthPayload!
@@ -62,6 +72,8 @@ type Mutation {
   buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
+  completeBooking(id: ID!): Booking!
+  declineBooking(id: ID!): Booking!
   deleteAccount: Boolean!
   googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
@@ -113,13 +125,16 @@ type PaymentMethod {
 
 type Query {
   availability(date: String!, tutorId: ID!): [Slot!]!
+  dashboardSummary: DashboardSummary!
   me: Student!
   meTutor: Tutor!
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
   notifications: [Notification!]!
+  todaySchedule: [Booking!]!
   tutor(id: ID!): Tutor
+  tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
   unreadNotificationCount: Int!
   wallet: Wallet!
