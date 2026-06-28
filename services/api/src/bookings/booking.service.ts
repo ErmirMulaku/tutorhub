@@ -121,6 +121,50 @@ export class BookingService {
     return this.updateStatus(id, BookingStatus.CANCELLED);
   }
 
+  // --- Tutor-facing (dashboard) ---
+
+  /** Bookings for a tutor, optionally filtered by status and a [from,to) window. */
+  findForTutor(
+    tutorId: string,
+    opts: { status?: BookingStatus; from?: Date; to?: Date } = {},
+  ): Promise<Booking[]> {
+    return this.prisma.booking.findMany({
+      where: {
+        tutorId,
+        status: opts.status,
+        startTime: opts.from || opts.to ? { gte: opts.from, lt: opts.to } : undefined,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  /** Load a booking, throwing a 404 if it is missing or not this tutor's. */
+  private async findOwnedByTutor(id: string, tutorId: string): Promise<Booking> {
+    const booking = await this.findById(id);
+    if (booking.tutorId !== tutorId) {
+      throw new EntityNotFoundError('Booking', id);
+    }
+    return booking;
+  }
+
+  /** Tutor accepts a pending request → CONFIRMED. */
+  async acceptForTutor(id: string, tutorId: string): Promise<Booking> {
+    await this.findOwnedByTutor(id, tutorId);
+    return this.updateStatus(id, BookingStatus.CONFIRMED);
+  }
+
+  /** Tutor declines a pending request → CANCELLED. */
+  async declineForTutor(id: string, tutorId: string): Promise<Booking> {
+    await this.findOwnedByTutor(id, tutorId);
+    return this.updateStatus(id, BookingStatus.CANCELLED);
+  }
+
+  /** Tutor marks a confirmed lesson done → COMPLETED. */
+  async completeForTutor(id: string, tutorId: string): Promise<Booking> {
+    await this.findOwnedByTutor(id, tutorId);
+    return this.updateStatus(id, BookingStatus.COMPLETED);
+  }
+
   /** Leave a review for the student's own completed booking. */
   async leaveReview(
     bookingId: string,

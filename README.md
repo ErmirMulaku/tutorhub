@@ -145,6 +145,7 @@ enable it — unset, the endpoint returns `503`. Tests mock the model, so CI nee
 - [x] **Phase 5** — Marketplace (SSR/PWA, RTL, GPU animations) + UI/Storybook + Cypress
 - [x] **Phase 6** — AI booking assistant + monitoring
 - [x] **Phase 7** — Elixir notifications + Expo mobile + published slot-engine to npm
+- [x] **Phase 8** — Tutor dashboard: 11 modules + onboarding, tutor auth, messaging, earnings/payouts, marketing, reviews & analytics (design-system themed)
 
 ## License
 

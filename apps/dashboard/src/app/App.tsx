@@ -1,31 +1,43 @@
 import type { JSX } from 'react';
-import Logo from '../assets/logo.svg';
-import { CalendarView } from '../features/availability/CalendarView';
-import { BookingsList } from '../features/bookings/BookingsList';
-import { useLiveBookings } from '../features/live/use-live-bookings';
-import { TutorSelect } from '../features/tutors/TutorSelect';
-import { useAppSelector } from '../store/hooks';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { AnalyticsScreen } from '../features/analytics/AnalyticsScreen';
+import { AvailabilityScreen } from '../features/availability/AvailabilityScreen';
+import { LoginScreen } from '../features/auth/LoginScreen';
+import { CalendarScreen } from '../features/calendar/CalendarScreen';
+import { CatalogScreen } from '../features/catalog/CatalogScreen';
+import { DashboardScreen } from '../features/dashboard/DashboardScreen';
+import { EarningsScreen } from '../features/earnings/EarningsScreen';
+import { LessonsScreen } from '../features/lessons/LessonsScreen';
+import { MarketingScreen } from '../features/marketing/MarketingScreen';
+import { MessagesScreen } from '../features/messages/MessagesScreen';
+import { OnboardingWizard } from '../features/onboarding/OnboardingWizard';
+import { ReviewsScreen } from '../features/reviews/ReviewsScreen';
+import { SettingsScreen } from '../features/settings/SettingsScreen';
+import { AppShell } from './AppShell';
+import { useTheme } from './use-theme';
 
 export function App(): JSX.Element {
-  const selectedTutorId = useAppSelector((state) => state.ui.selectedTutorId);
-  useLiveBookings(selectedTutorId);
+  useTheme();
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <Logo className="app__logo" />
-        <h1>TutorHub Dashboard</h1>
-      </header>
-      <main className="app__main">
-        <section className="panel">
-          <TutorSelect />
-        </section>
-        <CalendarView />
-        <section className="panel">
-          <h2>Bookings</h2>
-          <BookingsList />
-        </section>
-      </main>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/onboarding" element={<OnboardingWizard />} />
+      <Route element={<AppShell />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardScreen />} />
+        <Route path="/calendar" element={<CalendarScreen />} />
+        <Route path="/lessons" element={<LessonsScreen />} />
+        <Route path="/messages" element={<MessagesScreen />} />
+        <Route path="/catalog" element={<CatalogScreen />} />
+        <Route path="/availability" element={<AvailabilityScreen />} />
+        <Route path="/earnings" element={<EarningsScreen />} />
+        <Route path="/marketing" element={<MarketingScreen />} />
+        <Route path="/reviews" element={<ReviewsScreen />} />
+        <Route path="/analytics" element={<AnalyticsScreen />} />
+        <Route path="/settings" element={<SettingsScreen />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }

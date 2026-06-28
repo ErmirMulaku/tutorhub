@@ -1691,6 +1691,13 @@ h3 {
   opacity: 0.6;
   cursor: default;
 }
+/* Container for the rendered Google Identity Services button. */
+.gsi-button {
+  display: flex;
+  justify-content: center;
+  min-block-size: 2.75rem;
+  color-scheme: light;
+}
 .auth-card__divider {
   display: flex;
   align-items: center;

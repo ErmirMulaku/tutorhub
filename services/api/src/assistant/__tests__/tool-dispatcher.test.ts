@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
+import type { Tutor } from '../../generated/prisma/client.js';
 import type { AvailabilityService } from '../../availability/availability.service.js';
 import type { BookingService } from '../../bookings/booking.service.js';
 import type { TutorsService } from '../../tutors/tutors.service.js';
@@ -24,23 +25,14 @@ describe('ToolDispatcher', () => {
         findPage: () =>
           Promise.resolve({
             total: 1,
+            // Cast keeps this stub minimal — the dispatcher only reads four fields.
             items: [
               {
                 id: 't1',
                 name: 'Ada',
                 hourlyCents: 3000,
                 timezone: 'UTC',
-                bio: null,
-                headline: null,
-                avatarColor: null,
-                languages: [],
-                badges: [],
-                responseTime: null,
-                totalLessons: 0,
-                workingHours: [],
-                isActive: true,
-                createdAt: new Date(),
-              },
+              } as unknown as Tutor,
             ],
           }),
       },

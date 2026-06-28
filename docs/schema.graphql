@@ -2,6 +2,13 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AnalyticsSummary {
+  lessonsThisMonth: Int!
+  newStudents: Int!
+  repeatRatePct: Int!
+  utilizationPct: Int!
+}
+
 type AuthPayload {
   accessToken: String!
   studentId: ID!
@@ -23,6 +30,12 @@ type Booking {
   tutor: Tutor!
 }
 
+input BookingRulesInput {
+  bufferMinutes: Int!
+  maxLessonsPerDay: Int!
+  minNoticeHours: Int!
+}
+
 enum BookingStatus {
   CANCELLED
   COMPLETED
@@ -31,10 +44,66 @@ enum BookingStatus {
   PENDING
 }
 
+type Conversation {
+  id: ID!
+  lastMessageAt: DateTime!
+  preview: String
+  studentAvatarColor: String
+  studentName: String!
+  subjectName: String
+  unread: Int!
+}
+
+input CreatePromotionInput {
+  code: String!
+  discountType: DiscountType!
+  discountValue: Int!
+  expiresAt: DateTime
+  name: String!
+}
+
+input CreateServiceInput {
+  description: String
+  durationMin: Int! = 60
+  lessonsCount: Int! = 1
+  level: Level!
+  name: String!
+  priceCents: Int!
+  subjectId: ID
+  type: ServiceType!
+}
+
+type DashboardSummary {
+  avgRating: Float
+  earningsWeekCents: Int!
+  lessonsToday: Int!
+  pendingCount: Int!
+  reviewCount: Int!
+  unreadMessages: Int!
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+type DayCount {
+  count: Int!
+  day: String!
+}
+
+enum DiscountType {
+  FIXED
+  PERCENT
+}
+
+type EarningsSummary {
+  availableCents: Int!
+  lifetimeCents: Int!
+  payoutMethod: String
+  payoutSchedule: PayoutSchedule!
+  pendingCents: Int!
+}
 
 type GiftCard {
   amountCents: Int!
@@ -54,29 +123,85 @@ enum Level {
   INTERMEDIATE
 }
 
+type MarketingSummary {
+  activePromotions: Int!
+  giftCardsSoldCents: Int!
+  redemptions: Int!
+}
+
+type Message {
+  body: String!
+  createdAt: DateTime!
+  id: ID!
+  senderKind: SenderKind!
+}
+
+type MonthCount {
+  count: Int!
+  month: String!
+}
+
+type MonthlyEarning {
+  month: String!
+  netCents: Int!
+}
+
 type Mutation {
+  acceptBooking(id: ID!): Booking!
   addFavorite(tutorId: ID!): [Tutor!]!
   addPaymentMethod(brand: String!, expMonth: Int!, expYear: Int!, last4: String!): PaymentMethod!
+  addTimeOff(input: TimeOffInput!): MyAvailability!
+  appleSignin(idToken: String!): AuthPayload!
   bookLesson(input: BookInput!): Booking!
   buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
+  completeBooking(id: ID!): Booking!
+  createPromotion(input: CreatePromotionInput!): Promotion!
+  createService(input: CreateServiceInput!): Service!
+  declineBooking(id: ID!): Booking!
   deleteAccount: Boolean!
+  deleteService(id: ID!): Boolean!
+  endPromotion(id: ID!): Promotion!
+  googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
   markAllNotificationsRead: [Notification!]!
+  markConversationRead(conversationId: ID!): [Conversation!]!
   markNotificationRead(id: ID!): [Notification!]!
   oauthSignin(email: String!, fullName: String!, provider: OAuthProvider!, providerUserId: String!): AuthPayload!
+  publishProfile: TutorSettings!
   redeemGiftCard(code: String!): Wallet!
   removeFavorite(tutorId: ID!): [Tutor!]!
   removePaymentMethod(id: ID!): Boolean!
+  removeTimeOff(id: ID!): MyAvailability!
+  replyToReview(id: ID!, reply: String!): [TutorReview!]!
   rescheduleBooking(id: ID!, startTime: String!): Booking!
   resendVerificationCode(email: String!): ResendPayload!
+  sendMessage(body: String!, conversationId: ID!): Message!
+  setPayoutMethod(method: String!): EarningsSummary!
+  setPayoutSchedule(schedule: PayoutSchedule!): EarningsSummary!
+  setServiceActive(id: ID!, isActive: Boolean!): Service!
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
   signup(email: String!, fullName: String!, password: String!): SignupPayload!
+  tutorSignin(email: String!, password: String!): TutorAuthPayload!
+  updateBookingRules(rules: BookingRulesInput!): MyAvailability!
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
+  updateService(input: UpdateServiceInput!): Service!
+  updateTutorNotificationPrefs(input: UpdateNotificationPrefsInput!): TutorSettings!
+  updateTutorProfile(input: UpdateTutorProfileInput!): TutorSettings!
+  updateWorkingHours(hours: [WorkingHourInput!]!): MyAvailability!
   verifyEmail(code: String!, email: String!): AuthPayload!
+  withdraw: EarningsSummary!
+}
+
+type MyAvailability {
+  bufferMinutes: Int!
+  maxLessonsPerDay: Int!
+  minNoticeHours: Int!
+  timeOff: [TimeOff!]!
+  workingHours: [WorkingHour!]!
 }
 
 type Notification {
@@ -108,17 +233,68 @@ type PaymentMethod {
   last4: String!
 }
 
+enum PayoutSchedule {
+  DAILY
+  MONTHLY
+  WEEKLY
+}
+
+type Promotion {
+  code: String!
+  discountType: DiscountType!
+  discountValue: Int!
+  expiresAt: DateTime
+  id: ID!
+  name: String!
+  redemptions: Int!
+  state: PromotionState!
+}
+
+enum PromotionState {
+  ACTIVE
+  ENDED
+  SCHEDULED
+}
+
 type Query {
+  analyticsSummary: AnalyticsSummary!
   availability(date: String!, tutorId: ID!): [Slot!]!
+  conversations: [Conversation!]!
+  dashboardSummary: DashboardSummary!
+  earningsByMonth: [MonthlyEarning!]!
+  earningsSummary: EarningsSummary!
+  lessonsByDayOfWeek: [DayCount!]!
+  lessonsOverTime: [MonthCount!]!
+  marketingSummary: MarketingSummary!
   me: Student!
+  meTutor: Tutor!
+  messages(conversationId: ID!): [Message!]!
+  myAvailability: MyAvailability!
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
+  myReviews(filter: String): [TutorReview!]!
+  myServices: [Service!]!
   notifications: [Notification!]!
+  promotions: [Promotion!]!
+  referralProgram: ReferralProgram!
+  reviewSummary: ReviewSummary!
+  studentMix: StudentMix!
+  todaySchedule: [Booking!]!
+  topSubjects: [SubjectShare!]!
+  transactions: [Transaction!]!
   tutor(id: ID!): Tutor
+  tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
+  tutorSettings: TutorSettings!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
   unreadNotificationCount: Int!
   wallet: Wallet!
+}
+
+type ReferralProgram {
+  creditCents: Int!
+  issuedCents: Int!
+  referredCount: Int!
 }
 
 type ResendPayload {
@@ -129,6 +305,36 @@ type Review {
   comment: String
   id: ID!
   rating: Int!
+}
+
+type ReviewSummary {
+  average: Float!
+  count: Int!
+  distribution: [Int!]!
+}
+
+enum SenderKind {
+  STUDENT
+  TUTOR
+}
+
+type Service {
+  description: String
+  durationMin: Int!
+  id: ID!
+  isActive: Boolean!
+  lessonsCount: Int!
+  level: Level!
+  name: String!
+  priceCents: Int!
+  subjectId: ID
+  type: ServiceType!
+}
+
+enum ServiceType {
+  GROUP
+  ONE_ON_ONE
+  PACKAGE
 }
 
 type SignupPayload {
@@ -157,10 +363,43 @@ type Student {
   walletCents: Int!
 }
 
+type StudentMix {
+  newPct: Int!
+  returningPct: Int!
+}
+
 type Subject {
   id: ID!
   level: Level!
   name: String!
+}
+
+type SubjectShare {
+  name: String!
+  pct: Int!
+}
+
+type TimeOff {
+  endDate: DateTime!
+  id: ID!
+  label: String!
+  startDate: DateTime!
+}
+
+input TimeOffInput {
+  endDate: DateTime!
+  label: String!
+  startDate: DateTime!
+}
+
+type Transaction {
+  date: DateTime!
+  feeCents: Int!
+  id: ID!
+  netCents: Int!
+  status: String!
+  studentName: String!
+  subjectName: String!
 }
 
 type Tutor {
@@ -181,14 +420,81 @@ type Tutor {
   totalLessons: Int!
 }
 
+type TutorAuthPayload {
+  accessToken: String!
+  tutorId: ID!
+}
+
 type TutorPage {
   hasMore: Boolean!
   items: [Tutor!]!
   total: Int!
 }
 
+type TutorReview {
+  comment: String
+  createdAt: DateTime!
+  id: ID!
+  rating: Int!
+  reply: String
+  studentAvatarColor: String
+  studentName: String!
+  subjectName: String!
+}
+
+type TutorSettings {
+  about: String
+  headline: String
+  isActive: Boolean!
+  languages: [String!]!
+  name: String!
+  notifyBookings: Boolean!
+  notifyMessages: Boolean!
+  notifyPayouts: Boolean!
+  notifyReminders: Boolean!
+  notifyTips: Boolean!
+  timezone: String!
+}
+
+input UpdateNotificationPrefsInput {
+  notifyBookings: Boolean
+  notifyMessages: Boolean
+  notifyPayouts: Boolean
+  notifyReminders: Boolean
+  notifyTips: Boolean
+}
+
+input UpdateServiceInput {
+  description: String
+  durationMin: Int
+  id: ID!
+  isActive: Boolean
+  name: String
+  priceCents: Int
+}
+
+input UpdateTutorProfileInput {
+  about: String
+  headline: String
+  languages: [String!]
+  name: String
+  timezone: String
+}
+
 type Wallet {
   balanceCents: Int!
   giftCards: [GiftCard!]!
   paymentMethods: [PaymentMethod!]!
+}
+
+type WorkingHour {
+  day: Int!
+  end: String!
+  start: String!
+}
+
+input WorkingHourInput {
+  day: Int!
+  end: String!
+  start: String!
 }

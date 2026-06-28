@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hashPassword } from '../src/auth/password.js';
 import { Level, NotificationType, PrismaClient } from '../src/generated/prisma/client.js';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -25,9 +26,31 @@ interface SeedTutor {
   badges: string[];
   bio: string;
   subjects: SeedSubject[];
+  /** Tutor-dashboard credentials. Only the persona tutor gets these. */
+  email?: string;
+  password?: string;
 }
 
 const TUTORS: SeedTutor[] = [
+  {
+    // The tutor-dashboard persona (design handoff). Signs into apps/dashboard.
+    name: 'Lena Hartmann',
+    avatarColor: 'teal',
+    timezone: 'Europe/Berlin',
+    priceCents: 5500,
+    totalLessons: 214,
+    responseTime: '~30 min',
+    headline: 'Maths & Physics — patient, exam-focused tutoring',
+    languages: ['English', 'German'],
+    badges: ['Top rated', 'Fast responder', 'Verified'],
+    bio: 'Maths and Physics tutor for A-Level, IB and first-year university. I turn intimidating problems into calm, repeatable methods — and every session ends with a clear next step.',
+    subjects: [
+      { name: 'Mathematics', level: Level.ADVANCED },
+      { name: 'Physics', level: Level.ADVANCED },
+    ],
+    email: 'lena@tutor.example.com',
+    password: 'password123',
+  },
   {
     name: 'Sara Khan',
     avatarColor: 'teal',
@@ -197,8 +220,15 @@ async function main(): Promise<void> {
   await prisma.oAuthAccount.deleteMany();
   await prisma.review.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.payout.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.timeOff.deleteMany();
+  await prisma.service.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.favorite.deleteMany();
+  await prisma.promotion.deleteMany();
+  await prisma.referral.deleteMany();
   await prisma.giftCard.deleteMany();
   await prisma.paymentMethod.deleteMany();
   await prisma.subject.deleteMany();
@@ -220,6 +250,9 @@ async function main(): Promise<void> {
         responseTime: t.responseTime,
         totalLessons: t.totalLessons,
         workingHours: weekdays9to5,
+        email: t.email,
+        passwordHash: t.password ? hashPassword(t.password) : null,
+        emailVerified: t.email ? true : false,
         subjects: { create: t.subjects },
       },
       include: { subjects: true },
@@ -345,6 +378,355 @@ async function main(): Promise<void> {
           read: true,
           createdAt: new Date(now - 3 * day),
         },
+      ],
+    });
+  }
+
+  // --- Tutor-dashboard data for the persona (Lena Hartmann) ---
+  const lena = tutorsByName.get('Lena Hartmann');
+  if (lena) {
+    const [maths, physics] = lena.subjectIds;
+    // A roster of students who book Lena (varied names/avatars on the dashboard).
+    const roster = await Promise.all(
+      [
+        { fullName: 'Mia Chen', avatarColor: 'rose' },
+        { fullName: 'Tom Becker', avatarColor: 'blue' },
+        { fullName: 'Sofia Ricci', avatarColor: 'amber' },
+        { fullName: 'Noah Schmidt', avatarColor: 'green' },
+      ].map((s, i) =>
+        prisma.student.create({
+          data: {
+            fullName: s.fullName,
+            email: `student${String(i + 1)}@lena.example.com`,
+            avatarColor: s.avatarColor,
+            emailVerified: true,
+          },
+        }),
+      ),
+    );
+    const [mia, tom, sofia, noah] = roster;
+    if (!mia || !tom || !sofia || !noah || maths === undefined || physics === undefined) {
+      throw new Error('Seed invariant: Lena needs four students and two subjects.');
+    }
+
+    /** A booking on `dayOffset` at local `hour`, fixed 60-min slot. */
+    const slot = (dayOffset: number, hour: number): { startTime: Date; endTime: Date } => {
+      const start = new Date();
+      start.setDate(start.getDate() + dayOffset);
+      start.setHours(hour, 0, 0, 0);
+      return { startTime: start, endTime: new Date(start.getTime() + 60 * 60 * 1000) };
+    };
+    type Stu = (typeof roster)[number];
+    const lessons: {
+      student: Stu;
+      subjectId: string;
+      when: { startTime: Date; endTime: Date };
+      status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+      review?: { rating: number; comment: string };
+    }[] = [
+      // Today
+      { student: mia, subjectId: maths, when: slot(0, 9), status: 'COMPLETED' },
+      { student: tom, subjectId: physics, when: slot(0, 14), status: 'CONFIRMED' },
+      { student: sofia, subjectId: maths, when: slot(0, 16), status: 'CONFIRMED' },
+      // Upcoming
+      { student: noah, subjectId: physics, when: slot(1, 10), status: 'CONFIRMED' },
+      { student: mia, subjectId: maths, when: slot(2, 15), status: 'CONFIRMED' },
+      // Pending (the "Pending" badge + accept/decline flow)
+      { student: tom, subjectId: maths, when: slot(2, 11), status: 'PENDING' },
+      { student: sofia, subjectId: physics, when: slot(3, 13), status: 'PENDING' },
+      // Past completed (earnings + reviews + analytics)
+      {
+        student: sofia,
+        subjectId: maths,
+        when: slot(-1, 10),
+        status: 'COMPLETED',
+        review: { rating: 5, comment: 'Lena explained vectors so clearly — finally clicked!' },
+      },
+      {
+        student: noah,
+        subjectId: physics,
+        when: slot(-3, 13),
+        status: 'COMPLETED',
+        review: { rating: 5, comment: 'Calm, patient and incredibly well prepared every week.' },
+      },
+      {
+        student: mia,
+        subjectId: maths,
+        when: slot(-7, 9),
+        status: 'COMPLETED',
+        review: { rating: 4, comment: 'Great session, would have liked a few more practice sums.' },
+      },
+      { student: tom, subjectId: physics, when: slot(-10, 16), status: 'CANCELLED' },
+    ];
+
+    for (const l of lessons) {
+      const booking = await prisma.booking.create({
+        data: {
+          tutorId: lena.id,
+          studentId: l.student.id,
+          subjectId: l.subjectId,
+          startTime: l.when.startTime,
+          endTime: l.when.endTime,
+          status: l.status,
+        },
+      });
+      if (l.review) {
+        await prisma.review.create({
+          data: {
+            bookingId: booking.id,
+            tutorId: lena.id,
+            rating: l.review.rating,
+            comment: l.review.comment,
+          },
+        });
+      }
+    }
+
+    // Catalog services (1:1, group, package) and a time-off range.
+    await prisma.service.createMany({
+      data: [
+        {
+          tutorId: lena.id,
+          subjectId: maths,
+          name: 'One-to-one Maths',
+          type: 'ONE_ON_ONE',
+          level: Level.ADVANCED,
+          description: 'Focused 1:1 maths tutoring for A-Level, IB and university entrance.',
+          priceCents: 5500,
+          durationMin: 60,
+          lessonsCount: 1,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: physics,
+          name: 'One-to-one Physics',
+          type: 'ONE_ON_ONE',
+          level: Level.ADVANCED,
+          description: 'Build real intuition for mechanics, fields and modern physics.',
+          priceCents: 5500,
+          durationMin: 60,
+          lessonsCount: 1,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: maths,
+          name: 'Exam-prep bundle',
+          type: 'PACKAGE',
+          level: Level.ADVANCED,
+          description: 'Five-lesson intensive ahead of exams, with a practice plan.',
+          priceCents: 25000,
+          durationMin: 60,
+          lessonsCount: 5,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: physics,
+          name: 'Group problem-solving',
+          type: 'GROUP',
+          level: Level.INTERMEDIATE,
+          description: 'Small-group physics problem clinics (max 4 students).',
+          priceCents: 3000,
+          durationMin: 90,
+          lessonsCount: 1,
+          isActive: false,
+        },
+      ],
+    });
+
+    const offStart = new Date();
+    offStart.setDate(offStart.getDate() + 20);
+    const offEnd = new Date(offStart);
+    offEnd.setDate(offEnd.getDate() + 7);
+    await prisma.timeOff.create({
+      data: { tutorId: lena.id, label: '🏖 Summer break', startDate: offStart, endDate: offEnd },
+    });
+
+    // Conversations with a few students (some unread messages from students).
+    const minute = 60 * 1000;
+    const threads: {
+      student: Stu;
+      subjectName: string;
+      messages: { from: 'TUTOR' | 'STUDENT'; body: string; readByTutor?: boolean }[];
+    }[] = [
+      {
+        student: mia,
+        subjectName: 'Mathematics',
+        messages: [
+          {
+            from: 'STUDENT',
+            body: 'Hi Lena! Could we focus on integration by parts next time?',
+            readByTutor: false,
+          },
+          { from: 'STUDENT', body: 'Also — is Tuesday still okay?', readByTutor: false },
+        ],
+      },
+      {
+        student: tom,
+        subjectName: 'Physics',
+        messages: [
+          { from: 'TUTOR', body: 'Great work on the projectile motion problems today!' },
+          { from: 'STUDENT', body: 'Thank you! That really helped.', readByTutor: false },
+        ],
+      },
+      {
+        student: sofia,
+        subjectName: 'Mathematics',
+        messages: [
+          { from: 'STUDENT', body: 'Sent over the past paper you mentioned.', readByTutor: true },
+          { from: 'TUTOR', body: "Perfect — I'll mark it before our session." },
+        ],
+      },
+    ];
+
+    for (const thread of threads) {
+      const convo = await prisma.conversation.create({
+        data: {
+          tutorId: lena.id,
+          studentId: thread.student.id,
+          subjectName: thread.subjectName,
+        },
+      });
+      let when = Date.now() - thread.messages.length * 30 * minute;
+      for (const m of thread.messages) {
+        when += 30 * minute;
+        await prisma.message.create({
+          data: {
+            conversationId: convo.id,
+            senderKind: m.from,
+            body: m.body,
+            readByTutor: m.readByTutor ?? m.from === 'TUTOR',
+            readByStudent: m.from === 'STUDENT',
+            createdAt: new Date(when),
+          },
+        });
+      }
+      await prisma.conversation.update({
+        where: { id: convo.id },
+        data: { lastMessageAt: new Date(when) },
+      });
+    }
+
+    // --- Earnings history: completed bookings + payments over ~32 weeks ---
+    await prisma.tutor.update({
+      where: { id: lena.id },
+      data: { payoutMethod: 'Visa •••• 4242' },
+    });
+
+    const PRICE = 5500;
+    const fee = (amount: number): number => Math.round(amount * 0.15); // 15% platform fee
+    const roster2 = [mia, tom, sofia, noah];
+    // One "paid out" payout for everything older than ~4 weeks (so lifetime > available).
+    const payout = await prisma.payout.create({
+      data: { tutorId: lena.id, amountCents: 0, status: 'PAID', method: 'Visa •••• 4242' },
+    });
+    let paidOutTotal = 0;
+
+    for (let week = 1; week <= 32; week++) {
+      // 1–2 lessons per week, deterministic-ish spread.
+      const perWeek = week % 3 === 0 ? 2 : 1;
+      for (let n = 0; n < perWeek; n++) {
+        const start = new Date();
+        start.setDate(start.getDate() - week * 7 - n * 2);
+        start.setHours(10 + n * 3, 0, 0, 0);
+        const student = roster2[(week + n) % roster2.length];
+        const subjectId = (week + n) % 2 === 0 ? maths : physics;
+        if (!student) continue;
+        const booking = await prisma.booking.create({
+          data: {
+            tutorId: lena.id,
+            studentId: student.id,
+            subjectId,
+            startTime: start,
+            endTime: new Date(start.getTime() + 60 * 60 * 1000),
+            status: 'COMPLETED',
+          },
+        });
+        const olderThan4Weeks = week > 4;
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            tutorId: lena.id,
+            amountCents: PRICE,
+            feeCents: fee(PRICE),
+            status: 'PAID',
+            payoutId: olderThan4Weeks ? payout.id : null, // recent PAID = available
+          },
+        });
+        if (olderThan4Weeks) paidOutTotal += PRICE - fee(PRICE);
+      }
+    }
+    await prisma.payout.update({
+      where: { id: payout.id },
+      data: { amountCents: paidOutTotal },
+    });
+
+    // Payments for the recent completed lessons (available), plus a couple still
+    // clearing (PENDING) for the "pending clearance" figure.
+    const recentCompleted = await prisma.booking.findMany({
+      where: { tutorId: lena.id, status: 'COMPLETED', payment: null },
+    });
+    for (let i = 0; i < recentCompleted.length; i++) {
+      const b = recentCompleted[i];
+      if (!b) continue;
+      await prisma.payment.create({
+        data: {
+          bookingId: b.id,
+          tutorId: lena.id,
+          amountCents: PRICE,
+          feeCents: fee(PRICE),
+          status: i === 0 ? 'PENDING' : 'PAID', // one still clearing
+        },
+      });
+    }
+
+    // --- Marketing: promotions, referral program, gift cards sold ---
+    const in30 = new Date();
+    in30.setDate(in30.getDate() + 30);
+    const ago5 = new Date();
+    ago5.setDate(ago5.getDate() - 5);
+    await prisma.promotion.createMany({
+      data: [
+        {
+          tutorId: lena.id,
+          name: 'Back to school',
+          code: 'SCHOOL15',
+          discountType: 'PERCENT',
+          discountValue: 15,
+          state: 'ACTIVE',
+          startsAt: ago5,
+          expiresAt: in30,
+          redemptions: 24,
+        },
+        {
+          tutorId: lena.id,
+          name: 'Summer intensive',
+          code: 'SUMMER25',
+          discountType: 'PERCENT',
+          discountValue: 25,
+          state: 'SCHEDULED',
+          startsAt: in30,
+          redemptions: 0,
+        },
+        {
+          tutorId: lena.id,
+          name: 'New-year kickoff',
+          code: 'NY2026',
+          discountType: 'FIXED',
+          discountValue: 1000,
+          state: 'ENDED',
+          expiresAt: ago5,
+          redemptions: 22,
+        },
+      ],
+    });
+    await prisma.referral.create({
+      data: { tutorId: lena.id, creditCents: 1500, referredCount: 8, issuedCents: 12000 },
+    });
+    await prisma.giftCard.createMany({
+      data: [
+        { code: 'GC-LENA-AB12', amountCents: 7500, balanceCents: 7500, tutorId: lena.id },
+        { code: 'GC-LENA-CD34', amountCents: 5000, balanceCents: 2500, tutorId: lena.id },
+        { code: 'GC-LENA-EF56', amountCents: 2000, balanceCents: 0, tutorId: lena.id },
       ],
     });
   }

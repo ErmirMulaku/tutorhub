@@ -573,6 +573,40 @@ export async function oauthSignin(
   return data.oauthSignin;
 }
 
+const GOOGLE_SIGNIN_MUTATION = /* GraphQL */ `
+  mutation GoogleSignin($idToken: String!) {
+    googleSignin(idToken: $idToken) {
+      accessToken
+      studentId
+    }
+  }
+`;
+
+export async function googleSignin(idToken: string): Promise<AuthResult> {
+  const data = await graphqlRequest<{ googleSignin: AuthResult }>(GOOGLE_SIGNIN_MUTATION, {
+    variables: { idToken },
+    cache: 'no-store',
+  });
+  return data.googleSignin;
+}
+
+const APPLE_SIGNIN_MUTATION = /* GraphQL */ `
+  mutation AppleSignin($idToken: String!) {
+    appleSignin(idToken: $idToken) {
+      accessToken
+      studentId
+    }
+  }
+`;
+
+export async function appleSignin(idToken: string): Promise<AuthResult> {
+  const data = await graphqlRequest<{ appleSignin: AuthResult }>(APPLE_SIGNIN_MUTATION, {
+    variables: { idToken },
+    cache: 'no-store',
+  });
+  return data.appleSignin;
+}
+
 const SIGNIN_MUTATION = /* GraphQL */ `
   mutation Signin($email: String!, $password: String!) {
     signin(email: $email, password: $password) {

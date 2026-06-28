@@ -44,11 +44,18 @@ enum OAuthProvider {
   APPLE
 }
 
+enum PayoutSchedule {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 model Tutor {
   id           String     @id @default(uuid())
   name         String
   bio          String?
   headline     String? // one-line pitch shown on cards/profile
+  about        String? // long-form profile/settings bio (distinct from short bio)
   timezone     String // IANA, e.g. "Europe/Belgrade"
   hourlyCents  Int
   workingHours Json // WorkingHours[] — [{ day, start, end }]
@@ -58,11 +65,136 @@ model Tutor {
   badges       String[]   @default([]) // e.g. "Top rated", "Fast responder", "Verified"
   responseTime String? // human label, e.g. "~1 hr"
   totalLessons Int        @default(0)
-  subjects     Subject[]
-  bookings     Booking[]
-  reviews      Review[]
-  favoritedBy  Favorite[]
-  createdAt    DateTime   @default(now())
+
+  // Tutor identity (dashboard auth). Nullable so seeded tutors and dev-login work
+  // without credentials; student auth is unaffected.
+  email         String? @unique
+  passwordHash  String?
+  emailVerified Boolean @default(false)
+
+  // Tutor-side notification preferences (settings → notifications).
+  notifyBookings  Boolean @default(true)
+  notifyReminders Boolean @default(true)
+  notifyMessages  Boolean @default(true)
+  notifyPayouts   Boolean @default(true)
+  notifyTips      Boolean @default(false)
+
+  // Booking rules (availability module).
+  bufferMinutes    Int            @default(15)
+  minNoticeHours   Int            @default(4)
+  maxLessonsPerDay Int            @default(6)
+  payoutSchedule   PayoutSchedule @default(WEEKLY)
+  payoutMethod     String? // human label, e.g. "Visa •••• 4242"
+
+  subjects    Subject[]
+  bookings    Booking[]
+  reviews     Review[]
+  favoritedBy Favorite[]
+  services      Service[]
+  timeOff       TimeOff[]
+  conversations Conversation[]
+  payouts       Payout[]
+  promotions    Promotion[]
+  referral      Referral?
+  giftCards     GiftCard[]
+  createdAt     DateTime       @default(now())
+}
+
+enum PromotionState {
+  ACTIVE
+  SCHEDULED
+  ENDED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+model Promotion {
+  id            String         @id @default(uuid())
+  tutor         Tutor          @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String
+  name          String
+  code          String         @unique
+  discountType  DiscountType   @default(PERCENT)
+  discountValue Int // percent (0–100) or cents, per discountType
+  state         PromotionState @default(SCHEDULED)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  redemptions   Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  @@index([tutorId])
+}
+
+model Referral {
+  id            String   @id @default(uuid())
+  tutor         Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String   @unique
+  creditCents   Int      @default(1500)
+  referredCount Int      @default(0)
+  issuedCents   Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+// A withdrawal of cleared earnings to the tutor's payout method.
+model Payout {
+  id          String       @id @default(uuid())
+  tutor       Tutor        @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId     String
+  amountCents Int
+  status      PayoutStatus @default(PAID)
+  method      String?
+  payments    Payment[]
+  createdAt   DateTime     @default(now())
+
+  @@index([tutorId, createdAt])
+}
+
+enum ServiceType {
+  ONE_ON_ONE
+  GROUP
+  PACKAGE
+}
+
+// A priced offering on the tutor's catalog (1:1, group, or a package of lessons).
+model Service {
+  id           String      @id @default(uuid())
+  tutor        Tutor       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId      String
+  subject      Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  subjectId    String?
+  name         String
+  type         ServiceType @default(ONE_ON_ONE)
+  level        Level
+  description  String?
+  priceCents   Int
+  durationMin  Int         @default(60)
+  lessonsCount Int         @default(1) // > 1 for PACKAGE
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+
+  @@index([tutorId])
+}
+
+// A range the tutor is unavailable (holiday, etc.) — shown on the availability screen.
+model TimeOff {
+  id        String   @id @default(uuid())
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId   String
+  label     String // e.g. "🏖 Holiday"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
 }
 
 model Subject {
@@ -72,6 +204,41 @@ model Subject {
   tutor    Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   tutorId  String
   bookings Booking[]
+  services Service[]
+}
+
+enum SenderKind {
+  TUTOR
+  STUDENT
+}
+
+// A 1:1 conversation between a tutor and a student.
+model Conversation {
+  id            String    @id @default(uuid())
+  tutor         Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId       String
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  subjectName   String? // denormalised header label, e.g. "Mathematics student"
+  lastMessageAt DateTime  @default(now())
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+
+  @@unique([tutorId, studentId])
+  @@index([tutorId, lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  senderKind     SenderKind
+  body           String
+  readByTutor    Boolean      @default(false)
+  readByStudent  Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 model Student {
@@ -96,6 +263,7 @@ model Student {
   notifications   Notification[]
   emailCodes      EmailVerification[]
   oauthAccounts   OAuthAccount[]
+  conversations   Conversation[]
   createdAt       DateTime        @default(now())
 }
 
@@ -158,6 +326,9 @@ model GiftCard {
   // The student who currently owns/redeemed the card (null = unredeemed).
   owner       Student? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId     String?
+  // Optional tutor a gift card was sold under (marketing → gift cards sold).
+  tutor       Tutor?   @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+  tutorId     String?
   createdAt   DateTime @default(now())
 }
 
@@ -190,13 +361,16 @@ model Booking {
 }
 
 model Review {
-  id        String  @id @default(uuid())
-  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingId String  @unique
-  tutor     Tutor   @relation(fields: [tutorId], references: [id])
+  id        String    @id @default(uuid())
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String    @unique
+  tutor     Tutor     @relation(fields: [tutorId], references: [id])
   tutorId   String
   rating    Int // 1–5
   comment   String?
+  reply     String? // the tutor's public response
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model Payment {
@@ -204,5 +378,12 @@ model Payment {
   booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   bookingId   String        @unique
   amountCents Int
+  feeCents    Int           @default(0) // platform fee; net = amountCents - feeCents
   status      PaymentStatus @default(PENDING)
+  // Denormalised for earnings aggregation (cheaper than joining through booking).
+  tutorId     String?
+  payout      Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  payoutId    String?
+
+  @@index([tutorId, status])
 }

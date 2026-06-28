@@ -14,4 +14,11 @@ export class AuthController {
   devLogin(@Body() dto: DevLoginDto): Promise<{ accessToken: string }> {
     return this.auth.devLogin(dto.email);
   }
+
+  @Post('tutor/dev-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Returns a tutor JWT for the tutor with this email.' })
+  tutorDevLogin(@Body() dto: DevLoginDto): Promise<{ accessToken: string; tutorId: string }> {
+    return this.auth.tutorDevLogin(dto.email);
+  }
 }

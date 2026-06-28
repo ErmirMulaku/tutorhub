@@ -9,6 +9,8 @@ import {
   cancelBooking as cancelBookingMutation,
   changePassword as changePasswordMutation,
   deleteAccount as deleteAccountMutation,
+  appleSignin,
+  googleSignin,
   leaveReview as leaveReviewMutation,
   markAllNotificationsRead as markAllNotificationsReadMutation,
   markNotificationRead as markNotificationReadMutation,
@@ -108,6 +110,28 @@ export async function oauthSigninAction(
 ): Promise<ActionResult> {
   try {
     const { accessToken } = await oauthSignin(provider, providerUserId, email, fullName);
+    await setSessionToken(accessToken);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'OAUTH_FAILED' };
+  }
+}
+
+/** Real Google sign-in: exchange the GIS ID token for a session. */
+export async function googleSigninAction(idToken: string): Promise<ActionResult> {
+  try {
+    const { accessToken } = await googleSignin(idToken);
+    await setSessionToken(accessToken);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'OAUTH_FAILED' };
+  }
+}
+
+/** Real Apple sign-in: exchange the Sign in with Apple id_token for a session. */
+export async function appleSigninAction(idToken: string): Promise<ActionResult> {
+  try {
+    const { accessToken } = await appleSignin(idToken);
     await setSessionToken(accessToken);
     return { ok: true };
   } catch (err) {

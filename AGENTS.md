@@ -241,6 +241,138 @@ published to npm** (metadata, `prepublishOnly`, LICENSE, badges).
 - **Adapted to the environment honestly:** Elixir/Erlang weren't installed, so I installed the
   toolchain to actually compile and test the service rather than ship it unverified.
 
+### Phase 8 — Tutor dashboard ✅
+
+Recreating the `design_handoff_tutor_dashboard` handoff as the real tutor-facing app in
+`apps/dashboard`: 11 modules + onboarding, full real backend, tutor auth, and the
+`@ermulaku/ui` design system (light/dark + Teal/Indigo/Plum accents). Built in scoped sub-phases.
+
+**8.0 Foundation ✅** — **Built:** tutor authentication folded into the (previously
+student-only) JWT via a backward-compatible `kind` claim — `AuthService.sign(sub, kind)`, a
+strict `TutorAuthGuard` + `@CurrentTutor` writing to `req.tutor` (never `req.user`), tutor
+`email`/`passwordHash` columns (nullable migration), `tutorSignin`/`tutorDevLogin`
+(GraphQL + REST), `meTutor`, and a seeded persona tutor ("Lena Hartmann"). The student
+`JwtAuthGuard` stays permissive (legacy/marketplace/mobile tokens unaffected) but rejects
+tutor tokens. Frontend: adopted `@ermulaku/ui` tokens in the dashboard via additive
+unprefixed aliases + `[data-accent]` Teal/Indigo/Plum palettes (overriding the `--th-primary`
+ramp so the primitives follow the accent; marketplace never sets `data-accent`, so it's
+unaffected); a React-Router shell (Sidebar/Topbar), theme/accent/online/auth Redux state
+(OS-default theme, `localStorage`-persisted), an auth-aware RTK Query base query that speaks
+both REST and GraphQL and clears the session on 401, a tutor `LoginScreen`, and stubbed
+routes for all 11 modules.
+
+**Verified (not just generated):** drove the whole flow **in a real browser** (Preview tool)
+— signed in as the seed tutor, the shell rendered with the tutor's name resolved via
+`meTutor`, the theme toggle flipped light/dark, the accent switcher recoloured both the
+dashboard and the UI primitives (button/avatar) to plum, navigation changed routes, and
+theme/accent/session **persisted across reload**. **6 tutor-auth e2e tests** assert
+dev-login/signin, `meTutor`, and the cross-token rejection both ways; the existing
+student-auth suite stays green. Whole-workspace `nx run-many -t lint typecheck test build`
+green across 8 projects; `npm audit` **0 vulnerabilities**.
+
+**8.1 Dashboard + Calendar + Lessons ✅** — **Built:** the first three tutor-scoped modules.
+Backend: tutor wrappers on the shared `BookingService` (`acceptForTutor`/`declineForTutor`/
+`completeForTutor`, each asserting `booking.tutorId === tutorId` before going through the same
+state machine + `BookingEvents`), a `TutorDashboardModule` with `dashboardSummary` (KPI
+aggregates), `todaySchedule`, and `tutorBookings(status?, from?, to?)`, plus a timezone-day
+helper (`startOfDayInZone`/`startOfWeekInZone`, `Intl`-based, injectable `now`). The seed gained
+the persona's roster + bookings across every status (today/upcoming/pending/past + reviews).
+Frontend: real Dashboard (KPI row, today's schedule, "Up next" gradient card, quick actions),
+Calendar (CSS-grid week view, events positioned by start/duration), and Lessons (Upcoming/
+Pending/Past tabs with accept/decline/complete + toasts); a `ToastProvider`, `SegmentedTabs`,
+`KPIStat`, `StatusPill`; and a live pending badge in the sidebar fed by `dashboardSummary`.
+
+**Verified (not just generated):** **in a real browser** — KPIs matched the seed (3 lessons
+today, $165 this week, 4.7★/3 reviews, 2 pending), accepting a request fired a toast and dropped
+both the segmented-tab and sidebar badges 2→1 (mutation → DB → cache invalidation → refetch),
+and an **external** accept via curl pushed through Socket.IO and cleared the pending badge/row
+**with no interaction** — proving the live path end-to-end. **4 tutor-dashboard e2e tests**
+(KPIs, tutor-scoped `tutorBookings`, accept transition, cross-tutor accept rejected) + a
+zoned-dates unit test; whole-workspace `nx run-many` green across 8 projects, `npm audit` **0**.
+
+**8.2 Catalog + Availability ✅** — **Built:** a `Service` model (1:1/Group/Package, per-service
+price/duration/lessons) + `TimeOff` (migration), a `CatalogModule` (`myServices`,
+`createService`/`updateService`/`setServiceActive`/`deleteService`, all owner-scoped), and
+availability self-service on the existing `AvailabilityModule` (`myAvailability`,
+`updateWorkingHours`/`updateBookingRules`/`addTimeOff`/`removeTimeOff`) — the booking-rule
+columns added in 8.0 now drive real settings. Seed gained Lena's four services + a time-off
+range. Frontend: a Catalog grid of service cards (type pills, live/hidden, price) with a
+create-service `Modal`, and an Availability screen with per-day iOS `ToggleSwitch` + time
+ranges, booking-rule inputs, and a time-off list/add — plus a reusable `ToggleSwitch`.
+
+**Verified (not just generated):** **in a real browser** — the catalog rendered all four seeded
+services with the right type pills and live/hidden state, the availability screen showed Mon–Fri
+hours + the seeded "🏖 Summer break", and **Save rules** round-tripped with a toast. **3 e2e
+tests** (owner-scoped `myServices`, cross-tutor delete rejected, working-hours/rules round-trip);
+`nx run-many` green across 8 projects, `npm audit` **0**. (Caught a real gotcha: a dev token is
+invalidated by a reseed because it regenerates the tutor id — re-login fixes it.)
+
+**8.3 Messaging (real-time) ✅** — **Built:** `Conversation` + `Message` models + `SenderKind`
+(migration), and a `MessagingModule` mirroring the booking real-time pattern exactly — a
+`MessageEvents` RxJS bus and a `MessagingGateway` that fans `sendMessage` out to per-tutor and
+per-conversation Socket.IO rooms (`messageReceived`). `MessagingService` gives owner-scoped
+`conversations` (with preview + unread count), `messages`, `sendMessage`, `markConversationRead`,
+and `unreadCount` — now feeding the dashboard's `unreadMessages` KPI/sidebar badge. Seed gained
+three threads with unread student messages. Frontend: a two-pane `ChatPane` (thread list + bubble
+conversation + composer) and a `use-live-messages` hook beside `use-live-bookings`.
+
+**Verified (not just generated):** **in a real browser** — the thread list showed unread badges
+(Tom 1, Mia 2) and the sidebar Messages badge read 3; opening a thread marked it read; and a
+message sent from **another device** (curl) appeared **live in the open conversation with no
+interaction**. **3 e2e tests** (unread count, `markRead` clears it, and a real `socket.io-client`
+receiving `messageReceived`); `nx run-many` green across 8 projects, `npm audit` **0**.
+
+**8.4 Earnings + Payouts ✅** — **Built:** a `Payout` model + `Payment` fields (`feeCents`,
+denormalised `tutorId`, `payoutId`) + `Tutor.payoutMethod` (migration); an `EarningsModule` with
+`earningsSummary` (available = PAID & un-paid-out net, pending = PENDING net, lifetime = all PAID
+net), `earningsByMonth` (8-month buckets from booking dates), `transactions`, and `withdraw`
+(sweeps available into a new `Payout`) / `setPayoutSchedule` / `setPayoutMethod`. Seed generates
+~40 historical completed bookings with payments across 8 months (older ones grouped into a paid-out
+payout, recent ones available, one PENDING). Frontend: a gradient `BalanceCard` with Withdraw, a
+reusable `BarChart`, a payout-method card, and a transactions table with CSV export.
+
+**Verified (not just generated):** **in a real browser** — figures matched the seed (available
+$374, pending $47, lifetime $2,104), the 8-month chart rendered with the current month highlighted,
+and **Withdraw swept available to $0 with a toast**. **3 e2e tests** (net summary math, 8 monthly
+buckets, withdraw zeroes available while lifetime holds); `nx run-many` green across 8 projects,
+`npm audit` **0**.
+
+**8.5 Marketing ✅** — **Built:** `Promotion` + `Referral` models + `GiftCard.tutorId`
+(migration); a `MarketingModule` with `marketingSummary` (active promos, total redemptions, gift
+cards sold), `promotions`, `referralProgram` (created on first read), `createPromotion`, and
+`endPromotion` (owner-scoped). Seed gained three promotions (Active/Scheduled/Ended), a referral
+record, and gift cards sold under Lena. Frontend: a Marketing screen with stat cards, a promotions
+grid (`PromoCard` with state pills + a copy-to-clipboard `CodeChip`), and gift-card + referral
+cards, plus a create-promotion modal.
+
+**Verified (not just generated):** **in a real browser** — stat cards matched the seed (1 active,
+46 redemptions, $145 sold), promotions showed the right state pills, and the code chip copied with
+a toast. **3 e2e tests** (create→summary counts active, cross-tutor end rejected, referral
+auto-created); `nx run-many` green across 8 projects, `npm audit` **0**.
+
+**8.6 Reviews + Analytics + Settings + Onboarding ✅** — **Built:** `Review.reply`/`repliedAt`
+(migration) and four modules — **Reviews** (`reviewSummary` avg + 5★ distribution, `myReviews`
+filterable all/unreplied/replied, `replyToReview`), **Analytics** (`analyticsSummary` —
+lessons-this-month, new students, repeat rate, slot-capacity utilization — plus `lessonsOverTime`,
+`topSubjects`, `lessonsByDayOfWeek`, `studentMix`, all aggregated in-service from completed
+bookings), **Settings** (`tutorSettings`, `updateTutorProfile`, `updateTutorNotificationPrefs`),
+and **Onboarding** (`publishProfile` flips `isActive`). Frontend: Reviews (summary + distribution
+bars + filter tabs + inline reply), Analytics (an SVG `AreaChart`, top-subject bars, day-of-week
+`BarChart`, student-mix split bar), Settings (Profile / Payout / Notifications tabs), and a 6-step
+`OnboardingWizard` overlay.
+
+**Verified (not just generated):** **in a real browser** — reviewing replied to a review (toast +
+"You replied" block), analytics rendered every chart from the seed (8 lessons this month, 100%
+repeat, Maths/Physics split), settings saved profile + toggled notifications, and the onboarding
+wizard stepped to "You're all set, Lena!" and **published → redirected to the dashboard**. **4 new
+e2e tests**; the **whole API e2e suite is green (11 suites / 54 tests)** — no regressions in
+student auth or the earlier phases — and `nx run-many` passes across 8 projects with `npm audit`
+**0**.
+
+**Phase 8 outcome:** all 11 desktop modules + onboarding ship against a real, tutor-scoped backend
+(tutor auth, messaging, payouts, promotions, review replies, analytics, settings) on the
+`@ermulaku/ui` design system with light/dark + Teal/Indigo/Plum theming.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
