@@ -89,7 +89,48 @@ model Tutor {
   bookings    Booking[]
   reviews     Review[]
   favoritedBy Favorite[]
+  services    Service[]
+  timeOff     TimeOff[]
   createdAt   DateTime   @default(now())
+}
+
+enum ServiceType {
+  ONE_ON_ONE
+  GROUP
+  PACKAGE
+}
+
+// A priced offering on the tutor's catalog (1:1, group, or a package of lessons).
+model Service {
+  id           String      @id @default(uuid())
+  tutor        Tutor       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId      String
+  subject      Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  subjectId    String?
+  name         String
+  type         ServiceType @default(ONE_ON_ONE)
+  level        Level
+  description  String?
+  priceCents   Int
+  durationMin  Int         @default(60)
+  lessonsCount Int         @default(1) // > 1 for PACKAGE
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+
+  @@index([tutorId])
+}
+
+// A range the tutor is unavailable (holiday, etc.) — shown on the availability screen.
+model TimeOff {
+  id        String   @id @default(uuid())
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId   String
+  label     String // e.g. "🏖 Holiday"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
 }
 
 model Subject {
@@ -99,6 +140,7 @@ model Subject {
   tutor    Tutor     @relation(fields: [tutorId], references: [id], onDelete: Cascade)
   tutorId  String
   bookings Booking[]
+  services Service[]
 }
 
 model Student {

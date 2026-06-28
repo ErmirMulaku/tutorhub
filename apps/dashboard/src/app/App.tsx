@@ -1,7 +1,9 @@
 import type { JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AvailabilityScreen } from '../features/availability/AvailabilityScreen';
 import { LoginScreen } from '../features/auth/LoginScreen';
 import { CalendarScreen } from '../features/calendar/CalendarScreen';
+import { CatalogScreen } from '../features/catalog/CatalogScreen';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { LessonsScreen } from '../features/lessons/LessonsScreen';
 import { AppShell } from './AppShell';
@@ -21,8 +23,8 @@ export function App(): JSX.Element {
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/lessons" element={<LessonsScreen />} />
         <Route path="/messages" element={<Placeholder title="Messages" />} />
-        <Route path="/catalog" element={<Placeholder title="Catalog" />} />
-        <Route path="/availability" element={<Placeholder title="Availability" />} />
+        <Route path="/catalog" element={<CatalogScreen />} />
+        <Route path="/availability" element={<AvailabilityScreen />} />
         <Route path="/earnings" element={<Placeholder title="Earnings" />} />
         <Route path="/marketing" element={<Placeholder title="Marketing" />} />
         <Route path="/reviews" element={<Placeholder title="Reviews" />} />

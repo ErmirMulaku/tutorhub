@@ -9,6 +9,7 @@ import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
+import { CatalogModule } from './catalog/catalog.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { HealthController } from './health/health.controller.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
@@ -39,6 +40,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     SubjectsModule,
     BookingsModule,
     AvailabilityModule,
+    CatalogModule,
     FavoritesModule,
     WalletModule,
     NotificationsModule,

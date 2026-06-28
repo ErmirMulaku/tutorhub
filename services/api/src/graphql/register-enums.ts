@@ -4,6 +4,7 @@ import {
   Level,
   NotificationType,
   OAuthProvider,
+  ServiceType,
 } from '../generated/prisma/client.js';
 
 // Side-effect module: register domain enums with the GraphQL type system.
@@ -13,3 +14,4 @@ registerEnumType(Level, { name: 'Level' });
 registerEnumType(BookingStatus, { name: 'BookingStatus' });
 registerEnumType(NotificationType, { name: 'NotificationType' });
 registerEnumType(OAuthProvider, { name: 'OAuthProvider' });
+registerEnumType(ServiceType, { name: 'ServiceType' });

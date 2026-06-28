@@ -290,6 +290,23 @@ and an **external** accept via curl pushed through Socket.IO and cleared the pen
 (KPIs, tutor-scoped `tutorBookings`, accept transition, cross-tutor accept rejected) + a
 zoned-dates unit test; whole-workspace `nx run-many` green across 8 projects, `npm audit` **0**.
 
+**8.2 Catalog + Availability ✅** — **Built:** a `Service` model (1:1/Group/Package, per-service
+price/duration/lessons) + `TimeOff` (migration), a `CatalogModule` (`myServices`,
+`createService`/`updateService`/`setServiceActive`/`deleteService`, all owner-scoped), and
+availability self-service on the existing `AvailabilityModule` (`myAvailability`,
+`updateWorkingHours`/`updateBookingRules`/`addTimeOff`/`removeTimeOff`) — the booking-rule
+columns added in 8.0 now drive real settings. Seed gained Lena's four services + a time-off
+range. Frontend: a Catalog grid of service cards (type pills, live/hidden, price) with a
+create-service `Modal`, and an Availability screen with per-day iOS `ToggleSwitch` + time
+ranges, booking-rule inputs, and a time-off list/add — plus a reusable `ToggleSwitch`.
+
+**Verified (not just generated):** **in a real browser** — the catalog rendered all four seeded
+services with the right type pills and live/hidden state, the availability screen showed Mon–Fri
+hours + the seeded "🏖 Summer break", and **Save rules** round-tripped with a toast. **3 e2e
+tests** (owner-scoped `myServices`, cross-tutor delete rejected, working-hours/rules round-trip);
+`nx run-many` green across 8 projects, `npm audit` **0**. (Caught a real gotcha: a dev token is
+invalidated by a reseed because it regenerates the tutor id — re-login fixes it.)
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

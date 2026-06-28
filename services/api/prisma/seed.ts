@@ -220,6 +220,8 @@ async function main(): Promise<void> {
   await prisma.oAuthAccount.deleteMany();
   await prisma.review.deleteMany();
   await prisma.payment.deleteMany();
+  await prisma.timeOff.deleteMany();
+  await prisma.service.deleteMany();
   await prisma.booking.deleteMany();
   await prisma.favorite.deleteMany();
   await prisma.giftCard.deleteMany();
@@ -474,6 +476,65 @@ async function main(): Promise<void> {
         });
       }
     }
+
+    // Catalog services (1:1, group, package) and a time-off range.
+    await prisma.service.createMany({
+      data: [
+        {
+          tutorId: lena.id,
+          subjectId: maths,
+          name: 'One-to-one Maths',
+          type: 'ONE_ON_ONE',
+          level: Level.ADVANCED,
+          description: 'Focused 1:1 maths tutoring for A-Level, IB and university entrance.',
+          priceCents: 5500,
+          durationMin: 60,
+          lessonsCount: 1,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: physics,
+          name: 'One-to-one Physics',
+          type: 'ONE_ON_ONE',
+          level: Level.ADVANCED,
+          description: 'Build real intuition for mechanics, fields and modern physics.',
+          priceCents: 5500,
+          durationMin: 60,
+          lessonsCount: 1,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: maths,
+          name: 'Exam-prep bundle',
+          type: 'PACKAGE',
+          level: Level.ADVANCED,
+          description: 'Five-lesson intensive ahead of exams, with a practice plan.',
+          priceCents: 25000,
+          durationMin: 60,
+          lessonsCount: 5,
+        },
+        {
+          tutorId: lena.id,
+          subjectId: physics,
+          name: 'Group problem-solving',
+          type: 'GROUP',
+          level: Level.INTERMEDIATE,
+          description: 'Small-group physics problem clinics (max 4 students).',
+          priceCents: 3000,
+          durationMin: 90,
+          lessonsCount: 1,
+          isActive: false,
+        },
+      ],
+    });
+
+    const offStart = new Date();
+    offStart.setDate(offStart.getDate() + 20);
+    const offEnd = new Date(offStart);
+    offEnd.setDate(offEnd.getDate() + 7);
+    await prisma.timeOff.create({
+      data: { tutorId: lena.id, label: '🏖 Summer break', startDate: offStart, endDate: offEnd },
+    });
   }
 }
 

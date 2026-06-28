@@ -23,12 +23,29 @@ type Booking {
   tutor: Tutor!
 }
 
+input BookingRulesInput {
+  bufferMinutes: Int!
+  maxLessonsPerDay: Int!
+  minNoticeHours: Int!
+}
+
 enum BookingStatus {
   CANCELLED
   COMPLETED
   CONFIRMED
   NO_SHOW
   PENDING
+}
+
+input CreateServiceInput {
+  description: String
+  durationMin: Int! = 60
+  lessonsCount: Int! = 1
+  level: Level!
+  name: String!
+  priceCents: Int!
+  subjectId: ID
+  type: ServiceType!
 }
 
 type DashboardSummary {
@@ -67,14 +84,17 @@ type Mutation {
   acceptBooking(id: ID!): Booking!
   addFavorite(tutorId: ID!): [Tutor!]!
   addPaymentMethod(brand: String!, expMonth: Int!, expYear: Int!, last4: String!): PaymentMethod!
+  addTimeOff(input: TimeOffInput!): MyAvailability!
   appleSignin(idToken: String!): AuthPayload!
   bookLesson(input: BookInput!): Booking!
   buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
   completeBooking(id: ID!): Booking!
+  createService(input: CreateServiceInput!): Service!
   declineBooking(id: ID!): Booking!
   deleteAccount: Boolean!
+  deleteService(id: ID!): Boolean!
   googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
   markAllNotificationsRead: [Notification!]!
@@ -83,15 +103,28 @@ type Mutation {
   redeemGiftCard(code: String!): Wallet!
   removeFavorite(tutorId: ID!): [Tutor!]!
   removePaymentMethod(id: ID!): Boolean!
+  removeTimeOff(id: ID!): MyAvailability!
   rescheduleBooking(id: ID!, startTime: String!): Booking!
   resendVerificationCode(email: String!): ResendPayload!
+  setServiceActive(id: ID!, isActive: Boolean!): Service!
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
   signup(email: String!, fullName: String!, password: String!): SignupPayload!
   tutorSignin(email: String!, password: String!): TutorAuthPayload!
+  updateBookingRules(rules: BookingRulesInput!): MyAvailability!
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
+  updateService(input: UpdateServiceInput!): Service!
+  updateWorkingHours(hours: [WorkingHourInput!]!): MyAvailability!
   verifyEmail(code: String!, email: String!): AuthPayload!
+}
+
+type MyAvailability {
+  bufferMinutes: Int!
+  maxLessonsPerDay: Int!
+  minNoticeHours: Int!
+  timeOff: [TimeOff!]!
+  workingHours: [WorkingHour!]!
 }
 
 type Notification {
@@ -128,9 +161,11 @@ type Query {
   dashboardSummary: DashboardSummary!
   me: Student!
   meTutor: Tutor!
+  myAvailability: MyAvailability!
   myBookings(status: BookingStatus): [Booking!]!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
+  myServices: [Service!]!
   notifications: [Notification!]!
   todaySchedule: [Booking!]!
   tutor(id: ID!): Tutor
@@ -148,6 +183,25 @@ type Review {
   comment: String
   id: ID!
   rating: Int!
+}
+
+type Service {
+  description: String
+  durationMin: Int!
+  id: ID!
+  isActive: Boolean!
+  lessonsCount: Int!
+  level: Level!
+  name: String!
+  priceCents: Int!
+  subjectId: ID
+  type: ServiceType!
+}
+
+enum ServiceType {
+  GROUP
+  ONE_ON_ONE
+  PACKAGE
 }
 
 type SignupPayload {
@@ -182,6 +236,19 @@ type Subject {
   name: String!
 }
 
+type TimeOff {
+  endDate: DateTime!
+  id: ID!
+  label: String!
+  startDate: DateTime!
+}
+
+input TimeOffInput {
+  endDate: DateTime!
+  label: String!
+  startDate: DateTime!
+}
+
 type Tutor {
   avatarColor: String
   badges: [String!]!
@@ -211,8 +278,29 @@ type TutorPage {
   total: Int!
 }
 
+input UpdateServiceInput {
+  description: String
+  durationMin: Int
+  id: ID!
+  isActive: Boolean
+  name: String
+  priceCents: Int
+}
+
 type Wallet {
   balanceCents: Int!
   giftCards: [GiftCard!]!
   paymentMethods: [PaymentMethod!]!
+}
+
+type WorkingHour {
+  day: Int!
+  end: String!
+  start: String!
+}
+
+input WorkingHourInput {
+  day: Int!
+  end: String!
+  start: String!
 }

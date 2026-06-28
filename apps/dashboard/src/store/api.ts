@@ -45,6 +45,46 @@ export interface DashboardSummary {
   unreadMessages: number;
 }
 
+export type ServiceType = 'ONE_ON_ONE' | 'GROUP' | 'PACKAGE';
+export interface Service {
+  id: string;
+  name: string;
+  type: ServiceType;
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  description: string | null;
+  priceCents: number;
+  durationMin: number;
+  lessonsCount: number;
+  isActive: boolean;
+}
+export interface CreateServiceInput {
+  name: string;
+  type: ServiceType;
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  description?: string;
+  priceCents: number;
+  durationMin: number;
+  lessonsCount: number;
+}
+export interface WorkingHour {
+  day: number;
+  start: string;
+  end: string;
+}
+export interface TimeOff {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+export interface MyAvailability {
+  workingHours: WorkingHour[];
+  bufferMinutes: number;
+  minNoticeHours: number;
+  maxLessonsPerDay: number;
+  timeOff: TimeOff[];
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -107,7 +147,7 @@ const baseQuery: BaseQueryFn<
 export const api = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['Tutor', 'Booking', 'MeTutor', 'DashboardSummary'],
+  tagTypes: ['Tutor', 'Booking', 'MeTutor', 'DashboardSummary', 'Service', 'Availability'],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
     getMeTutor: build.query<{ id: string; name: string; headline: string | null }, void>({
@@ -181,6 +221,94 @@ export const api = createApi({
       invalidatesTags: ['Booking', 'DashboardSummary'],
     }),
 
+    // --- Catalog (tutor GraphQL) ---
+    getMyServices: build.query<Service[], void>({
+      query: () => ({
+        graphql: {
+          document: `{ myServices { id name type level description priceCents durationMin lessonsCount isActive } }`,
+        },
+      }),
+      transformResponse: (r: { myServices: Service[] }) => r.myServices,
+      providesTags: ['Service'],
+    }),
+    createService: build.mutation<{ id: string }, CreateServiceInput>({
+      query: (input) => ({
+        graphql: {
+          document: `mutation($input: CreateServiceInput!){ createService(input: $input){ id } }`,
+          variables: { input },
+        },
+      }),
+      invalidatesTags: ['Service'],
+    }),
+    setServiceActive: build.mutation<{ id: string }, { id: string; isActive: boolean }>({
+      query: ({ id, isActive }) => ({
+        graphql: {
+          document: `mutation($id: ID!, $isActive: Boolean!){ setServiceActive(id: $id, isActive: $isActive){ id isActive } }`,
+          variables: { id, isActive },
+        },
+      }),
+      invalidatesTags: ['Service'],
+    }),
+    deleteService: build.mutation<boolean, string>({
+      query: (id) => ({
+        graphql: { document: `mutation($id: ID!){ deleteService(id: $id) }`, variables: { id } },
+      }),
+      invalidatesTags: ['Service'],
+    }),
+
+    // --- Availability self-service (tutor GraphQL) ---
+    getMyAvailability: build.query<MyAvailability, void>({
+      query: () => ({
+        graphql: {
+          document: `{ myAvailability { bufferMinutes minNoticeHours maxLessonsPerDay workingHours { day start end } timeOff { id label startDate endDate } } }`,
+        },
+      }),
+      transformResponse: (r: { myAvailability: MyAvailability }) => r.myAvailability,
+      providesTags: ['Availability'],
+    }),
+    updateWorkingHours: build.mutation<MyAvailability, WorkingHour[]>({
+      query: (hours) => ({
+        graphql: {
+          document: `mutation($hours: [WorkingHourInput!]!){ updateWorkingHours(hours: $hours){ bufferMinutes } }`,
+          variables: { hours: hours.map((h) => ({ day: h.day, start: h.start, end: h.end })) },
+        },
+      }),
+      invalidatesTags: ['Availability'],
+    }),
+    updateBookingRules: build.mutation<
+      MyAvailability,
+      { bufferMinutes: number; minNoticeHours: number; maxLessonsPerDay: number }
+    >({
+      query: (rules) => ({
+        graphql: {
+          document: `mutation($rules: BookingRulesInput!){ updateBookingRules(rules: $rules){ bufferMinutes } }`,
+          variables: { rules },
+        },
+      }),
+      invalidatesTags: ['Availability'],
+    }),
+    addTimeOff: build.mutation<
+      MyAvailability,
+      { label: string; startDate: string; endDate: string }
+    >({
+      query: (input) => ({
+        graphql: {
+          document: `mutation($input: TimeOffInput!){ addTimeOff(input: $input){ bufferMinutes } }`,
+          variables: { input },
+        },
+      }),
+      invalidatesTags: ['Availability'],
+    }),
+    removeTimeOff: build.mutation<MyAvailability, string>({
+      query: (id) => ({
+        graphql: {
+          document: `mutation($id: ID!){ removeTimeOff(id: $id){ bufferMinutes } }`,
+          variables: { id },
+        },
+      }),
+      invalidatesTags: ['Availability'],
+    }),
+
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
     getTutors: build.query<Tutor[], void>({
       query: () => '/tutors',
@@ -217,6 +345,15 @@ export const {
   useAcceptBookingMutation,
   useDeclineBookingMutation,
   useCompleteBookingMutation,
+  useGetMyServicesQuery,
+  useCreateServiceMutation,
+  useSetServiceActiveMutation,
+  useDeleteServiceMutation,
+  useGetMyAvailabilityQuery,
+  useUpdateWorkingHoursMutation,
+  useUpdateBookingRulesMutation,
+  useAddTimeOffMutation,
+  useRemoveTimeOffMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,
