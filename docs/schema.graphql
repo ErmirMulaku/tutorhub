@@ -157,6 +157,7 @@ type Mutation {
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
   completeBooking(id: ID!): Booking!
+  createLesson(startTime: String!, studentId: ID!, subjectId: ID!): Booking!
   createPromotion(input: CreatePromotionInput!): Promotion!
   createService(input: CreateServiceInput!): Service!
   declineBooking(id: ID!): Booking!
@@ -275,6 +276,8 @@ type Query {
   myFavorites: [Tutor!]!
   myReviews(filter: String): [TutorReview!]!
   myServices: [Service!]!
+  myStudents: [TutorStudentRef!]!
+  mySubjects: [Subject!]!
   notifications: [Notification!]!
   promotions: [Promotion!]!
   referralProgram: ReferralProgram!
@@ -285,6 +288,7 @@ type Query {
   transactions: [Transaction!]!
   tutor(id: ID!): Tutor
   tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
+  tutorNotifications: [TutorNotification!]!
   tutorSettings: TutorSettings!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
   unreadNotificationCount: Int!
@@ -425,6 +429,14 @@ type TutorAuthPayload {
   tutorId: ID!
 }
 
+type TutorNotification {
+  createdAt: DateTime!
+  detail: String
+  id: ID!
+  title: String!
+  type: String!
+}
+
 type TutorPage {
   hasMore: Boolean!
   items: [Tutor!]!
@@ -454,6 +466,12 @@ type TutorSettings {
   notifyReminders: Boolean!
   notifyTips: Boolean!
   timezone: String!
+}
+
+type TutorStudentRef {
+  avatarColor: String
+  fullName: String!
+  id: ID!
 }
 
 input UpdateNotificationPrefsInput {

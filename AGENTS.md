@@ -373,6 +373,38 @@ student auth or the earlier phases — and `nx run-many` passes across 8 project
 (tutor auth, messaging, payouts, promotions, review replies, analytics, settings) on the
 `@ermulaku/ui` design system with light/dark + Teal/Indigo/Plum theming.
 
+**8.8 New-lesson flow + notifications feed ✅** — Wired the two substantive topbar placeholders.
+Backend: `BookingService.createForTutor` (a tutor books a **CONFIRMED** lesson, validating the
+subject is theirs), plus `myStudents` / `mySubjects` pickers and a synthesized `tutorNotifications`
+feed (pending booking requests + unread message threads + recent reviews, newest-first). Frontend:
+a `NewLessonModal` (student/subject/datetime → `createLesson`) opened from the "New lesson" button
+and mounted shell-wide, and a `NotificationsBell` dropdown on the topbar bell (dot when non-empty,
+closes on outside click); the feed refreshes live off the booking/message Socket.IO events.
+
+**Verified (not just generated):** **in a real browser** — the bell showed 7 items (messages,
+reviews, booking requests) with type dots + relative times; the New-lesson modal booked Sofia ·
+Mathematics · 15 Jul, which **persisted as CONFIRMED** (checked via the API). **4 e2e tests**
+(`createLesson` confirmed, cross-tutor subject rejected, `myStudents`, booking request surfaces in
+notifications); `nx run-many` green across 8 projects, `npm audit` **0**.
+
+**8.9 Calendar Day/Week/Month + search ✅** — Finished the last two placeholders. The calendar is
+now an `anchor`-date state machine with Day / Week / Month views (a `SegmentedTabs` toggle, Today
+
+- prev/next stepping by 1 day / 1 week / 1 month): Day/Week reuse the time-grid (1 or 7 columns),
+  Month is a 6-week page of day cells with subject-coloured event chips that drill into Day view. The
+  topbar search submits to `/lessons?q=…`, which filters across **all** statuses by student/subject
+  with a clearable results chip. Verified in-browser (Month "June 2026" with chips, Day single
+  column, search → 14 Sofia lessons). `nx run-many` green across 8 projects, `npm audit` **0**. The
+  whole `design_handoff_tutor_dashboard` is now implemented with no remaining cosmetic placeholders.
+
+**8.7 Responsive + completeness pass ✅** — Made the dashboard fully responsive: a slide-in
+sidebar **drawer** (hamburger + backdrop, closes on navigation) below 1024px, two-column layouts
+collapsing at 900px, a phone layout at 640px (stacked KPIs, trimmed topbar, stacked chat,
+horizontally-scrolling calendar/tables, panel-less onboarding). Verified in-browser at 375 / 768 / 1440. Filled the remaining design-flow gaps: **calendar week navigation** (Today / ‹ / ›),
+the dashboard **setup banner** (dismissible → onboarding) and **Latest review** card. `nx run-many`
+green across 8 projects, `npm audit` **0**. (Cosmetic-only controls left as placeholders by intent:
+topbar search, "New lesson", the notifications bell, and the calendar Day/Month view toggle.)
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

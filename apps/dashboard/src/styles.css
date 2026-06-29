@@ -1716,3 +1716,430 @@ body {
 .ob__footer .th-btn:only-child {
   margin-inline-start: auto;
 }
+
+/* ===== Responsive ======================================================== */
+
+/* Hamburger + drawer backdrop are desktop-hidden by default. */
+.topbar__menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-inline-end: 4px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+}
+.shell__backdrop {
+  display: none;
+  border: none;
+  padding: 0;
+}
+
+/* --- Tablet / drawer threshold --- */
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 264px;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.22s var(--th-ease);
+    will-change: transform;
+    box-shadow: var(--shadow-lg);
+  }
+  [dir='rtl'] .sidebar {
+    transform: translateX(100%);
+  }
+  .shell--drawer-open .sidebar {
+    transform: none;
+  }
+  .shell--drawer-open .shell__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(16, 32, 43, 0.45);
+  }
+  .topbar__menu {
+    display: inline-flex;
+  }
+  .topbar__search {
+    display: none;
+  }
+}
+
+/* --- Collapse two-column layouts --- */
+@media (max-width: 900px) {
+  .dash__cols,
+  .earn__mid,
+  .avail,
+  .analytics__row,
+  .mkt__bottom,
+  .rev-summary,
+  .settings__form {
+    grid-template-columns: 1fr;
+  }
+  .kpi-row,
+  .earn__top,
+  .mkt__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .rev-summary__score {
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 16px;
+  }
+}
+
+/* --- Phone --- */
+@media (max-width: 640px) {
+  .shell__content {
+    padding: 16px;
+  }
+  .topbar {
+    padding: 0 16px;
+    gap: 8px;
+  }
+  .topbar__subtitle {
+    display: none;
+  }
+  .topbar__title {
+    font-size: 17px;
+  }
+  .topbar__actions {
+    gap: 6px;
+  }
+  /* Trim the crowded topbar on phones — these live elsewhere on mobile. */
+  .topbar__pill,
+  .topbar__accents,
+  .topbar__actions > .th-btn {
+    display: none;
+  }
+  .kpi-row,
+  .earn__top,
+  .mkt__stats,
+  .svc-form__row,
+  .avail__off-add {
+    grid-template-columns: 1fr;
+  }
+  /* Wide content (tables, calendar grid) scrolls within its card. */
+  .th-card {
+    overflow-x: auto;
+  }
+  .cal__grid {
+    min-width: 700px;
+  }
+  .txn {
+    min-width: 460px;
+  }
+  /* Chat stacks: thread list above, conversation below. */
+  .chat {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 66px - 32px);
+  }
+  .chat__list {
+    max-height: 220px;
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .lesson-row {
+    flex-wrap: wrap;
+  }
+  .lesson-row__when {
+    width: auto;
+  }
+  .lesson-row__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  /* Onboarding: drop the side panel, keep the steps. */
+  .ob {
+    grid-template-columns: 1fr;
+  }
+  .ob__panel {
+    display: none;
+  }
+  .login__panel {
+    padding: 24px;
+  }
+}
+
+/* Calendar week navigation */
+.cal__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cal__chevron {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cal__chevron:hover {
+  border-color: var(--primary);
+  color: var(--primary-700);
+}
+
+/* Dashboard setup banner + latest review */
+.setup-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: var(--hero-grad);
+  color: #fff;
+  margin-bottom: 20px;
+}
+.setup-banner__text strong {
+  display: block;
+  font-size: 15px;
+}
+.setup-banner__text span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+.setup-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.setup-banner .th-btn--primary {
+  background: #fff;
+  color: var(--primary-700);
+}
+.setup-banner__close {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.85;
+  padding: 4px;
+}
+.latest-review__quote {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 10px 0;
+}
+.latest-review__by {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Notifications dropdown */
+.notif {
+  position: relative;
+}
+.notif__panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 70;
+  padding: 6px;
+}
+.notif__head {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  padding: 10px 12px 6px;
+}
+.notif__empty {
+  padding: 16px 12px;
+  font-size: 13.5px;
+}
+.notif__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.notif__item:hover {
+  background: var(--surface-2);
+}
+.notif__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex: none;
+}
+.notif__dot--warn {
+  background: var(--warn-ink);
+}
+.notif__dot--primary {
+  background: var(--primary);
+}
+.notif__dot--star {
+  background: var(--star);
+}
+.notif__body {
+  flex: 1;
+  min-width: 0;
+}
+.notif__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.notif__detail {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif__time {
+  font-size: 11.5px;
+  flex: none;
+}
+
+/* Calendar toolbar right cluster + month view */
+.cal__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.cal__toolbar-right .segtabs {
+  margin-bottom: 0;
+}
+.cal-month__head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.cal-month__head > div {
+  padding: 6px 8px;
+}
+.cal-month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(96px, auto);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cal-month__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 6px;
+  border-inline-start: 1px solid var(--border-soft);
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface);
+  text-align: start;
+  cursor: pointer;
+  min-width: 0;
+}
+.cal-month__cell:hover {
+  background: var(--surface-2);
+}
+.cal-month__cell--muted {
+  background: var(--surface-2);
+  opacity: 0.55;
+}
+.cal-month__date {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.cal-month__cell--today .cal-month__date {
+  color: #fff;
+  background: var(--primary);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-month__chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-month__chip--physics {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.cal-month__more {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .cal__toolbar-right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .cal-month__grid {
+    min-width: 640px;
+  }
+}
+
+/* Lessons search-results chip */
+.lessons__searchbar {
+  margin-bottom: 16px;
+}
+.lessons__searchchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 14px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+.lessons__searchchip button {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+}

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, type Booking } from '../generated/prisma/client.js';
+import { BookingStatus, type Booking, type Subject } from '../generated/prisma/client.js';
 import { MessagingService } from '../messaging/messaging.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DAY_MS, startOfDayInZone, startOfWeekInZone } from './zoned-dates.js';
@@ -11,6 +11,20 @@ export interface DashboardSummary {
   reviewCount: number;
   pendingCount: number;
   unreadMessages: number;
+}
+
+export interface StudentRef {
+  id: string;
+  fullName: string;
+  avatarColor: string | null;
+}
+
+export interface TutorNotification {
+  id: string;
+  type: string;
+  title: string;
+  detail: string | null;
+  createdAt: Date;
 }
 
 /** Read-only KPI aggregations for the tutor dashboard. */
@@ -76,5 +90,74 @@ export class TutorDashboardService {
       pendingCount,
       unreadMessages,
     };
+  }
+
+  /** Distinct students the tutor has booked (for the New-lesson picker). */
+  async myStudents(tutorId: string): Promise<StudentRef[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: { tutorId },
+      select: { student: { select: { id: true, fullName: true, avatarColor: true } } },
+      orderBy: { startTime: 'desc' },
+    });
+    const byId = new Map<string, StudentRef>();
+    for (const b of bookings) if (!byId.has(b.student.id)) byId.set(b.student.id, b.student);
+    return [...byId.values()];
+  }
+
+  /** The tutor's subjects (for the New-lesson picker). */
+  mySubjects(tutorId: string): Promise<Subject[]> {
+    return this.prisma.subject.findMany({ where: { tutorId }, orderBy: { name: 'asc' } });
+  }
+
+  /**
+   * A synthesized notification feed for the topbar bell: pending booking
+   * requests, unread message threads, and recent reviews — newest first.
+   */
+  async notifications(tutorId: string): Promise<TutorNotification[]> {
+    const [pending, conversations, reviews] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { tutorId, status: BookingStatus.PENDING },
+        include: { student: true, subject: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.conversation.findMany({
+        where: { tutorId, messages: { some: { senderKind: 'STUDENT', readByTutor: false } } },
+        include: { student: true },
+        orderBy: { lastMessageAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.review.findMany({
+        where: { tutorId },
+        include: { booking: { include: { student: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+    ]);
+
+    const items: TutorNotification[] = [
+      ...pending.map((b) => ({
+        id: `booking:${b.id}`,
+        type: 'booking',
+        title: `New booking request from ${b.student.fullName}`,
+        detail: `${b.subject.name} · ${b.subject.level.toLowerCase()}`,
+        createdAt: b.createdAt,
+      })),
+      ...conversations.map((c) => ({
+        id: `message:${c.id}`,
+        type: 'message',
+        title: `New message from ${c.student.fullName}`,
+        detail: c.subjectName,
+        createdAt: c.lastMessageAt,
+      })),
+      ...reviews.map((r) => ({
+        id: `review:${r.id}`,
+        type: 'review',
+        title: `${r.booking.student.fullName} left a ${r.rating}★ review`,
+        detail: r.comment,
+        createdAt: r.createdAt,
+      })),
+    ];
+    return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 8);
   }
 }

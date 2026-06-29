@@ -20,7 +20,7 @@ export function useLiveBookings(tutorId: string | null): void {
       socket.emit('subscribeTutor', { tutorId });
     });
     socket.on('bookingChanged', () => {
-      dispatch(api.util.invalidateTags(['Booking', 'DashboardSummary']));
+      dispatch(api.util.invalidateTags(['Booking', 'DashboardSummary', 'Notifications']));
     });
 
     return () => {

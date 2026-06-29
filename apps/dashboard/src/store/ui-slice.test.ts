@@ -5,6 +5,7 @@ import {
   setAccent,
   setOnline,
   setTheme,
+  toggleSidebar,
   toggleTheme,
   uiReducer,
 } from './ui-slice';
@@ -14,6 +15,8 @@ const base: UiState = {
   theme: 'light',
   accent: 'teal',
   online: true,
+  sidebarOpen: false,
+  newLessonOpen: false,
 };
 
 describe('ui slice', () => {
@@ -44,5 +47,10 @@ describe('ui slice', () => {
   it('sets the accent and online status', () => {
     expect(uiReducer(base, setAccent('plum')).accent).toBe('plum');
     expect(uiReducer(base, setOnline(false)).online).toBe(false);
+  });
+
+  it('toggles the mobile sidebar', () => {
+    expect(uiReducer(base, toggleSidebar()).sidebarOpen).toBe(true);
+    expect(uiReducer({ ...base, sidebarOpen: true }, toggleSidebar()).sidebarOpen).toBe(false);
   });
 });

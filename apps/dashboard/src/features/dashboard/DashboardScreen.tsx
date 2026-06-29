@@ -1,16 +1,19 @@
-import type { JSX } from 'react';
+import { type JSX, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Avatar, Button, Card, Skeleton } from '@ermulaku/ui';
+import { Avatar, Button, Card, Skeleton, StarRating } from '@ermulaku/ui';
 import {
   type TutorBooking,
   useGetDashboardSummaryQuery,
   useGetMeTutorQuery,
+  useGetMyReviewsQuery,
   useGetTodayScheduleQuery,
 } from '../../store/api';
 import { BellIcon, CalendarIcon, DollarIcon, StarIcon } from '../../components/icons';
 import { KPIStat } from '../../components/KPIStat';
 import { StatusPill } from '../../components/StatusPill';
 import { money, timeOf } from '../../lib/format';
+
+const BANNER_KEY = 'th_setup_dismissed';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -43,12 +46,51 @@ export function DashboardScreen(): JSX.Element {
   const { data: me } = useGetMeTutorQuery();
   const { data: summary, isLoading } = useGetDashboardSummaryQuery();
   const { data: today } = useGetTodayScheduleQuery();
+  const { data: reviews } = useGetMyReviewsQuery('all');
 
   const upNext = today?.find((b) => b.status === 'CONFIRMED');
   const firstName = me?.name?.split(' ')[0] ?? 'there';
+  const latestReview = reviews?.[0];
+
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(BANNER_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  function dismissBanner(): void {
+    setBannerDismissed(true);
+    try {
+      sessionStorage.setItem(BANNER_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
     <div className="dash">
+      {!bannerDismissed && (
+        <div className="setup-banner">
+          <div className="setup-banner__text">
+            <strong>Finish setting up your tutor profile</strong>
+            <span>Add your subjects, hours and payout details to start getting booked.</span>
+          </div>
+          <div className="setup-banner__actions">
+            <Link to="/onboarding">
+              <Button size="sm">Continue setup</Button>
+            </Link>
+            <button
+              type="button"
+              className="setup-banner__close"
+              aria-label="Dismiss"
+              onClick={dismissBanner}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       <div className="dash__greeting">
         <h2>
           {greeting()}, {firstName} 👋
@@ -147,6 +189,26 @@ export function DashboardScreen(): JSX.Element {
               </Link>
             </div>
           </Card>
+
+          {latestReview && (
+            <Card>
+              <div className="card-head">
+                <h3 className="card-head__title" style={{ margin: 0 }}>
+                  Latest review
+                </h3>
+                <Link to="/reviews" className="card-head__link">
+                  All reviews →
+                </Link>
+              </div>
+              <StarRating value={latestReview.rating} />
+              {latestReview.comment && (
+                <p className="latest-review__quote">“{latestReview.comment}”</p>
+              )}
+              <div className="latest-review__by">
+                {latestReview.studentName} · {latestReview.subjectName}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

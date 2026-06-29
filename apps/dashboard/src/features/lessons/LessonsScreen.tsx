@@ -31,12 +31,22 @@ export function LessonsScreen(): JSX.Element {
   const [complete] = useCompleteBookingMutation();
   const toast = useToast();
 
+  const query = (params.get('q') ?? '').trim();
+  const q = query.toLowerCase();
   const pendingCount = bookings?.filter((b) => b.status === 'PENDING').length ?? 0;
-  const rows = (bookings ?? []).filter((b) => inTab(b, tab));
+  // A search matches across every status; otherwise filter by the active tab.
+  const rows = (bookings ?? []).filter((b) =>
+    q !== ''
+      ? b.student.fullName.toLowerCase().includes(q) || b.subject.name.toLowerCase().includes(q)
+      : inTab(b, tab),
+  );
 
   function changeTab(next: Tab): void {
     setTab(next);
     setParams(next === 'upcoming' ? {} : { status: next }, { replace: true });
+  }
+  function clearSearch(): void {
+    setParams({}, { replace: true });
   }
 
   const onAccept = (b: TutorBooking): void => {
@@ -57,21 +67,32 @@ export function LessonsScreen(): JSX.Element {
 
   return (
     <div className="lessons">
-      <SegmentedTabs<Tab>
-        segments={[
-          { key: 'upcoming', label: 'Upcoming' },
-          { key: 'pending', label: 'Pending', badge: pendingCount },
-          { key: 'past', label: 'Past' },
-        ]}
-        value={tab}
-        onChange={changeTab}
-      />
+      {query !== '' ? (
+        <div className="lessons__searchbar">
+          <span className="lessons__searchchip">
+            Results for “{query}”
+            <button type="button" aria-label="Clear search" onClick={clearSearch}>
+              ✕
+            </button>
+          </span>
+        </div>
+      ) : (
+        <SegmentedTabs<Tab>
+          segments={[
+            { key: 'upcoming', label: 'Upcoming' },
+            { key: 'pending', label: 'Pending', badge: pendingCount },
+            { key: 'past', label: 'Past' },
+          ]}
+          value={tab}
+          onChange={changeTab}
+        />
+      )}
 
       <Card>
         {isLoading ? (
           <Skeleton height={160} />
         ) : rows.length === 0 ? (
-          <p className="muted">No {tab} lessons.</p>
+          <p className="muted">{query !== '' ? `No lessons match “${query}”.` : `No ${tab} lessons.`}</p>
         ) : (
           <div className="lesson-list">
             {rows.map((b) => (

@@ -203,6 +203,24 @@ export interface TutorSettings {
   notifyTips: boolean;
 }
 
+export interface StudentRef {
+  id: string;
+  fullName: string;
+  avatarColor: string | null;
+}
+export interface SubjectRef {
+  id: string;
+  name: string;
+  level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+}
+export interface TutorNotification {
+  id: string;
+  type: string;
+  title: string;
+  detail: string | null;
+  createdAt: string;
+}
+
 /** Reusable GraphQL selection for a tutor-facing booking. */
 const BOOKING_FIELDS = `
   id startTime endTime status
@@ -279,6 +297,7 @@ export const api = createApi({
     'Reviews',
     'Analytics',
     'Settings',
+    'Notifications',
   ],
   endpoints: (build) => ({
     // --- Tutor identity (GraphQL) ---
@@ -332,7 +351,7 @@ export const api = createApi({
           variables: { id },
         },
       }),
-      invalidatesTags: ['Booking', 'DashboardSummary'],
+      invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications'],
     }),
     declineBooking: build.mutation<{ id: string }, string>({
       query: (id) => ({
@@ -341,7 +360,7 @@ export const api = createApi({
           variables: { id },
         },
       }),
-      invalidatesTags: ['Booking', 'DashboardSummary'],
+      invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications'],
     }),
     completeBooking: build.mutation<{ id: string }, string>({
       query: (id) => ({
@@ -350,7 +369,7 @@ export const api = createApi({
           variables: { id },
         },
       }),
-      invalidatesTags: ['Booking', 'DashboardSummary'],
+      invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications'],
     }),
 
     // --- Catalog (tutor GraphQL) ---
@@ -477,7 +496,7 @@ export const api = createApi({
           variables: { id: conversationId },
         },
       }),
-      invalidatesTags: ['Conversation', 'DashboardSummary'],
+      invalidatesTags: ['Conversation', 'DashboardSummary', 'Notifications'],
     }),
 
     // --- Earnings (tutor GraphQL) ---
@@ -588,7 +607,7 @@ export const api = createApi({
           variables: { id, reply },
         },
       }),
-      invalidatesTags: ['Reviews'],
+      invalidatesTags: ['Reviews', 'Notifications'],
     }),
 
     // --- Analytics (tutor GraphQL) ---
@@ -663,6 +682,37 @@ export const api = createApi({
       invalidatesTags: ['Settings', 'MeTutor'],
     }),
 
+    // --- New lesson pickers + create + notifications (tutor GraphQL) ---
+    getMyStudents: build.query<StudentRef[], void>({
+      query: () => ({ graphql: { document: `{ myStudents { id fullName avatarColor } }` } }),
+      transformResponse: (r: { myStudents: StudentRef[] }) => r.myStudents,
+      providesTags: ['Booking'],
+    }),
+    getMySubjects: build.query<SubjectRef[], void>({
+      query: () => ({ graphql: { document: `{ mySubjects { id name level } }` } }),
+      transformResponse: (r: { mySubjects: SubjectRef[] }) => r.mySubjects,
+      providesTags: ['Service'],
+    }),
+    getTutorNotifications: build.query<TutorNotification[], void>({
+      query: () => ({
+        graphql: { document: `{ tutorNotifications { id type title detail createdAt } }` },
+      }),
+      transformResponse: (r: { tutorNotifications: TutorNotification[] }) => r.tutorNotifications,
+      providesTags: ['Notifications'],
+    }),
+    createLesson: build.mutation<
+      { id: string },
+      { studentId: string; subjectId: string; startTime: string }
+    >({
+      query: ({ studentId, subjectId, startTime }) => ({
+        graphql: {
+          document: `mutation($s: ID!, $sub: ID!, $t: String!){ createLesson(studentId: $s, subjectId: $sub, startTime: $t){ id } }`,
+          variables: { s: studentId, sub: subjectId, t: startTime },
+        },
+      }),
+      invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications'],
+    }),
+
     // --- Existing REST endpoints (kept during the GraphQL migration) ---
     getTutors: build.query<Tutor[], void>({
       query: () => '/tutors',
@@ -722,6 +772,10 @@ export const {
   useGetReferralProgramQuery,
   useCreatePromotionMutation,
   useEndPromotionMutation,
+  useGetMyStudentsQuery,
+  useGetMySubjectsQuery,
+  useGetTutorNotificationsQuery,
+  useCreateLessonMutation,
   useGetReviewSummaryQuery,
   useGetMyReviewsQuery,
   useReplyToReviewMutation,

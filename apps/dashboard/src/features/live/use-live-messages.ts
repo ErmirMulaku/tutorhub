@@ -20,7 +20,9 @@ export function useLiveMessages(tutorId: string | null): void {
       socket.emit('subscribeMessages', { tutorId });
     });
     socket.on('messageReceived', () => {
-      dispatch(api.util.invalidateTags(['Message', 'Conversation', 'DashboardSummary']));
+      dispatch(
+        api.util.invalidateTags(['Message', 'Conversation', 'DashboardSummary', 'Notifications']),
+      );
     });
 
     return () => {
