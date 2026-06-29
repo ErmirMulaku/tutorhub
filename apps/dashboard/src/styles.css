@@ -1716,3 +1716,160 @@ body {
 .ob__footer .th-btn:only-child {
   margin-inline-start: auto;
 }
+
+/* ===== Responsive ======================================================== */
+
+/* Hamburger + drawer backdrop are desktop-hidden by default. */
+.topbar__menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-inline-end: 4px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+}
+.shell__backdrop {
+  display: none;
+  border: none;
+  padding: 0;
+}
+
+/* --- Tablet / drawer threshold --- */
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 264px;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.22s var(--th-ease);
+    will-change: transform;
+    box-shadow: var(--shadow-lg);
+  }
+  [dir='rtl'] .sidebar {
+    transform: translateX(100%);
+  }
+  .shell--drawer-open .sidebar {
+    transform: none;
+  }
+  .shell--drawer-open .shell__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(16, 32, 43, 0.45);
+  }
+  .topbar__menu {
+    display: inline-flex;
+  }
+  .topbar__search {
+    display: none;
+  }
+}
+
+/* --- Collapse two-column layouts --- */
+@media (max-width: 900px) {
+  .dash__cols,
+  .earn__mid,
+  .avail,
+  .analytics__row,
+  .mkt__bottom,
+  .rev-summary,
+  .settings__form {
+    grid-template-columns: 1fr;
+  }
+  .kpi-row,
+  .earn__top,
+  .mkt__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .rev-summary__score {
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 16px;
+  }
+}
+
+/* --- Phone --- */
+@media (max-width: 640px) {
+  .shell__content {
+    padding: 16px;
+  }
+  .topbar {
+    padding: 0 16px;
+    gap: 8px;
+  }
+  .topbar__subtitle {
+    display: none;
+  }
+  .topbar__title {
+    font-size: 17px;
+  }
+  .topbar__actions {
+    gap: 6px;
+  }
+  /* Trim the crowded topbar on phones — these live elsewhere on mobile. */
+  .topbar__pill,
+  .topbar__accents,
+  .topbar__actions > .th-btn {
+    display: none;
+  }
+  .kpi-row,
+  .earn__top,
+  .mkt__stats,
+  .svc-form__row,
+  .avail__off-add {
+    grid-template-columns: 1fr;
+  }
+  /* Wide content (tables, calendar grid) scrolls within its card. */
+  .th-card {
+    overflow-x: auto;
+  }
+  .cal__grid {
+    min-width: 700px;
+  }
+  .txn {
+    min-width: 460px;
+  }
+  /* Chat stacks: thread list above, conversation below. */
+  .chat {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 66px - 32px);
+  }
+  .chat__list {
+    max-height: 220px;
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .lesson-row {
+    flex-wrap: wrap;
+  }
+  .lesson-row__when {
+    width: auto;
+  }
+  .lesson-row__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  /* Onboarding: drop the side panel, keep the steps. */
+  .ob {
+    grid-template-columns: 1fr;
+  }
+  .ob__panel {
+    display: none;
+  }
+  .login__panel {
+    padding: 24px;
+  }
+}

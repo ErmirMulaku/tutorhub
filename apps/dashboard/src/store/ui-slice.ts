@@ -10,6 +10,8 @@ export interface UiState {
   accent: Accent;
   /** Whether the tutor is bookable (the topbar online/hidden pill). */
   online: boolean;
+  /** Mobile: whether the sidebar drawer is open. */
+  sidebarOpen: boolean;
 }
 
 const THEME_KEY = 'th_theme';
@@ -41,6 +43,7 @@ const initialState: UiState = {
   theme: initialTheme(),
   accent: initialAccent(),
   online: true,
+  sidebarOpen: false,
 };
 
 const uiSlice = createSlice({
@@ -77,8 +80,22 @@ const uiSlice = createSlice({
     setOnline(state, action: PayloadAction<boolean>) {
       state.online = action.payload;
     },
+    toggleSidebar(state) {
+      state.sidebarOpen = !state.sidebarOpen;
+    },
+    setSidebarOpen(state, action: PayloadAction<boolean>) {
+      state.sidebarOpen = action.payload;
+    },
   },
 });
 
-export const { selectTutor, setTheme, toggleTheme, setAccent, setOnline } = uiSlice.actions;
+export const {
+  selectTutor,
+  setTheme,
+  toggleTheme,
+  setAccent,
+  setOnline,
+  toggleSidebar,
+  setSidebarOpen,
+} = uiSlice.actions;
 export const uiReducer = uiSlice.reducer;

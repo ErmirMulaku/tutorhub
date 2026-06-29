@@ -2,9 +2,9 @@ import type { JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { type Accent, setAccent, setOnline, toggleTheme } from '../store/ui-slice';
+import { type Accent, setAccent, setOnline, toggleSidebar, toggleTheme } from '../store/ui-slice';
 import { PAGE_META } from '../app/nav';
-import { BellIcon, MoonIcon, SearchIcon, SunIcon } from './icons';
+import { BellIcon, MenuIcon, MoonIcon, SearchIcon, SunIcon } from './icons';
 
 const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
   { key: 'teal', label: 'Teal', swatch: '#0e8f8a' },
@@ -22,6 +22,14 @@ export function Topbar(): JSX.Element {
 
   return (
     <header className="topbar">
+      <button
+        type="button"
+        className="topbar__menu"
+        aria-label="Open menu"
+        onClick={() => dispatch(toggleSidebar())}
+      >
+        <MenuIcon />
+      </button>
       <div className="topbar__heading">
         <h1 className="topbar__title">{meta.title}</h1>
         {meta.subtitle && <p className="topbar__subtitle">{meta.subtitle}</p>}
