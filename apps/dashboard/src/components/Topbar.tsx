@@ -2,9 +2,17 @@ import type { JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { type Accent, setAccent, setOnline, toggleSidebar, toggleTheme } from '../store/ui-slice';
+import {
+  type Accent,
+  setAccent,
+  setNewLessonOpen,
+  setOnline,
+  toggleSidebar,
+  toggleTheme,
+} from '../store/ui-slice';
 import { PAGE_META } from '../app/nav';
-import { BellIcon, MenuIcon, MoonIcon, SearchIcon, SunIcon } from './icons';
+import { MenuIcon, MoonIcon, SearchIcon, SunIcon } from './icons';
+import { NotificationsBell } from './NotificationsBell';
 
 const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
   { key: 'teal', label: 'Teal', swatch: '#0e8f8a' },
@@ -75,12 +83,11 @@ export function Topbar(): JSX.Element {
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
 
-        <button type="button" className="topbar__icon-btn topbar__bell" aria-label="Notifications">
-          <BellIcon />
-          <span className="topbar__bell-dot" />
-        </button>
+        <NotificationsBell />
 
-        <Button size="sm">New lesson</Button>
+        <Button size="sm" onClick={() => dispatch(setNewLessonOpen(true))}>
+          New lesson
+        </Button>
       </div>
     </header>
   );

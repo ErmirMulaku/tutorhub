@@ -12,6 +12,8 @@ export interface UiState {
   online: boolean;
   /** Mobile: whether the sidebar drawer is open. */
   sidebarOpen: boolean;
+  /** Whether the "New lesson" modal is open. */
+  newLessonOpen: boolean;
 }
 
 const THEME_KEY = 'th_theme';
@@ -44,6 +46,7 @@ const initialState: UiState = {
   accent: initialAccent(),
   online: true,
   sidebarOpen: false,
+  newLessonOpen: false,
 };
 
 const uiSlice = createSlice({
@@ -86,6 +89,9 @@ const uiSlice = createSlice({
     setSidebarOpen(state, action: PayloadAction<boolean>) {
       state.sidebarOpen = action.payload;
     },
+    setNewLessonOpen(state, action: PayloadAction<boolean>) {
+      state.newLessonOpen = action.payload;
+    },
   },
 });
 
@@ -97,5 +103,6 @@ export const {
   setOnline,
   toggleSidebar,
   setSidebarOpen,
+  setNewLessonOpen,
 } = uiSlice.actions;
 export const uiReducer = uiSlice.reducer;

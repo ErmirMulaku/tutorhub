@@ -165,6 +165,35 @@ export class BookingService {
     return this.updateStatus(id, BookingStatus.COMPLETED);
   }
 
+  /** Tutor books a lesson directly (already CONFIRMED) for one of their students. */
+  async createForTutor(
+    tutorId: string,
+    studentId: string,
+    subjectId: string,
+    startTime: Date,
+  ): Promise<Booking> {
+    const [student, subject] = await Promise.all([
+      this.prisma.student.findUnique({ where: { id: studentId } }),
+      this.prisma.subject.findUnique({ where: { id: subjectId } }),
+    ]);
+    if (student === null) throw new EntityNotFoundError('Student', studentId);
+    if (subject === null || subject.tutorId !== tutorId) {
+      throw new EntityNotFoundError('Subject', subjectId);
+    }
+    const booking = await this.prisma.booking.create({
+      data: {
+        tutorId,
+        studentId,
+        subjectId,
+        startTime,
+        endTime: new Date(startTime.getTime() + SLOT_MINUTES * MS_PER_MINUTE),
+        status: BookingStatus.CONFIRMED,
+      },
+    });
+    this.events.emit(booking);
+    return booking;
+  }
+
   /** Leave a review for the student's own completed booking. */
   async leaveReview(
     bookingId: string,

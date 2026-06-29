@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import { ToastProvider } from '../components/ToastProvider';
+import { NewLessonModal } from '../features/lessons/NewLessonModal';
 import { useLiveBookings } from '../features/live/use-live-bookings';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSidebarOpen } from '../store/ui-slice';
@@ -39,6 +40,7 @@ export function AppShell(): JSX.Element {
             <Outlet />
           </main>
         </div>
+        <NewLessonModal />
       </div>
     </ToastProvider>
   );

@@ -373,6 +373,21 @@ student auth or the earlier phases — and `nx run-many` passes across 8 project
 (tutor auth, messaging, payouts, promotions, review replies, analytics, settings) on the
 `@ermulaku/ui` design system with light/dark + Teal/Indigo/Plum theming.
 
+**8.8 New-lesson flow + notifications feed ✅** — Wired the two substantive topbar placeholders.
+Backend: `BookingService.createForTutor` (a tutor books a **CONFIRMED** lesson, validating the
+subject is theirs), plus `myStudents` / `mySubjects` pickers and a synthesized `tutorNotifications`
+feed (pending booking requests + unread message threads + recent reviews, newest-first). Frontend:
+a `NewLessonModal` (student/subject/datetime → `createLesson`) opened from the "New lesson" button
+and mounted shell-wide, and a `NotificationsBell` dropdown on the topbar bell (dot when non-empty,
+closes on outside click); the feed refreshes live off the booking/message Socket.IO events.
+
+**Verified (not just generated):** **in a real browser** — the bell showed 7 items (messages,
+reviews, booking requests) with type dots + relative times; the New-lesson modal booked Sofia ·
+Mathematics · 15 Jul, which **persisted as CONFIRMED** (checked via the API). **4 e2e tests**
+(`createLesson` confirmed, cross-tutor subject rejected, `myStudents`, booking request surfaces in
+notifications); `nx run-many` green across 8 projects, `npm audit` **0**. (Still placeholders by
+intent: topbar search and the calendar Day/Month toggle.)
+
 **8.7 Responsive + completeness pass ✅** — Made the dashboard fully responsive: a slide-in
 sidebar **drawer** (hamburger + backdrop, closes on navigation) below 1024px, two-column layouts
 collapsing at 900px, a phone layout at 640px (stacked KPIs, trimmed topbar, stacked chat,

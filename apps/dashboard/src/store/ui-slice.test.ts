@@ -16,6 +16,7 @@ const base: UiState = {
   accent: 'teal',
   online: true,
   sidebarOpen: false,
+  newLessonOpen: false,
 };
 
 describe('ui slice', () => {
