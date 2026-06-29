@@ -1873,3 +1873,75 @@ body {
     padding: 24px;
   }
 }
+
+/* Calendar week navigation */
+.cal__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cal__chevron {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cal__chevron:hover {
+  border-color: var(--primary);
+  color: var(--primary-700);
+}
+
+/* Dashboard setup banner + latest review */
+.setup-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: var(--hero-grad);
+  color: #fff;
+  margin-bottom: 20px;
+}
+.setup-banner__text strong {
+  display: block;
+  font-size: 15px;
+}
+.setup-banner__text span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+.setup-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.setup-banner .th-btn--primary {
+  background: #fff;
+  color: var(--primary-700);
+}
+.setup-banner__close {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.85;
+  padding: 4px;
+}
+.latest-review__quote {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 10px 0;
+}
+.latest-review__by {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}

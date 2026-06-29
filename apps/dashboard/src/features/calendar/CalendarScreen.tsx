@@ -1,5 +1,5 @@
-import { type JSX, useMemo } from 'react';
-import { Card } from '@ermulaku/ui';
+import { type JSX, useMemo, useState } from 'react';
+import { Button, Card } from '@ermulaku/ui';
 import { type TutorBooking, useGetTutorBookingsQuery } from '../../store/api';
 import { timeOf } from '../../lib/format';
 
@@ -17,7 +17,12 @@ function mondayOf(d: Date): Date {
 }
 
 export function CalendarScreen(): JSX.Element {
-  const weekStart = useMemo(() => mondayOf(new Date()), []);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = useMemo(() => {
+    const m = mondayOf(new Date());
+    m.setDate(m.getDate() + weekOffset * 7);
+    return m;
+  }, [weekOffset]);
   const weekEnd = useMemo(() => new Date(weekStart.getTime() + 7 * DAY_MS), [weekStart]);
   const { data: bookings } = useGetTutorBookingsQuery({
     from: weekStart.toISOString(),
@@ -46,14 +51,35 @@ export function CalendarScreen(): JSX.Element {
   return (
     <Card className="cal">
       <div className="cal__toolbar">
-        <h3>
-          {weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} –{' '}
-          {new Date(weekEnd.getTime() - DAY_MS).toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </h3>
+        <div className="cal__nav">
+          <Button size="sm" variant="secondary" onClick={() => setWeekOffset(0)}>
+            Today
+          </Button>
+          <button
+            type="button"
+            className="cal__chevron"
+            aria-label="Previous week"
+            onClick={() => setWeekOffset((o) => o - 1)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="cal__chevron"
+            aria-label="Next week"
+            onClick={() => setWeekOffset((o) => o + 1)}
+          >
+            ›
+          </button>
+          <h3>
+            {weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} –{' '}
+            {new Date(weekEnd.getTime() - DAY_MS).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </h3>
+        </div>
         <div className="cal__legend">
           <span className="cal__legend-item cal__legend-item--mathematics">Mathematics</span>
           <span className="cal__legend-item cal__legend-item--physics">Physics</span>

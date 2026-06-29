@@ -373,6 +373,14 @@ student auth or the earlier phases — and `nx run-many` passes across 8 project
 (tutor auth, messaging, payouts, promotions, review replies, analytics, settings) on the
 `@ermulaku/ui` design system with light/dark + Teal/Indigo/Plum theming.
 
+**8.7 Responsive + completeness pass ✅** — Made the dashboard fully responsive: a slide-in
+sidebar **drawer** (hamburger + backdrop, closes on navigation) below 1024px, two-column layouts
+collapsing at 900px, a phone layout at 640px (stacked KPIs, trimmed topbar, stacked chat,
+horizontally-scrolling calendar/tables, panel-less onboarding). Verified in-browser at 375 / 768 / 1440. Filled the remaining design-flow gaps: **calendar week navigation** (Today / ‹ / ›),
+the dashboard **setup banner** (dismissible → onboarding) and **Latest review** card. `nx run-many`
+green across 8 projects, `npm audit` **0**. (Cosmetic-only controls left as placeholders by intent:
+topbar search, "New lesson", the notifications bell, and the calendar Day/Month view toggle.)
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
