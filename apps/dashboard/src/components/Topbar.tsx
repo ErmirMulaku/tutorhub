@@ -1,5 +1,5 @@
-import type { JSX } from 'react';
-import { useLocation } from 'react-router-dom';
+import { type FormEvent, type JSX, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -26,7 +26,15 @@ export function Topbar(): JSX.Element {
   const accent = useAppSelector((s) => s.ui.accent);
   const online = useAppSelector((s) => s.ui.online);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const meta = PAGE_META[pathname] ?? { title: 'Dashboard', subtitle: '' };
+  const [query, setQuery] = useState('');
+
+  function onSearch(e: FormEvent): void {
+    e.preventDefault();
+    const q = query.trim();
+    if (q !== '') void navigate(`/lessons?q=${encodeURIComponent(q)}`);
+  }
 
   return (
     <header className="topbar">
@@ -44,10 +52,16 @@ export function Topbar(): JSX.Element {
       </div>
 
       <div className="topbar__actions">
-        <label className="topbar__search">
+        <form className="topbar__search" onSubmit={onSearch}>
           <SearchIcon className="topbar__search-icon" />
-          <input type="search" placeholder="Search students, lessons…" aria-label="Search" />
-        </label>
+          <input
+            type="search"
+            placeholder="Search students, lessons…"
+            aria-label="Search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </form>
 
         <button
           type="button"
