@@ -1,5 +1,5 @@
 import { type FormEvent, type JSX, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import { API_URL } from '../../env';
 import { useAppDispatch } from '../../store/hooks';
@@ -104,6 +104,10 @@ export function LoginScreen(): JSX.Element {
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+
+        <p className="login__alt">
+          New to TutorHub? <Link to="/signup">Create an account</Link>
+        </p>
 
         <button type="button" className="login__dev" onClick={() => void devLogin()} disabled={busy}>
           Use dev login (seeded tutor)

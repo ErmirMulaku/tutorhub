@@ -20,6 +20,8 @@ describe('Tutor auth (e2e)', () => {
   let studentId = '';
   let tutorEmail = '';
   let studentEmail = '';
+  let signupEmail = '';
+  let signupTutorId = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -48,10 +50,12 @@ describe('Tutor auth (e2e)', () => {
       data: { fullName: 'E2E Student', email: studentEmail },
     });
     studentId = student.id;
+    signupEmail = `e2e-signup+${stamp}@example.com`;
   });
 
   afterAll(async () => {
     if (tutorId !== '') await prisma.tutor.deleteMany({ where: { id: tutorId } });
+    if (signupTutorId !== '') await prisma.tutor.deleteMany({ where: { id: signupTutorId } });
     if (studentId !== '') await prisma.student.deleteMany({ where: { id: studentId } });
     await app.close();
   });
@@ -77,6 +81,36 @@ describe('Tutor auth (e2e)', () => {
     const body = res.body as { accessToken: string; tutorId: string };
     expect(body.accessToken).toBeTruthy();
     expect(body.tutorId).toBe(tutorId);
+  });
+
+  it('tutorSignup creates an inactive tutor and returns a token', async () => {
+    const res = await gql(
+      `mutation { tutorSignup(fullName: "E2E Signup", email: "${signupEmail}", password: "s3cret-pass") { tutorId accessToken } }`,
+    ).expect(200);
+    const data = res.body as { data: { tutorSignup: { tutorId: string; accessToken: string } } };
+    signupTutorId = data.data.tutorSignup.tutorId;
+    expect(signupTutorId).toBeTruthy();
+    expect(data.data.tutorSignup.accessToken).toBeTruthy();
+
+    const created = await prisma.tutor.findUniqueOrThrow({ where: { id: signupTutorId } });
+    expect(created.name).toBe('E2E Signup');
+    expect(created.isActive).toBe(false);
+  });
+
+  it('tutorSignup rejects a duplicate email', async () => {
+    const res = await gql(
+      `mutation { tutorSignup(fullName: "Dupe", email: "${signupEmail}", password: "s3cret-pass") { tutorId } }`,
+    ).expect(200);
+    const body = res.body as { errors?: { message: string }[] };
+    expect(body.errors?.[0]?.message).toContain('already exists');
+  });
+
+  it('a signed-up tutor can then sign in with the same credentials', async () => {
+    const res = await gql(
+      `mutation { tutorSignin(email: "${signupEmail}", password: "s3cret-pass") { tutorId } }`,
+    ).expect(200);
+    const data = res.body as { data: { tutorSignin: { tutorId: string } } };
+    expect(data.data.tutorSignin.tutorId).toBe(signupTutorId);
   });
 
   it('tutorSignin verifies the password and returns a token', async () => {

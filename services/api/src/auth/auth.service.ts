@@ -219,6 +219,31 @@ export class AuthService {
     return { accessToken };
   }
 
+  /**
+   * Register a new tutor with email + password and return a session token right
+   * away. The account starts inactive (`isActive: false`) with placeholder
+   * scheduling defaults — the dashboard onboarding wizard fills in the profile,
+   * subjects, hours and payout, then publishes it.
+   */
+  async tutorSignup(fullName: string, email: string, password: string): Promise<TutorAuthResult> {
+    const existing = await this.prisma.tutor.findUnique({ where: { email } });
+    if (existing !== null) {
+      throw new BadRequestDomainError('An account with this email already exists.');
+    }
+    const tutor = await this.prisma.tutor.create({
+      data: {
+        name: fullName,
+        email,
+        passwordHash: hashPassword(password),
+        timezone: 'UTC',
+        hourlyCents: 0,
+        workingHours: [],
+        isActive: false,
+      },
+    });
+    return { accessToken: await this.sign(tutor.id, 'tutor'), tutorId: tutor.id };
+  }
+
   /** Verify a tutor's email + password and return a tutor session token. */
   async tutorSignin(email: string, password: string): Promise<TutorAuthResult> {
     const tutor = await this.prisma.tutor.findUnique({ where: { email } });
