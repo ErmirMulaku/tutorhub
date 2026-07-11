@@ -2,16 +2,28 @@ import { type JSX, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import {
+  useGetMyServicesQuery,
   useGetTutorSettingsQuery,
   usePublishProfileMutation,
   useUpdateTutorProfileMutation,
 } from '../../store/api';
+import { money } from '../../lib/format';
 
 const STEPS = ['Welcome', 'Profile', 'Subjects', 'Availability', 'Payout', 'Publish'];
+
+/** Avatar tints cycled across the subject cards, keyed to design-system tokens. */
+const SUBJECT_TINTS = ['teal', 'accent', 'blue', 'green'] as const;
+
+const LEVEL_LABEL: Record<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED', string> = {
+  BEGINNER: 'Beginner',
+  INTERMEDIATE: 'Intermediate',
+  ADVANCED: 'Advanced',
+};
 
 export function OnboardingWizard(): JSX.Element {
   const navigate = useNavigate();
   const { data: settings } = useGetTutorSettingsQuery();
+  const { data: services } = useGetMyServicesQuery();
   const [saveProfile] = useUpdateTutorProfileMutation();
   const [publish, { isLoading: publishing }] = usePublishProfileMutation();
   const [step, setStep] = useState(1);
@@ -97,7 +109,33 @@ export function OnboardingWizard(): JSX.Element {
           {step === 3 && (
             <>
               <h1>Subjects & pricing</h1>
-              <p className="muted">Add the subjects you teach and set a price — manage these any time in Catalog.</p>
+              <p className="muted">Add what you teach and set your hourly rate.</p>
+              {services && services.length > 0 ? (
+                <ul className="ob__subjects">
+                  {services.map((s, i) => (
+                    <li key={s.id} className="ob__subject">
+                      <span className={`ob__subject-avatar ob__subject-avatar--${SUBJECT_TINTS[i % SUBJECT_TINTS.length]}`}>
+                        {s.name.charAt(0).toUpperCase()}
+                      </span>
+                      <div className="ob__subject-info">
+                        <span className="ob__subject-name">{s.name}</span>
+                        <span className="ob__subject-meta">
+                          {LEVEL_LABEL[s.level]} · {s.durationMin} min
+                        </span>
+                      </div>
+                      <span className="ob__subject-price">
+                        {money(s.priceCents)}
+                        <span className="ob__subject-per"> /hr</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted">No subjects yet — add your first one below.</p>
+              )}
+              <button type="button" className="ob__subject-add" onClick={() => void navigate('/catalog')}>
+                <span aria-hidden>+</span> Add another subject
+              </button>
             </>
           )}
           {step === 4 && (

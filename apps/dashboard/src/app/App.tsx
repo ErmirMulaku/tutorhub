@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AnalyticsScreen } from '../features/analytics/AnalyticsScreen';
 import { AvailabilityScreen } from '../features/availability/AvailabilityScreen';
 import { LoginScreen } from '../features/auth/LoginScreen';
+import { RegisterScreen } from '../features/auth/RegisterScreen';
 import { CalendarScreen } from '../features/calendar/CalendarScreen';
 import { CatalogScreen } from '../features/catalog/CatalogScreen';
 import { DashboardScreen } from '../features/dashboard/DashboardScreen';
@@ -22,6 +23,7 @@ export function App(): JSX.Element {
   return (
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
+      <Route path="/signup" element={<RegisterScreen />} />
       <Route path="/onboarding" element={<OnboardingWizard />} />
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/dashboard" replace />} />

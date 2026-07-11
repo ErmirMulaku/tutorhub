@@ -80,6 +80,15 @@ export class AuthResolver {
     return this.prisma.tutor.findUniqueOrThrow({ where: { id: tutor.tutorId } });
   }
 
+  @Mutation(() => TutorAuthPayloadModel, { name: 'tutorSignup' })
+  tutorSignup(
+    @Args('fullName') fullName: string,
+    @Args('email') email: string,
+    @Args('password') password: string,
+  ): Promise<TutorAuthResult> {
+    return this.auth.tutorSignup(fullName, email, password);
+  }
+
   @Mutation(() => TutorAuthPayloadModel, { name: 'tutorSignin' })
   tutorSignin(
     @Args('email') email: string,
