@@ -28,8 +28,13 @@ import { TutorSettingsModule } from './tutor-settings/tutor-settings.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
 
-// Written to the repo-root docs/ on boot; committed as the GraphQL SDL (SPEC §9).
-const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
+// In dev the SDL is written to the repo-root docs/ on boot and committed
+// (SPEC §9). A deployed container has no such directory — and no business
+// writing to the source tree — so there we generate the schema in memory.
+const isProd = process.env.NODE_ENV === 'production';
+const schemaFile = isProd
+  ? true
+  : fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
 
 @Module({
   imports: [
