@@ -72,6 +72,11 @@ model Tutor {
   passwordHash  String?
   emailVerified Boolean @default(false)
 
+  // Stripe Connect (Express) account for receiving payouts. Null until the tutor
+  // completes onboarding from the dashboard.
+  stripeConnectAccountId String? @unique
+  stripePayoutsEnabled   Boolean @default(false)
+
   // Tutor-side notification preferences (settings → notifications).
   notifyBookings  Boolean @default(true)
   notifyReminders Boolean @default(true)
@@ -153,6 +158,9 @@ model Payout {
   status      PayoutStatus @default(PAID)
   method      String?
   payments    Payment[]
+  // Stripe Transfer (platform → connected account) and the resulting Payout.
+  stripeTransferId String? @unique
+  stripePayoutId   String? @unique
   createdAt   DateTime     @default(now())
 
   @@index([tutorId, createdAt])
@@ -249,6 +257,8 @@ model Student {
   phone        String?
   avatarColor  String? // UI avatar palette key
   walletCents  Int             @default(0)
+  // Stripe customer for charging saved cards. Null until first card is added.
+  stripeCustomerId String?      @unique
   // Notification preferences (account → notifications screen).
   notifyEmail     Boolean @default(true)
   notifySms       Boolean @default(false)
@@ -384,6 +394,8 @@ model Payment {
   tutorId     String?
   payout      Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
   payoutId    String?
+  // Stripe PaymentIntent that charged the student for this booking.
+  stripePaymentIntentId String? @unique
 
   @@index([tutorId, status])
 }

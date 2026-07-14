@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Button, Price } from '@ermulaku/ui';
 import type { Locale } from '@/i18n/config';
 import { interpolate, type Dictionary } from '@/i18n/dictionaries';
-import { bookLessonAction } from '@/lib/actions';
+import { bookLessonAction, createLessonPaymentIntentAction } from '@/lib/actions';
 import { formatFullDateTime, formatSlotTime } from '@/lib/datetime';
 import type { DiscoverSubject, Slot } from '@/lib/queries';
+import { LessonPaymentForm, STRIPE_PUBLISHABLE_KEY } from './LessonPaymentForm';
 
 interface BookingWizardProps {
   tutorId: string;
@@ -22,7 +23,7 @@ interface BookingWizardProps {
 }
 
 type Step = 1 | 2 | 3;
-type Phase = 'form' | 'success' | 'error';
+type Phase = 'form' | 'pay' | 'success' | 'error';
 
 /**
  * Three-step booking flow (subject → time → confirm) rendered inline in the
@@ -49,6 +50,7 @@ export function BookingWizard({
   const [note, setNote] = useState('');
   const [agree, setAgree] = useState(false);
   const [phase, setPhase] = useState<Phase>('form');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? '';
@@ -58,13 +60,30 @@ export function BookingWizard({
     setSlot(null);
     setNote('');
     setAgree(false);
+    setClientSecret(null);
     setPhase('form');
   };
 
   const confirm = (): void => {
     if (!slot) return;
+    const input = { tutorId, subjectId, startTime: slot.start };
     startTransition(async () => {
-      const result = await bookLessonAction({ tutorId, subjectId, startTime: slot.start });
+      // Paid flow only when the browser can also confirm the card. Otherwise
+      // (no publishable key, or the API has no Stripe key) book for free as
+      // before so local/demo setups keep working.
+      if (STRIPE_PUBLISHABLE_KEY) {
+        const intent = await createLessonPaymentIntentAction(input);
+        if (intent.ok && intent.clientSecret) {
+          setClientSecret(intent.clientSecret);
+          setPhase('pay');
+          return;
+        }
+        if (!intent.paymentsDisabled) {
+          setPhase('error');
+          return;
+        }
+      }
+      const result = await bookLessonAction(input);
       if (result.ok) {
         setPhase('success');
         router.refresh();
@@ -73,6 +92,32 @@ export function BookingWizard({
       }
     });
   };
+
+  if (phase === 'pay' && slot && clientSecret) {
+    return (
+      <div className="wizard">
+        <h3 className="wizard__h">{t.payTitle}</h3>
+        <p className="booking__summary">
+          {interpolate(t.summary, { subject: subjectName, tutor: tutorName })} ·{' '}
+          {formatFullDateTime(slot.start, timezone, locale)}
+        </p>
+        <LessonPaymentForm
+          clientSecret={clientSecret}
+          amountLabel={new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
+            hourlyCents / 100,
+          )}
+          dict={dict}
+          onSuccess={() => {
+            setPhase('success');
+            router.refresh();
+          }}
+        />
+        <button type="button" className="wizard__back" onClick={reset}>
+          {t.cancel}
+        </button>
+      </div>
+    );
+  }
 
   if (phase === 'success' && slot) {
     return (

@@ -10,6 +10,7 @@ import {
 import { BarChart } from '../../components/BarChart';
 import { useToast } from '../../components/ToastProvider';
 import { dayOf, money } from '../../lib/format';
+import { ConnectPayouts } from './PayoutEditor';
 
 function exportCsv(rows: Transaction[]): void {
   const header = 'Date,Student,Subject,Net,Fee,Status';
@@ -88,6 +89,7 @@ export function EarningsScreen(): JSX.Element {
           <p className="muted">
             Auto-payout runs {summary.payoutSchedule.toLowerCase()} to your linked card.
           </p>
+          <ConnectPayouts />
         </Card>
       </div>
 

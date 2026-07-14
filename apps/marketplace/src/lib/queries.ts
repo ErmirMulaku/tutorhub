@@ -170,6 +170,38 @@ export async function bookLesson(
   return data.bookLesson;
 }
 
+const CREATE_LESSON_PAYMENT_INTENT_MUTATION = /* GraphQL */ `
+  mutation CreateLessonPaymentIntent($input: BookInput!) {
+    createLessonPaymentIntent(input: $input) {
+      clientSecret
+      bookingId
+      paymentId
+    }
+  }
+`;
+
+export interface LessonPaymentIntent {
+  clientSecret: string;
+  bookingId: string;
+  paymentId: string;
+}
+
+/**
+ * Authenticated paid booking: creates the booking (PENDING) plus a Stripe
+ * PaymentIntent; the client confirms the card with `clientSecret` and the
+ * webhook flips the booking to CONFIRMED.
+ */
+export async function createLessonPaymentIntent(
+  input: BookLessonInput,
+  token: string,
+): Promise<LessonPaymentIntent> {
+  const data = await graphqlRequest<{ createLessonPaymentIntent: LessonPaymentIntent }>(
+    CREATE_LESSON_PAYMENT_INTENT_MUTATION,
+    { variables: { input }, token, cache: 'no-store' },
+  );
+  return data.createLessonPaymentIntent;
+}
+
 export type TutorSort = 'relevance' | 'priceAsc' | 'priceDesc' | 'rating';
 
 export interface GetTutorsArgs {

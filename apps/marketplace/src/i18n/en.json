@@ -146,7 +146,12 @@
     "successBody": "Your {subject} lesson is confirmed for {time}.",
     "error": "Sorry, we couldn't book that slot. Please try another.",
     "close": "Done",
-    "bookAnother": "Book another"
+    "bookAnother": "Book another",
+    "payTitle": "Pay for your lesson",
+    "payNow": "Pay {amount}",
+    "payProcessing": "Processing payment…",
+    "payError": "Payment failed. Please check your card and try again.",
+    "paySecure": "Payments are processed securely by Stripe."
   },
   "lessons": {
     "title": "My lessons",

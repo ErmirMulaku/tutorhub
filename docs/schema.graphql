@@ -44,6 +44,15 @@ enum BookingStatus {
   PENDING
 }
 
+type ConnectOnboardingLink {
+  url: String!
+}
+
+type ConnectStatus {
+  onboarded: Boolean!
+  payoutsEnabled: Boolean!
+}
+
 type Conversation {
   id: ID!
   lastMessageAt: DateTime!
@@ -117,6 +126,12 @@ type GiftCard {
   toName: String
 }
 
+type LessonPaymentIntent {
+  bookingId: ID!
+  clientSecret: String!
+  paymentId: ID!
+}
+
 enum Level {
   ADVANCED
   BEGINNER
@@ -158,6 +173,7 @@ type Mutation {
   changePassword(currentPassword: String!, newPassword: String!): Student!
   completeBooking(id: ID!): Booking!
   createLesson(startTime: String!, studentId: ID!, subjectId: ID!): Booking!
+  createLessonPaymentIntent(input: BookInput!): LessonPaymentIntent!
   createPromotion(input: CreatePromotionInput!): Promotion!
   createService(input: CreateServiceInput!): Service!
   declineBooking(id: ID!): Booking!
@@ -185,7 +201,9 @@ type Mutation {
   setTwoFactor(enabled: Boolean!): Student!
   signin(email: String!, password: String!): AuthPayload!
   signup(email: String!, fullName: String!, password: String!): SignupPayload!
+  startConnectOnboarding: ConnectOnboardingLink!
   tutorSignin(email: String!, password: String!): TutorAuthPayload!
+  tutorSignup(email: String!, fullName: String!, password: String!): TutorAuthPayload!
   updateBookingRules(rules: BookingRulesInput!): MyAvailability!
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
@@ -260,6 +278,7 @@ enum PromotionState {
 type Query {
   analyticsSummary: AnalyticsSummary!
   availability(date: String!, tutorId: ID!): [Slot!]!
+  connectStatus: ConnectStatus!
   conversations: [Conversation!]!
   dashboardSummary: DashboardSummary!
   earningsByMonth: [MonthlyEarning!]!

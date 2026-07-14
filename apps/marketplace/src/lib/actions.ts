@@ -8,6 +8,7 @@ import {
   buyGiftCard as buyGiftCardMutation,
   cancelBooking as cancelBookingMutation,
   changePassword as changePasswordMutation,
+  createLessonPaymentIntent,
   deleteAccount as deleteAccountMutation,
   appleSignin,
   googleSignin,
@@ -171,6 +172,33 @@ export async function bookLessonAction(input: BookLessonInput): Promise<ActionRe
   }, 'BOOKING_FAILED');
   if (result.ok) revalidatePath('/[locale]/lessons', 'page');
   return result;
+}
+
+export interface PaymentIntentActionResult extends ActionResult {
+  clientSecret?: string;
+  bookingId?: string;
+  /** True when the API has no Stripe key — the caller should fall back to a free booking. */
+  paymentsDisabled?: boolean;
+}
+
+/** Start a paid booking: returns the PaymentIntent client secret to confirm in the browser. */
+export async function createLessonPaymentIntentAction(
+  input: BookLessonInput,
+): Promise<PaymentIntentActionResult> {
+  try {
+    const token = await getTokenOrDemo();
+    const intent = await createLessonPaymentIntent(input, token);
+    revalidatePath('/[locale]/lessons', 'page');
+    return { ok: true, clientSecret: intent.clientSecret, bookingId: intent.bookingId };
+  } catch (err) {
+    if (err instanceof GraphQLRequestError && err.message.includes('not configured')) {
+      return { ok: false, paymentsDisabled: true, error: err.message };
+    }
+    return {
+      ok: false,
+      error: err instanceof GraphQLRequestError ? err.message : 'PAYMENT_FAILED',
+    };
+  }
 }
 
 export async function cancelBookingAction(id: string): Promise<ActionResult> {

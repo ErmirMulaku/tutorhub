@@ -17,6 +17,8 @@
   "dependencies": {
     "@ermulaku/types": "*",
     "@ermulaku/ui": "*",
+    "@stripe/react-stripe-js": "^6.7.0",
+    "@stripe/stripe-js": "^9.9.0",
     "next": "16.2.9",
     "react": "19.2.7",
     "react-dom": "19.2.7"

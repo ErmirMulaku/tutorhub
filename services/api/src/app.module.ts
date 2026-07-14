@@ -18,8 +18,10 @@ import { HealthController } from './health/health.controller.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
+import { StripeModule } from './stripe/stripe.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
 import { TutorDashboardModule } from './tutor-dashboard/tutor-dashboard.module.js';
 import { TutorSettingsModule } from './tutor-settings/tutor-settings.module.js';
@@ -40,6 +42,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
       context: ({ req }: { req: unknown }) => ({ req }),
     }),
     PrismaModule,
+    StripeModule,
     AuthModule,
     AccountModule,
     TutorsModule,
@@ -49,6 +52,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     CatalogModule,
     MessagingModule,
     EarningsModule,
+    PaymentsModule,
     MarketingModule,
     ReviewsModule,
     AnalyticsModule,

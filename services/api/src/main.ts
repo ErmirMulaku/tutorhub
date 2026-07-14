@@ -12,7 +12,9 @@ import { createRequestMetrics } from './monitoring/request-metrics.js';
 const PROTO_PATH = fileURLToPath(new URL('../../../proto/booking.proto', import.meta.url));
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // `rawBody: true` preserves the unparsed request body so the Stripe webhook
+  // controller can verify the event signature against the exact bytes sent.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Allow the dashboard (separate origin in dev) to call REST + connect via Socket.IO.
   app.enableCors({ origin: true });

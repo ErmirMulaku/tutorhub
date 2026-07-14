@@ -10,6 +10,11 @@ import {
   TransactionModel,
 } from '../graphql/models/earnings.model.js';
 import {
+  ConnectOnboardingLinkModel,
+  ConnectStatusModel,
+} from '../graphql/models/payments.model.js';
+import {
+  type ConnectStatus,
   type EarningsSummary,
   EarningsService,
   type MonthlyEarning,
@@ -55,5 +60,15 @@ export class EarningsResolver {
     @Args('method') method: string,
   ): Promise<EarningsSummary> {
     return this.earnings.setPayoutMethod(tutor.tutorId, method);
+  }
+
+  @Query(() => ConnectStatusModel, { name: 'connectStatus' })
+  connectStatus(@CurrentTutor() tutor: TutorPrincipal): Promise<ConnectStatus> {
+    return this.earnings.connectStatus(tutor.tutorId);
+  }
+
+  @Mutation(() => ConnectOnboardingLinkModel, { name: 'startConnectOnboarding' })
+  async startConnectOnboarding(@CurrentTutor() tutor: TutorPrincipal): Promise<{ url: string }> {
+    return { url: await this.earnings.startConnectOnboarding(tutor.tutorId) };
   }
 }

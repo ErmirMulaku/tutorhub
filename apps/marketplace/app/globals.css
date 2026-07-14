@@ -464,6 +464,13 @@ h3 {
   justify-content: flex-end;
   gap: var(--th-space-3);
 }
+/* Stripe Payment Element step inside the booking wizard. */
+.payform {
+  display: flex;
+  flex-direction: column;
+  gap: var(--th-space-4);
+  margin-top: var(--th-space-3);
+}
 .booking__success {
   margin: 0;
   font-size: 1.2rem;
