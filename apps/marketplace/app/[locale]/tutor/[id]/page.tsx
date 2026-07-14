@@ -10,7 +10,7 @@ import {
   getTutors,
   type Slot,
 } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { getSessionToken } from '@/lib/session';
 import { upcomingDates } from '@/lib/datetime';
 import { DateTabs } from '@/components/DateTabs';
 import { BookingWizard } from '@/components/BookingWizard';
@@ -52,10 +52,11 @@ export default async function TutorProfilePage({
   const selectedDate =
     typeof sp['date'] === 'string' && dates.includes(sp['date']) ? sp['date'] : (dates[0] as string);
 
-  const token = await getTokenOrDemo();
+  // Profiles stay public: favourites are only personalised when signed in.
+  const token = await getSessionToken();
   const [slots, favoriteIds, similar] = await Promise.all([
     getAvailability(id, selectedDate).catch((): Slot[] => []),
-    getMyFavoriteIds(token),
+    token === null ? Promise.resolve<string[]>([]) : getMyFavoriteIds(token),
     // Tutors sharing the first subject, used for the "similar tutors" rail.
     getTutors({ subject: tutor.subjects[0]?.name, limit: 4 }).catch(() => ({
       items: [],

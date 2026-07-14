@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { getWallet, type Wallet } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { requireSessionToken } from '@/lib/session';
 import { WalletView } from '@/components/WalletView';
 
 export default async function WalletPage({
@@ -17,9 +17,12 @@ export default async function WalletPage({
   const t = dict.wallet;
   const currency = localeCurrency[locale];
 
+  // Outside the try: `redirect` signals by throwing, so a catch-all would swallow it.
+  const token = await requireSessionToken(locale);
+
   let wallet: Wallet = { balanceCents: 0, giftCards: [], paymentMethods: [] };
   try {
-    wallet = await getWallet(await getTokenOrDemo());
+    wallet = await getWallet(token);
   } catch {
     // Render an empty wallet rather than 500 the page.
   }

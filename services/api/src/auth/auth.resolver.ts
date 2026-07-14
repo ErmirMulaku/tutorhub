@@ -1,6 +1,6 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { OAuthProvider, type Student, type Tutor } from '../generated/prisma/client.js';
+import type { Student, Tutor } from '../generated/prisma/client.js';
 import { AuthPayloadModel } from '../graphql/models/auth-payload.model.js';
 import { ResendPayloadModel, SignupPayloadModel } from '../graphql/models/signup-payload.model.js';
 import { StudentModel } from '../graphql/models/student.model.js';
@@ -52,15 +52,10 @@ export class AuthResolver {
     return this.auth.signin(email, password);
   }
 
-  @Mutation(() => AuthPayloadModel, { name: 'oauthSignin' })
-  oauthSignin(
-    @Args('provider', { type: () => OAuthProvider }) provider: OAuthProvider,
-    @Args('providerUserId') providerUserId: string,
-    @Args('email') email: string,
-    @Args('fullName') fullName: string,
-  ): Promise<AuthResult> {
-    return this.auth.oauthSignin(provider, providerUserId, email, fullName);
-  }
+  // NOTE: there is deliberately no `oauthSignin` mutation. Accepting an
+  // unverified (provider, email) pair from the client would let anyone sign in
+  // as any user. Social sign-in must go through `googleSignin`/`appleSignin`,
+  // which verify a provider-issued ID token against the provider's JWKS first.
 
   @Mutation(() => AuthPayloadModel, { name: 'googleSignin' })
   googleSignin(@Args('idToken') idToken: string): Promise<AuthResult> {

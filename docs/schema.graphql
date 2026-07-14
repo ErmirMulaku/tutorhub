@@ -185,7 +185,6 @@ type Mutation {
   markAllNotificationsRead: [Notification!]!
   markConversationRead(conversationId: ID!): [Conversation!]!
   markNotificationRead(id: ID!): [Notification!]!
-  oauthSignin(email: String!, fullName: String!, provider: OAuthProvider!, providerUserId: String!): AuthPayload!
   publishProfile: TutorSettings!
   redeemGiftCard(code: String!): Wallet!
   removeFavorite(tutorId: ID!): [Tutor!]!
@@ -237,11 +236,6 @@ enum NotificationType {
   GIFT_RECEIVED
   LESSON_REMINDER
   REVIEW_PROMPT
-}
-
-enum OAuthProvider {
-  APPLE
-  GOOGLE
 }
 
 type PaymentMethod {

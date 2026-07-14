@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { getMe } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { requireSessionToken } from '@/lib/session';
 import { AccountView } from '@/components/AccountView';
 
 export default async function AccountPage({
@@ -16,7 +16,8 @@ export default async function AccountPage({
   const dict = getDictionary(locale);
   const t = dict.account;
 
-  const me = await getMe(await getTokenOrDemo()).catch(() => null);
+  const token = await requireSessionToken(locale);
+  const me = await getMe(token).catch(() => null);
   if (!me) redirect(`/${locale}/login`);
 
   return (

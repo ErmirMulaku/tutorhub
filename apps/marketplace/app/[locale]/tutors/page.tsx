@@ -4,7 +4,7 @@ import { Level } from '@ermulaku/types';
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary, interpolate } from '@/i18n/dictionaries';
 import { getMyFavoriteIds, getTutors, type TutorSort } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { getSessionToken } from '@/lib/session';
 import { DiscoverFilters } from '@/components/DiscoverFilters';
 import { TutorCard } from '@/components/TutorCard';
 
@@ -54,10 +54,11 @@ export default async function TutorsPage({
   let failed = false;
   let favoriteIds: string[] = [];
   try {
-    const token = await getTokenOrDemo();
+    // Discover stays public: favourites are only personalised when signed in.
+    const token = await getSessionToken();
     const [page, favs] = await Promise.all([
       getTutors({ subject, query, level, maxPrice, minRating, sort }),
-      getMyFavoriteIds(token),
+      token === null ? Promise.resolve<string[]>([]) : getMyFavoriteIds(token),
     ]);
     total = page.total;
     items = page.items;
