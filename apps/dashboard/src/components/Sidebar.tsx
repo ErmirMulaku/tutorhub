@@ -1,12 +1,21 @@
 import type { JSX } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Avatar } from '@ermulaku/ui';
 import { useGetDashboardSummaryQuery, useGetMeTutorQuery } from '../store/api';
 import { type NavItem, NAV_GROUPS } from '../app/nav';
+import { useAppDispatch } from '../store/hooks';
+import { clearCredentials } from '../store/auth-slice';
 
 export function Sidebar(): JSX.Element {
   const { data: me } = useGetMeTutorQuery();
   const { data: summary } = useGetDashboardSummaryQuery();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+
+  function signOut(): void {
+    dispatch(clearCredentials());
+    void navigate('/login', { replace: true });
+  }
 
   /** Live badge counts that aren't part of the static nav model. */
   const badgeFor = (item: NavItem): { count: number; tone: 'primary' | 'danger' } | undefined => {
@@ -72,6 +81,9 @@ export function Sidebar(): JSX.Element {
             <div className="sidebar__profile-meta">Profile 80% complete</div>
           </div>
         </NavLink>
+        <button type="button" className="sidebar__link sidebar__signout" onClick={signOut}>
+          Sign out
+        </button>
       </div>
     </aside>
   );

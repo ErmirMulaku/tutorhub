@@ -48,29 +48,6 @@ export function LoginScreen(): JSX.Element {
     }
   }
 
-  async function devLogin(): Promise<void> {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_URL}/auth/tutor/dev-login`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (!res.ok) {
-        setError('Dev login failed — is the tutor seeded?');
-        return;
-      }
-      const body = (await res.json()) as { accessToken: string; tutorId: string };
-      dispatch(setCredentials({ token: body.accessToken, tutorId: body.tutorId }));
-      void navigate('/dashboard', { replace: true });
-    } catch {
-      setError('Could not reach the server.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="login">
       <div className="login__panel">
@@ -108,10 +85,6 @@ export function LoginScreen(): JSX.Element {
         <p className="login__alt">
           New to TutorHub? <Link to="/signup">Create an account</Link>
         </p>
-
-        <button type="button" className="login__dev" onClick={() => void devLogin()} disabled={busy}>
-          Use dev login (seeded tutor)
-        </button>
       </div>
     </div>
   );
