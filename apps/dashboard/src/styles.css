@@ -156,6 +156,20 @@ body {
   font-size: 11.5px;
   color: var(--muted);
 }
+.sidebar__signout {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+}
+.sidebar__signout:hover {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
 
 /* ---- Topbar -------------------------------------------------------------- */
 .topbar {
@@ -361,17 +375,6 @@ body {
 }
 .login__alt a:hover {
   text-decoration: underline;
-}
-.login__dev {
-  margin-top: 14px;
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--primary);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 /* ===== Phase 1 — Dashboard / Calendar / Lessons ========================== */
@@ -1563,6 +1566,27 @@ body {
   font-weight: 700;
   margin-top: 6px;
 }
+.payout-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.payout-editor .login__field {
+  width: 100%;
+}
+.payout-editor__schedule {
+  margin-top: 6px;
+}
+.payout-editor__connect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.payout-editor__connect-hint {
+  font-size: 12.5px;
+}
 .settings__schedule {
   display: flex;
   gap: 8px;
@@ -1603,8 +1627,10 @@ body {
    re-declares the light --th-* tokens locally to override [data-theme='dark']
    on <html>. Every unprefixed alias (--bg, --ink, --surface-2, …) maps onto
    these via var(), so the whole wizard flips back to light with no per-rule
-   changes. */
-.ob {
+   changes. `.ob-modal` is the "Add subject" modal panel, which portals to
+   <body> (outside .ob), so it opts into the same light tokens explicitly. */
+.ob,
+.ob-modal {
   --th-bg: #ffffff;
   --th-surface: #ffffff;
   --th-surface-2: #f4f6f8;
@@ -1634,7 +1660,8 @@ body {
   --faint: #9fb0bf;
   --hero-grad: linear-gradient(150deg, #13a39d 0%, #0c6f6a 55%, #0a5550 100%);
   color-scheme: light;
-
+}
+.ob {
   position: fixed;
   inset: 0;
   z-index: 2000;
@@ -1832,6 +1859,11 @@ body {
 .ob__subject-add:hover {
   border-color: var(--primary);
   background: var(--primary-50);
+}
+/* The onboarding shell is a fixed z-index:2000 layer; lift the "Add subject"
+   modal (portaled to <body>, default overlay z-index:1000) above it. */
+.th-modal-overlay:has(.ob-modal) {
+  z-index: 2100;
 }
 .ob__check {
   width: 56px;

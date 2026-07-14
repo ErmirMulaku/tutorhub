@@ -8,6 +8,9 @@ import {
   useUpdateTutorProfileMutation,
 } from '../../store/api';
 import { money } from '../../lib/format';
+import { NewServiceModal } from '../catalog/NewServiceModal';
+import { WeeklyHoursEditor } from '../availability/WeeklyHoursEditor';
+import { PayoutEditor } from '../earnings/PayoutEditor';
 
 const STEPS = ['Welcome', 'Profile', 'Subjects', 'Availability', 'Payout', 'Publish'];
 
@@ -28,6 +31,7 @@ export function OnboardingWizard(): JSX.Element {
   const [publish, { isLoading: publishing }] = usePublishProfileMutation();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState({ name: '', headline: '', about: '' });
+  const [addSubjectOpen, setAddSubjectOpen] = useState(false);
 
   // Prefill once settings load.
   if (settings && profile.name === '' && step === 1) {
@@ -133,21 +137,28 @@ export function OnboardingWizard(): JSX.Element {
               ) : (
                 <p className="muted">No subjects yet — add your first one below.</p>
               )}
-              <button type="button" className="ob__subject-add" onClick={() => void navigate('/catalog')}>
+              <button type="button" className="ob__subject-add" onClick={() => setAddSubjectOpen(true)}>
                 <span aria-hidden>+</span> Add another subject
               </button>
+              <NewServiceModal
+                open={addSubjectOpen}
+                onClose={() => setAddSubjectOpen(false)}
+                className="ob-modal"
+              />
             </>
           )}
           {step === 4 && (
             <>
               <h1>Availability</h1>
               <p className="muted">Set the days and hours students can book — you can fine-tune this in Availability.</p>
+              <WeeklyHoursEditor />
             </>
           )}
           {step === 5 && (
             <>
               <h1>Get paid</h1>
               <p className="muted">Link a payout method so your earnings reach you automatically.</p>
+              <PayoutEditor />
             </>
           )}
           {step === 6 && (

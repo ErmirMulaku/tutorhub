@@ -538,6 +538,30 @@ export const api = createApi({
       }),
       invalidatesTags: ['Earnings', 'Settings'],
     }),
+    getConnectStatus: build.query<{ onboarded: boolean; payoutsEnabled: boolean }, void>({
+      query: () => ({
+        graphql: { document: `{ connectStatus { onboarded payoutsEnabled } }` },
+      }),
+      transformResponse: (r: { connectStatus: { onboarded: boolean; payoutsEnabled: boolean } }) =>
+        r.connectStatus,
+      providesTags: ['Earnings'],
+    }),
+    startConnectOnboarding: build.mutation<{ url: string }, void>({
+      query: () => ({
+        graphql: { document: `mutation { startConnectOnboarding { url } }` },
+      }),
+      transformResponse: (r: { startConnectOnboarding: { url: string } }) =>
+        r.startConnectOnboarding,
+    }),
+    setPayoutMethod: build.mutation<EarningsSummary, string>({
+      query: (method) => ({
+        graphql: {
+          document: `mutation($m: String!){ setPayoutMethod(method: $m){ payoutMethod } }`,
+          variables: { m: method },
+        },
+      }),
+      invalidatesTags: ['Earnings', 'Settings'],
+    }),
 
     // --- Marketing (tutor GraphQL) ---
     getMarketingSummary: build.query<MarketingSummary, void>({
@@ -767,6 +791,9 @@ export const {
   useGetTransactionsQuery,
   useWithdrawMutation,
   useSetPayoutScheduleMutation,
+  useSetPayoutMethodMutation,
+  useGetConnectStatusQuery,
+  useStartConnectOnboardingMutation,
   useGetMarketingSummaryQuery,
   useGetPromotionsQuery,
   useGetReferralProgramQuery,
