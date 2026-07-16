@@ -1,0 +1,87 @@
+name: Deploy Marketplace
+
+# Builds the marketplace and deploys it to Vercel production.
+#
+# ⚠️ Vercel's Git integration must be DISABLED for this project, or every merge
+# deploys twice — once from Vercel's own git hook and once from here. Turn it
+# off in Project Settings → Git, or add to apps/marketplace/vercel.json:
+#     "git": { "deploymentEnabled": false }
+#
+# Secrets/vars this workflow assumes:
+#   - secrets.VERCEL_TOKEN                 (Account Settings → Tokens)
+#   - secrets.VERCEL_ORG_ID                (.vercel/project.json → orgId)
+#   - secrets.VERCEL_PROJECT_ID_MARKETPLACE(.vercel/project.json → projectId)
+#
+# Build-time env (API_URL, NEXT_PUBLIC_*) is NOT set here: `vercel pull` fetches
+# it from the Vercel project, so it stays configured in one place.
+
+# Dormant until the Vercel side is set up: VERCEL_TOKEN and the project ids do
+# not exist yet, and Vercel's Git integration still owns these deploys. Running
+# on push today would fail, and would double-deploy once the secrets exist.
+#
+# To hand these deploys over to CI, disable the Git integration (see above) and
+# restore the push trigger:
+#
+#   push:
+#     branches: [master]
+#     paths:
+#       - 'apps/marketplace/**'
+#       - 'packages/**'
+#       - 'package.json'
+#       - 'package-lock.json'
+#       - '.github/workflows/deploy-marketplace.yml'
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-marketplace
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_MARKETPLACE }}
+
+jobs:
+  deploy:
+    name: Build · Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # The Vercel project's Root Directory is apps/marketplace, which is where
+        # vercel.json lives. Its buildCommand cd's back to the repo root so npm
+        # workspaces and Nx resolve.
+        working-directory: apps/marketplace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pull Vercel project settings
+        # Brings down the project's env vars and settings (incl. the fra1 region
+        # pin) so the CI build matches a Vercel-side build.
+        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: npx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          URL=$(npx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "Deployed to $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke check
+        run: |
+          # The marketplace renders server-side against the API, so a 200 here
+          # exercises the SSR fetch path, not just static assets.
+          curl -sf -o /dev/null -w 'HTTP %{http_code} in %{time_total}s\n' \
+            "${{ steps.deploy.outputs.url }}/en"

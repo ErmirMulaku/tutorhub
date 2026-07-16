@@ -12,6 +12,12 @@ const DEFAULT_FROM = 'TutorHub <onboarding@resend.dev>';
  * When no key is configured the client is left `null` and {@link enabled} is
  * false: callers fall back to logging the code instead of crashing, so local
  * dev and CI keep working without a Resend account.
+ *
+ * In production that fallback is refused. Without a transport, a code can only
+ * reach the user by being logged or returned to the caller — the first makes
+ * signup unusable, the second hands out the code to whoever asked for it. Both
+ * are worse than not booting, so a missing key fails the deploy instead: App
+ * Runner's health check fails and the rollout is rolled back.
  */
 @Injectable()
 export class EmailService {
@@ -23,6 +29,12 @@ export class EmailService {
     const key = this.config.get<string>('RESEND_API_KEY');
     this.from = this.config.get<string>('EMAIL_FROM') ?? DEFAULT_FROM;
     if (key === undefined || key === '') {
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        throw new Error(
+          'RESEND_API_KEY is required in production: without it, email verification ' +
+            'cannot deliver codes and would have to be bypassed to work.',
+        );
+      }
       this.client = null;
       this.logger.warn('RESEND_API_KEY not set — verification codes are logged, not emailed.');
     } else {

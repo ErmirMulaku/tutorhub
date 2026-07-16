@@ -1,0 +1,132 @@
+name: Deploy API
+
+# Builds the API image and rolls it out to App Runner (eu-central-1).
+#
+# One-time setup this workflow assumes:
+#   - An ECR repository (vars.ECR_REPOSITORY, e.g. `tutorhub-api`).
+#   - An App Runner service pointed at that repository
+#     (secrets.APPRUNNER_SERVICE_ARN).
+#   - An IAM role GitHub can assume via OIDC (secrets.AWS_DEPLOY_ROLE_ARN),
+#     trusted for this repo, allowing ecr:* on the repo plus
+#     apprunner:StartDeployment / apprunner:DescribeService / ListOperations.
+#     OIDC avoids storing long-lived AWS keys in GitHub.
+#
+# Migrations are NOT run here — see the note at the bottom of the file.
+
+on:
+  push:
+    branches: [master]
+    # The API is a workspace package: a change to packages/* or the lockfile
+    # changes the image even when services/api is untouched.
+    paths:
+      - 'services/api/**'
+      - 'packages/**'
+      - 'proto/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.dockerignore'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+concurrency:
+  # Never cancel a rollout midway; queue instead.
+  group: deploy-api
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # required to assume the AWS role via OIDC
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  deploy:
+    name: Build · Push · Roll out
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          # Build context is the REPO ROOT: the API is an npm-workspace package
+          # and its Dockerfile copies packages/* manifests.
+          context: .
+          file: services/api/Dockerfile
+          # App Runner runs x86_64 — an arm64 image built on Apple Silicon or an
+          # arm runner will not start.
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start App Runner deployment
+        id: rollout
+        run: |
+          OP_ID=$(aws apprunner start-deployment \
+            --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
+            --query 'OperationId' --output text)
+          echo "Started operation $OP_ID"
+          echo "operation-id=$OP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the rollout to finish
+        run: |
+          # App Runner has no CLI waiter for deployments, so poll the operation.
+          for i in $(seq 1 60); do
+            STATUS=$(aws apprunner list-operations \
+              --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
+              --query "OperationSummaryList[?Id=='${{ steps.rollout.outputs.operation-id }}'].Status | [0]" \
+              --output text)
+            echo "[$i/60] $STATUS"
+            case "$STATUS" in
+              SUCCEEDED) echo "Rollout succeeded"; exit 0 ;;
+              FAILED|ROLLBACK_SUCCEEDED|ROLLBACK_FAILED)
+                echo "::error::Rollout finished as $STATUS"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Timed out after 10m waiting for the rollout"; exit 1
+
+      - name: Smoke check
+        run: |
+          URL=$(aws apprunner describe-service \
+            --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
+            --query 'Service.ServiceUrl' --output text)
+          # A green rollout only means the container passed its health check;
+          # confirm the app actually answers GraphQL before calling this a deploy.
+          curl -sf -o /dev/null -X POST "https://$URL/graphql" \
+            -H 'content-type: application/json' \
+            -d '{"query":"{__typename}"}'
+          echo "https://$URL answered GraphQL"
+
+# ── Migrations ───────────────────────────────────────────────────────────────
+# `prisma migrate deploy` is deliberately not run here. It needs to reach the
+# database, which this runner cannot do unless the instance is publicly
+# reachable, and an auto-deploy that migrates on every merge to master can drop
+# or rewrite columns with no review step and no staging environment to catch it.
+#
+# Run migrations yourself as a release step BEFORE merging a schema change:
+#   DATABASE_URL='<prod url>' \
+#     npx prisma migrate deploy --schema services/api/prisma/schema.prisma
+#
+# Since this workflow auto-deploys, a merge containing both a migration and the
+# code that needs it will ship the code first. Order accordingly: migrate, then
+# merge.

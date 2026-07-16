@@ -4,7 +4,7 @@ import { Field, ID, ObjectType } from '@nestjs/graphql';
 export class SignupPayloadModel {
   @Field(() => ID) studentId!: string;
   @Field() requiresVerification!: boolean;
-  /** Only set when Resend isn't configured — lets local dev read the code without email. */
+  /** Off-production only, and only without an email transport. Never in production. */
   @Field(() => String, { nullable: true }) devCode!: string | null;
 }
 
@@ -17,6 +17,6 @@ export class ResendPayloadModel {
 export class TutorSignupPayloadModel {
   @Field(() => ID) tutorId!: string;
   @Field() requiresVerification!: boolean;
-  /** Only set when Resend isn't configured — lets local dev read the code without email. */
+  /** Off-production only, and only without an email transport. Never in production. */
   @Field(() => String, { nullable: true }) devCode!: string | null;
 }
