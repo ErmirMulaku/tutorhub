@@ -11,6 +11,8 @@ import { BookingGrpcController } from './grpc/booking-grpc.controller.js';
   imports: [AuthModule],
   controllers: [BookingController, BookingGrpcController],
   providers: [BookingService, BookingResolver, BookingEvents, BookingsGateway],
-  exports: [BookingService],
+  // BookingEvents is exported so NotificationsModule can turn booking changes
+  // into feed rows without the booking flow knowing about notifications.
+  exports: [BookingService, BookingEvents],
 })
 export class BookingsModule {}
