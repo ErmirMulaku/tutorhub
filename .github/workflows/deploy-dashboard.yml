@@ -1,0 +1,79 @@
+name: Deploy Dashboard
+
+# Builds the dashboard SPA and deploys it to Vercel production.
+#
+# ⚠️ Vercel's Git integration must be DISABLED for this project, or every merge
+# deploys twice — once from Vercel's own git hook and once from here. Turn it
+# off in Project Settings → Git, or add to apps/dashboard/vercel.json:
+#     "git": { "deploymentEnabled": false }
+#
+# Secrets/vars this workflow assumes:
+#   - secrets.VERCEL_TOKEN               (Account Settings → Tokens)
+#   - secrets.VERCEL_ORG_ID              (.vercel/project.json → orgId)
+#   - secrets.VERCEL_PROJECT_ID_DASHBOARD(.vercel/project.json → projectId)
+#
+# The dashboard inlines API_URL at BUILD time (webpack DefinePlugin), so the
+# value comes from the Vercel project env via `vercel pull`. Changing API_URL
+# there requires re-running this workflow — an env edit alone does nothing.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-dashboard.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
+
+jobs:
+  deploy:
+    name: Build · Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # The Vercel project's Root Directory is apps/dashboard, which is where
+        # vercel.json lives. Its buildCommand cd's back to the repo root so npm
+        # workspaces and Nx resolve.
+        working-directory: apps/dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pull Vercel project settings
+        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: npx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          URL=$(npx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "Deployed to $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke check
+        run: |
+          # Static SPA: index.html serving means the CDN has the new build. It
+          # says nothing about the API — the browser makes those calls.
+          curl -sf -o /dev/null -w 'HTTP %{http_code} in %{time_total}s\n' \
+            "${{ steps.deploy.outputs.url }}/"
