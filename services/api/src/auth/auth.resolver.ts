@@ -2,12 +2,21 @@ import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { Student, Tutor } from '../generated/prisma/client.js';
 import { AuthPayloadModel } from '../graphql/models/auth-payload.model.js';
-import { ResendPayloadModel, SignupPayloadModel } from '../graphql/models/signup-payload.model.js';
+import {
+  ResendPayloadModel,
+  SignupPayloadModel,
+  TutorSignupPayloadModel,
+} from '../graphql/models/signup-payload.model.js';
 import { StudentModel } from '../graphql/models/student.model.js';
 import { TutorAuthPayloadModel } from '../graphql/models/tutor-auth-payload.model.js';
 import { TutorModel } from '../graphql/models/tutor.model.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { AuthResult, SignupResult, TutorAuthResult } from './auth.service.js';
+import type {
+  AuthResult,
+  SignupResult,
+  TutorAuthResult,
+  TutorSignupResult,
+} from './auth.service.js';
 import { AuthService } from './auth.service.js';
 import type { AuthUser, TutorPrincipal } from './auth-user.js';
 import { CurrentTutor } from './current-tutor.decorator.js';
@@ -75,13 +84,26 @@ export class AuthResolver {
     return this.prisma.tutor.findUniqueOrThrow({ where: { id: tutor.tutorId } });
   }
 
-  @Mutation(() => TutorAuthPayloadModel, { name: 'tutorSignup' })
+  @Mutation(() => TutorSignupPayloadModel, { name: 'tutorSignup' })
   tutorSignup(
     @Args('fullName') fullName: string,
     @Args('email') email: string,
     @Args('password') password: string,
-  ): Promise<TutorAuthResult> {
+  ): Promise<TutorSignupResult> {
     return this.auth.tutorSignup(fullName, email, password);
+  }
+
+  @Mutation(() => TutorAuthPayloadModel, { name: 'tutorVerifyEmail' })
+  tutorVerifyEmail(
+    @Args('email') email: string,
+    @Args('code') code: string,
+  ): Promise<TutorAuthResult> {
+    return this.auth.tutorVerifyEmail(email, code);
+  }
+
+  @Mutation(() => ResendPayloadModel, { name: 'resendTutorVerificationCode' })
+  resendTutorVerificationCode(@Args('email') email: string): Promise<{ devCode: string | null }> {
+    return this.auth.resendTutorVerificationCode(email);
   }
 
   @Mutation(() => TutorAuthPayloadModel, { name: 'tutorSignin' })

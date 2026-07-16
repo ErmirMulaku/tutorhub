@@ -12,6 +12,7 @@ import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { EarningsModule } from './earnings/earnings.module.js';
+import { EmailModule } from './email/email.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { MarketingModule } from './marketing/marketing.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -48,6 +49,7 @@ const schemaFile = isProd
     }),
     PrismaModule,
     StripeModule,
+    EmailModule,
     AuthModule,
     AccountModule,
     TutorsModule,

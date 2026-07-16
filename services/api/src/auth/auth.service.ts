@@ -1,9 +1,10 @@
 import { randomInt } from 'node:crypto';
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
+import { EmailService } from '../email/email.service.js';
 import { OAuthProvider } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { hashPassword, verifyPassword } from './password.js';
@@ -21,13 +22,19 @@ export interface TutorAuthResult {
 export interface SignupResult {
   studentId: string;
   requiresVerification: boolean;
-  /** Surfaced in non-production only — there is no real email transport. */
+  /** Surfaced only when Resend isn't configured, so local dev still works. */
+  devCode: string | null;
+}
+
+export interface TutorSignupResult {
+  tutorId: string;
+  requiresVerification: boolean;
+  /** Surfaced only when Resend isn't configured, so local dev still works. */
   devCode: string | null;
 }
 
 /** 15-minute lifetime for an email verification code. */
 const CODE_TTL_MS = 15 * 60 * 1000;
-const isProd = (): boolean => process.env.NODE_ENV === 'production';
 
 // Provider JWKS endpoints (jose caches the fetched keys internally).
 const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
@@ -37,12 +44,11 @@ const APPLE_ISSUER = 'https://appleid.apple.com';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly email: EmailService,
   ) {}
 
   /** Mint a JWT for a principal. `kind` discriminates students from tutors. */
@@ -55,9 +61,9 @@ export class AuthService {
   }
 
   /**
-   * Issue a fresh 6-digit code for a student, replacing any outstanding ones.
-   * Mock transport: the code is logged (and returned to the caller off-prod)
-   * since there is no SMTP provider wired.
+   * Issue a fresh 6-digit code for a student, replacing any outstanding ones,
+   * and email it via {@link EmailService} (which logs instead when Resend
+   * isn't configured, so local dev keeps working without an API key).
    */
   private async issueVerificationCode(studentId: string, email: string): Promise<string> {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -65,7 +71,18 @@ export class AuthService {
     await this.prisma.emailVerification.create({
       data: { studentId, code, expiresAt: new Date(Date.now() + CODE_TTL_MS) },
     });
-    this.logger.log(`Email verification code for ${email}: ${code}`);
+    await this.email.sendVerificationCode(email, code);
+    return code;
+  }
+
+  /** Tutor-side equivalent of {@link issueVerificationCode}. */
+  private async issueTutorVerificationCode(tutorId: string, email: string): Promise<string> {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    await this.prisma.tutorEmailVerification.deleteMany({ where: { tutorId } });
+    await this.prisma.tutorEmailVerification.create({
+      data: { tutorId, code, expiresAt: new Date(Date.now() + CODE_TTL_MS) },
+    });
+    await this.email.sendVerificationCode(email, code);
     return code;
   }
 
@@ -82,7 +99,11 @@ export class AuthService {
       data: { fullName, email, passwordHash: hashPassword(password) },
     });
     const code = await this.issueVerificationCode(student.id, email);
-    return { studentId: student.id, requiresVerification: true, devCode: isProd() ? null : code };
+    return {
+      studentId: student.id,
+      requiresVerification: true,
+      devCode: this.email.enabled ? null : code,
+    };
   }
 
   /** Validate a 6-digit code, mark the email verified, and return a session token. */
@@ -113,7 +134,7 @@ export class AuthService {
       throw new EntityNotFoundError('Student', email);
     }
     const code = await this.issueVerificationCode(student.id, email);
-    return { devCode: isProd() ? null : code };
+    return { devCode: this.email.enabled ? null : code };
   }
 
   /**
@@ -220,12 +241,13 @@ export class AuthService {
   }
 
   /**
-   * Register a new tutor with email + password and return a session token right
-   * away. The account starts inactive (`isActive: false`) with placeholder
-   * scheduling defaults — the dashboard onboarding wizard fills in the profile,
-   * subjects, hours and payout, then publishes it.
+   * Register a new tutor with email + password and start email verification.
+   * The account starts inactive (`isActive: false`, `emailVerified: false`)
+   * with placeholder scheduling defaults; no session token is returned until
+   * {@link tutorVerifyEmail} succeeds. The dashboard onboarding wizard then
+   * fills in the profile, subjects, hours and payout, and publishes it.
    */
-  async tutorSignup(fullName: string, email: string, password: string): Promise<TutorAuthResult> {
+  async tutorSignup(fullName: string, email: string, password: string): Promise<TutorSignupResult> {
     const existing = await this.prisma.tutor.findUnique({ where: { email } });
     if (existing !== null) {
       throw new BadRequestDomainError('An account with this email already exists.');
@@ -241,7 +263,40 @@ export class AuthService {
         isActive: false,
       },
     });
+    const code = await this.issueTutorVerificationCode(tutor.id, email);
+    return {
+      tutorId: tutor.id,
+      requiresVerification: true,
+      devCode: this.email.enabled ? null : code,
+    };
+  }
+
+  /** Validate a tutor's 6-digit code, mark the email verified, and return a session token. */
+  async tutorVerifyEmail(email: string, code: string): Promise<TutorAuthResult> {
+    const tutor = await this.prisma.tutor.findUnique({ where: { email } });
+    if (tutor === null) {
+      throw new EntityNotFoundError('Tutor', email);
+    }
+    const record = await this.prisma.tutorEmailVerification.findFirst({
+      where: { tutorId: tutor.id, code },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (record === null || record.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestDomainError('That code is invalid or has expired.');
+    }
+    await this.prisma.tutor.update({ where: { id: tutor.id }, data: { emailVerified: true } });
+    await this.prisma.tutorEmailVerification.deleteMany({ where: { tutorId: tutor.id } });
     return { accessToken: await this.sign(tutor.id, 'tutor'), tutorId: tutor.id };
+  }
+
+  /** Re-issue a verification code for a pending tutor signup. */
+  async resendTutorVerificationCode(email: string): Promise<{ devCode: string | null }> {
+    const tutor = await this.prisma.tutor.findUnique({ where: { email } });
+    if (tutor === null) {
+      throw new EntityNotFoundError('Tutor', email);
+    }
+    const code = await this.issueTutorVerificationCode(tutor.id, email);
+    return { devCode: this.email.enabled ? null : code };
   }
 
   /** Verify a tutor's email + password and return a tutor session token. */
