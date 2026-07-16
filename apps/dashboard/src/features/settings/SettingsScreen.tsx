@@ -11,6 +11,7 @@ import {
 import { SegmentedTabs } from '../../components/SegmentedTabs';
 import { ToggleSwitch } from '../../components/ToggleSwitch';
 import { useToast } from '../../components/ToastProvider';
+import { DeleteAccountCard } from './DeleteAccountCard';
 
 type Tab = 'profile' | 'payout' | 'notifications';
 
@@ -99,6 +100,9 @@ export function SettingsScreen(): JSX.Element {
           </Button>
         </Card>
       )}
+
+      {/* Confirms against the saved name, not the editable field above it. */}
+      {tab === 'profile' && <DeleteAccountCard name={settings.name} />}
 
       {tab === 'payout' && (
         <Card>

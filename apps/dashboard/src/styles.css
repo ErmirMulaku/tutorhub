@@ -376,6 +376,11 @@ body {
 .login__alt a:hover {
   text-decoration: underline;
 }
+.settings__danger-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
 .login__hint {
   margin: 0;
   padding: 10px 12px;
