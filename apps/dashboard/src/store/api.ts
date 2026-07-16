@@ -705,6 +705,11 @@ export const api = createApi({
       query: () => ({ graphql: { document: `mutation { publishProfile { isActive } }` } }),
       invalidatesTags: ['Settings', 'MeTutor'],
     }),
+    /** Permanently deletes the account. The caller must clear the session after. */
+    deleteTutorAccount: build.mutation<boolean, void>({
+      query: () => ({ graphql: { document: `mutation { deleteTutorAccount }` } }),
+      transformResponse: (r: { deleteTutorAccount: boolean }) => r.deleteTutorAccount,
+    }),
 
     // --- New lesson pickers + create + notifications (tutor GraphQL) ---
     getMyStudents: build.query<StudentRef[], void>({
@@ -815,6 +820,7 @@ export const {
   useUpdateTutorProfileMutation,
   useUpdateNotificationPrefsMutation,
   usePublishProfileMutation,
+  useDeleteTutorAccountMutation,
   useGetTutorsQuery,
   useGetBookingsQuery,
   useUpdateBookingStatusMutation,
