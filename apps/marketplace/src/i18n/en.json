@@ -4,6 +4,7 @@
     "discover": "Find a tutor",
     "home": "Home",
     "lessons": "Lessons",
+    "assistant": "Assistant",
     "favourites": "Favourites",
     "wallet": "Wallet",
     "account": "Account",
@@ -328,6 +329,22 @@
     "giftCardLabel": "Gift card",
     "success": "Done!",
     "error": "Something went wrong. Please try again."
+  },
+  "assistant": {
+    "title": "Booking assistant",
+    "subtitle": "Ask for a tutor and a time — I can search, check availability and book.",
+    "empty": "Try: “find me a maths tutor free on Thursday afternoon”.",
+    "placeholder": "Ask for a tutor, a time, or a booking…",
+    "send": "Send",
+    "thinking": "Thinking…",
+    "you": "You",
+    "assistant": "Assistant",
+    "toolsUsed": "Used: {tools}",
+    "reset": "Start over",
+    "unavailable": "The assistant isn’t switched on for this site.",
+    "rateLimited": "That’s a lot of questions at once — wait a minute and try again.",
+    "failed": "Something went wrong. Try again.",
+    "books": "It books for real, on your account."
   },
   "common": {
     "back": "Back",

@@ -60,6 +60,12 @@ export function Header({
               {dict.nav.lessons}
             </Link>
           )}
+          {/* Signed-in only: the assistant books on the caller's account. */}
+          {loggedIn && (
+            <Link href={`/${locale}/assistant`} className="site-header__nav-link">
+              {dict.nav.assistant}
+            </Link>
+          )}
           <div className="site-header__controls">
             <LocaleSwitcher current={locale} />
             <ThemeToggle dict={dict} />

@@ -2076,3 +2076,111 @@ h3 {
     order: -1;
   }
 }
+
+/* ---- Booking assistant ---------------------------------------------------- */
+
+.assistant {
+  inline-size: min(46rem, 100%);
+  margin-inline: auto;
+  padding-block: var(--th-space-5);
+  display: grid;
+  gap: var(--th-space-4);
+}
+.assistant__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.assistant__sub {
+  margin: var(--th-space-1) 0 0;
+  color: var(--th-text-muted);
+}
+/* The model books for real, so this stays visible rather than tucked away. */
+.assistant__warn {
+  margin: var(--th-space-2) 0 0;
+  padding: var(--th-space-2) var(--th-space-3);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-2);
+  background: var(--th-accent-tint);
+  color: var(--th-accent-ink);
+  font-size: 0.8125rem;
+}
+.assistant__log {
+  min-block-size: 18rem;
+  max-block-size: 26rem;
+  overflow-y: auto;
+  padding: var(--th-space-3);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-3);
+  background: var(--th-surface);
+  display: grid;
+  gap: var(--th-space-3);
+  align-content: start;
+}
+.assistant__empty,
+.assistant__thinking {
+  margin: 0;
+  color: var(--th-text-muted);
+  font-size: 0.875rem;
+}
+.assistant__turn {
+  display: grid;
+  gap: var(--th-space-1);
+  padding: var(--th-space-3);
+  border-radius: var(--th-radius-2);
+  background: var(--th-surface-2);
+}
+.assistant__turn--user {
+  /* Aligns to the reading edge, so it flips with `dir="rtl"`. */
+  margin-inline-start: var(--th-space-6);
+  background: var(--th-accent-tint);
+}
+.assistant__turn--assistant {
+  margin-inline-end: var(--th-space-6);
+}
+.assistant__who {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+}
+.assistant__text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.assistant__tools {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--th-text-muted);
+}
+.assistant__notice {
+  margin: 0;
+  color: var(--th-danger);
+  font-size: 0.875rem;
+}
+.assistant__form {
+  display: flex;
+  gap: var(--th-space-2);
+}
+.assistant__input {
+  flex: 1;
+  min-inline-size: 0;
+  padding: var(--th-space-3);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-2);
+  background: var(--th-surface);
+  color: var(--th-text);
+  font: inherit;
+}
+.assistant__input:focus-visible {
+  outline: var(--th-focus);
+}
+.assistant__reset {
+  justify-self: start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--th-text-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
