@@ -34,6 +34,7 @@ enum PaymentStatus {
 
 enum NotificationType {
   BOOKING_CONFIRMED
+  BOOKING_CANCELLED
   LESSON_REMINDER
   REVIEW_PROMPT
   GIFT_RECEIVED

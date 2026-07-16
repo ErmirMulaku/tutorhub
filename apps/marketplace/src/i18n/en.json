@@ -22,6 +22,8 @@
     "open": "Notifications",
     "bookingConfirmedTitle": "Booking confirmed",
     "bookingConfirmedBody": "Your {subject} lesson with {tutor} is confirmed.",
+    "bookingCancelledTitle": "Lesson cancelled",
+    "bookingCancelledBody": "Your {subject} lesson with {tutor} was cancelled because the tutor closed their account.",
     "lessonReminderTitle": "Lesson reminder",
     "lessonReminderBody": "{subject} with {tutor} is coming up. Add it to your calendar so you don't miss it.",
     "reviewPromptTitle": "How was your lesson?",

@@ -22,6 +22,8 @@
     "open": "الإشعارات",
     "bookingConfirmedTitle": "تم تأكيد الحجز",
     "bookingConfirmedBody": "تم تأكيد درس {subject} مع {tutor}.",
+    "bookingCancelledTitle": "أُلغي الدرس",
+    "bookingCancelledBody": "أُلغي درس {subject} مع {tutor} لأن المعلّم أغلق حسابه.",
     "lessonReminderTitle": "تذكير بالدرس",
     "lessonReminderBody": "درس {subject} مع {tutor} يقترب. أضفه إلى تقويمك حتى لا تفوّته.",
     "reviewPromptTitle": "كيف كان درسك؟",
