@@ -16,15 +16,22 @@ name: Deploy Dashboard
 # value comes from the Vercel project env via `vercel pull`. Changing API_URL
 # there requires re-running this workflow — an env edit alone does nothing.
 
+# Dormant until the Vercel side is set up: VERCEL_TOKEN and the project ids do
+# not exist yet, and Vercel's Git integration still owns these deploys. Running
+# on push today would fail, and would double-deploy once the secrets exist.
+#
+# To hand these deploys over to CI, disable the Git integration (see above) and
+# restore the push trigger:
+#
+#   push:
+#     branches: [master]
+#     paths:
+#       - 'apps/dashboard/**'
+#       - 'packages/**'
+#       - 'package.json'
+#       - 'package-lock.json'
+#       - '.github/workflows/deploy-dashboard.yml'
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-dashboard.yml'
   workflow_dispatch:
 
 concurrency:

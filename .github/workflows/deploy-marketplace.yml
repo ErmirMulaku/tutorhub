@@ -15,15 +15,22 @@ name: Deploy Marketplace
 # Build-time env (API_URL, NEXT_PUBLIC_*) is NOT set here: `vercel pull` fetches
 # it from the Vercel project, so it stays configured in one place.
 
+# Dormant until the Vercel side is set up: VERCEL_TOKEN and the project ids do
+# not exist yet, and Vercel's Git integration still owns these deploys. Running
+# on push today would fail, and would double-deploy once the secrets exist.
+#
+# To hand these deploys over to CI, disable the Git integration (see above) and
+# restore the push trigger:
+#
+#   push:
+#     branches: [master]
+#     paths:
+#       - 'apps/marketplace/**'
+#       - 'packages/**'
+#       - 'package.json'
+#       - 'package-lock.json'
+#       - '.github/workflows/deploy-marketplace.yml'
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'apps/marketplace/**'
-      - 'packages/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-marketplace.yml'
   workflow_dispatch:
 
 concurrency:
