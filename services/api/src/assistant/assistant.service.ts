@@ -1,7 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { OpenAiService } from './openai.service.js';
 import { ToolDispatcher, TOOLS } from './assistant.tools.js';
 
@@ -38,15 +36,20 @@ export class AssistantService {
   constructor(
     private readonly openai: OpenAiService,
     private readonly dispatcher: ToolDispatcher,
-    private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
   ) {}
 
-  async chat(history: ChatTurn[]): Promise<AssistantReply> {
+  /**
+   * One assistant turn on behalf of `studentId`.
+   *
+   * The caller's id is passed in rather than looked up: the assistant can book
+   * lessons, so it must act as whoever is signed in. It previously resolved a
+   * fixed DEMO_STUDENT_EMAIL, which meant every booking it made — from anyone —
+   * landed on the same demo account.
+   */
+  async chat(history: ChatTurn[], studentId: string): Promise<AssistantReply> {
     if (!this.openai.isConfigured()) {
       throw new ServiceUnavailableException('The booking assistant is not configured.');
     }
-    const studentId = await this.resolveStudentId();
     const today = new Date().toISOString().slice(0, 10);
 
     const messages: ChatCompletionMessageParam[] = [
@@ -82,15 +85,5 @@ export class AssistantService {
     }
 
     return { reply: "Sorry — I couldn't complete that. Please try rephrasing.", toolsUsed };
-  }
-
-  /** Resolve the demo student the assistant books as (no end-user auth yet). */
-  private async resolveStudentId(): Promise<string> {
-    const email = this.config.get<string>('DEMO_STUDENT_EMAIL') ?? 'sara@example.com';
-    const student = await this.prisma.student.findFirst({ where: { email } });
-    if (!student) {
-      throw new ServiceUnavailableException(`Demo student ${email} not found; seed the database.`);
-    }
-    return student.id;
   }
 }

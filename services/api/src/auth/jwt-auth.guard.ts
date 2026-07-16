@@ -4,9 +4,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { GqlExecutionContext } from '@nestjs/graphql';
 import { JwtService } from '@nestjs/jwt';
-import type { GqlAuthContext, JwtPayload } from './auth-user.js';
+import { type JwtPayload, requestOf } from './auth-user.js';
 
 const BEARER = 'Bearer ';
 
@@ -21,8 +20,8 @@ export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwt: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const ctx = GqlExecutionContext.create(context).getContext<GqlAuthContext>();
-    const header = ctx.req.headers.authorization;
+    const req = requestOf(context);
+    const header = req.headers.authorization;
     if (header === undefined || !header.startsWith(BEARER)) {
       throw new UnauthorizedException('Missing bearer token.');
     }
@@ -32,7 +31,7 @@ export class JwtAuthGuard implements CanActivate {
       if (payload.kind === 'tutor') {
         throw new UnauthorizedException('This endpoint requires a student token.');
       }
-      ctx.req.user = { studentId: payload.sub };
+      req.user = { studentId: payload.sub };
       return true;
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
