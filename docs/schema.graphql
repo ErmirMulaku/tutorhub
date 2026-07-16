@@ -179,6 +179,7 @@ type Mutation {
   declineBooking(id: ID!): Booking!
   deleteAccount: Boolean!
   deleteService(id: ID!): Boolean!
+  deleteTutorAccount: Boolean!
   endPromotion(id: ID!): Promotion!
   googleSignin(idToken: String!): AuthPayload!
   leaveReview(bookingId: ID!, comment: String, rating: Int!): Review!
@@ -192,6 +193,7 @@ type Mutation {
   removeTimeOff(id: ID!): MyAvailability!
   replyToReview(id: ID!, reply: String!): [TutorReview!]!
   rescheduleBooking(id: ID!, startTime: String!): Booking!
+  resendTutorVerificationCode(email: String!): ResendPayload!
   resendVerificationCode(email: String!): ResendPayload!
   sendMessage(body: String!, conversationId: ID!): Message!
   setPayoutMethod(method: String!): EarningsSummary!
@@ -202,7 +204,8 @@ type Mutation {
   signup(email: String!, fullName: String!, password: String!): SignupPayload!
   startConnectOnboarding: ConnectOnboardingLink!
   tutorSignin(email: String!, password: String!): TutorAuthPayload!
-  tutorSignup(email: String!, fullName: String!, password: String!): TutorAuthPayload!
+  tutorSignup(email: String!, fullName: String!, password: String!): TutorSignupPayload!
+  tutorVerifyEmail(code: String!, email: String!): TutorAuthPayload!
   updateBookingRules(rules: BookingRulesInput!): MyAvailability!
   updateNotificationPrefs(notifyEmail: Boolean, notifyPromos: Boolean, notifyReminders: Boolean, notifySms: Boolean): Student!
   updateProfile(avatarColor: String, fullName: String, phone: String): Student!
@@ -232,6 +235,7 @@ type Notification {
 }
 
 enum NotificationType {
+  BOOKING_CANCELLED
   BOOKING_CONFIRMED
   GIFT_RECEIVED
   LESSON_REMINDER
@@ -479,6 +483,12 @@ type TutorSettings {
   notifyReminders: Boolean!
   notifyTips: Boolean!
   timezone: String!
+}
+
+type TutorSignupPayload {
+  devCode: String
+  requiresVerification: Boolean!
+  tutorId: ID!
 }
 
 type TutorStudentRef {

@@ -434,6 +434,7 @@ export async function getWallet(token: string): Promise<Wallet> {
 
 export type NotificationType =
   | 'BOOKING_CONFIRMED'
+  | 'BOOKING_CANCELLED'
   | 'LESSON_REMINDER'
   | 'REVIEW_PROMPT'
   | 'GIFT_RECEIVED';

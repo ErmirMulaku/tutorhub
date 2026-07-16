@@ -38,4 +38,15 @@ export class TutorSettingsResolver {
   publishProfile(@CurrentTutor() tutor: TutorPrincipal): Promise<Tutor> {
     return this.settings.publish(tutor.tutorId);
   }
+
+  /**
+   * Permanently delete the caller's own account. Irreversible — see the service.
+   *
+   * Named for the tutor side because `deleteAccount` is the student's, and
+   * GraphQL mutation names share one namespace.
+   */
+  @Mutation(() => Boolean, { name: 'deleteTutorAccount' })
+  deleteTutorAccount(@CurrentTutor() tutor: TutorPrincipal): Promise<boolean> {
+    return this.settings.deleteAccount(tutor.tutorId);
+  }
 }
