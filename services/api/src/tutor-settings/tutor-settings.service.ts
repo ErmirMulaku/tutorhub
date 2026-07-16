@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BadRequestDomainError } from '../common/errors.js';
-import type { Tutor } from '../generated/prisma/client.js';
+import { BookingStatus, NotificationType, type Tutor } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   UpdateNotificationPrefsInput,
@@ -62,5 +62,51 @@ export class TutorSettingsService {
     }
 
     return this.prisma.tutor.update({ where: { id: tutorId }, data: { isActive: true } });
+  }
+
+  /**
+   * Permanently delete the tutor's account and everything hanging off it.
+   *
+   * A hard delete, and a wide one: a booking is also the student's record of a
+   * lesson they took, and `Payment` cascades off `Booking` — so this removes
+   * what students paid, including the Stripe payment-intent ids tying those
+   * rows to real charges. Nothing is archived and no refunds are issued.
+   *
+   * Bookings go first, exactly as {@link AccountService.deleteAccount} does for
+   * students: `Booking` and `Review` reference `Tutor` without a cascade, so
+   * deleting the tutor outright fails on a foreign key. Removing the bookings
+   * takes their payments and reviews with them and leaves nothing pointing here.
+   *
+   * Students with a lesson still ahead are notified first, before the booking
+   * that would have told them stops existing.
+   */
+  async deleteAccount(tutorId: string): Promise<boolean> {
+    const tutor = await this.prisma.tutor.findUniqueOrThrow({ where: { id: tutorId } });
+
+    const upcoming = await this.prisma.booking.findMany({
+      where: {
+        tutorId,
+        startTime: { gt: new Date() },
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+      },
+      include: { subject: true },
+    });
+
+    if (upcoming.length > 0) {
+      await this.prisma.notification.createMany({
+        data: upcoming.map((booking) => ({
+          studentId: booking.studentId,
+          type: NotificationType.BOOKING_CANCELLED,
+          actorName: tutor.name,
+          detail: booking.subject.name,
+        })),
+      });
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.booking.deleteMany({ where: { tutorId } }),
+      this.prisma.tutor.delete({ where: { id: tutorId } }),
+    ]);
+    return true;
   }
 }

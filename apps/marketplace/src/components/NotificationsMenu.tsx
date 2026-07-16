@@ -25,6 +25,8 @@ function content(
   switch (n.type) {
     case 'BOOKING_CONFIRMED':
       return { title: t.bookingConfirmedTitle, body: interpolate(t.bookingConfirmedBody, { subject, tutor }) };
+    case 'BOOKING_CANCELLED':
+      return { title: t.bookingCancelledTitle, body: interpolate(t.bookingCancelledBody, { subject, tutor }) };
     case 'LESSON_REMINDER':
       return { title: t.lessonReminderTitle, body: interpolate(t.lessonReminderBody, { subject, tutor }) };
     case 'REVIEW_PROMPT':
@@ -52,6 +54,14 @@ function NotifIcon({ type }: { type: NotificationType }): React.JSX.Element {
         <svg {...common}>
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" />
+        </svg>
+      );
+    case 'BOOKING_CANCELLED':
+      // The confirmed-booking calendar, with the tick replaced by a cross.
+      return (
+        <svg {...common}>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18M10 14l4 4M14 14l-4 4" />
         </svg>
       );
     case 'LESSON_REMINDER':
