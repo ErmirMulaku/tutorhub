@@ -22,6 +22,7 @@ describe('Tutor auth (e2e)', () => {
   let studentEmail = '';
   let signupEmail = '';
   let signupTutorId = '';
+  let signupCode = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -83,18 +84,51 @@ describe('Tutor auth (e2e)', () => {
     expect(body.tutorId).toBe(tutorId);
   });
 
-  it('tutorSignup creates an inactive tutor and returns a token', async () => {
+  it('tutorSignup creates an inactive, unverified tutor and issues a code', async () => {
+    // Signup deliberately mints no token: the tutor must verify their email
+    // first. `devCode` is returned only because this run has no email transport.
     const res = await gql(
-      `mutation { tutorSignup(fullName: "E2E Signup", email: "${signupEmail}", password: "s3cret-pass") { tutorId accessToken } }`,
+      `mutation { tutorSignup(fullName: "E2E Signup", email: "${signupEmail}", password: "s3cret-pass") { tutorId requiresVerification devCode } }`,
     ).expect(200);
-    const data = res.body as { data: { tutorSignup: { tutorId: string; accessToken: string } } };
+    const data = res.body as {
+      data: { tutorSignup: { tutorId: string; requiresVerification: boolean; devCode: string } };
+    };
     signupTutorId = data.data.tutorSignup.tutorId;
     expect(signupTutorId).toBeTruthy();
-    expect(data.data.tutorSignup.accessToken).toBeTruthy();
+    expect(data.data.tutorSignup.requiresVerification).toBe(true);
+    expect(data.data.tutorSignup.devCode).toMatch(/^\d{6}$/);
+    signupCode = data.data.tutorSignup.devCode;
 
     const created = await prisma.tutor.findUniqueOrThrow({ where: { id: signupTutorId } });
     expect(created.name).toBe('E2E Signup');
     expect(created.isActive).toBe(false);
+    expect(created.emailVerified).toBe(false);
+  });
+
+  it('tutorVerifyEmail rejects a wrong code', async () => {
+    const wrong = signupCode === '000000' ? '111111' : '000000';
+    const res = await gql(
+      `mutation { tutorVerifyEmail(email: "${signupEmail}", code: "${wrong}") { accessToken } }`,
+    ).expect(200);
+    const body = res.body as { errors?: { message: string }[] };
+    expect(body.errors?.[0]?.message).toContain('invalid or has expired');
+  });
+
+  it('tutorVerifyEmail exchanges a valid code for a token', async () => {
+    const res = await gql(
+      `mutation { tutorVerifyEmail(email: "${signupEmail}", code: "${signupCode}") { tutorId accessToken } }`,
+    ).expect(200);
+    const data = res.body as {
+      data: { tutorVerifyEmail: { tutorId: string; accessToken: string } };
+    };
+    expect(data.data.tutorVerifyEmail.tutorId).toBe(signupTutorId);
+    expect(data.data.tutorVerifyEmail.accessToken).toBeTruthy();
+
+    const verified = await prisma.tutor.findUniqueOrThrow({ where: { id: signupTutorId } });
+    expect(verified.emailVerified).toBe(true);
+    // The code is single-use: verifying clears any outstanding codes.
+    const left = await prisma.tutorEmailVerification.count({ where: { tutorId: signupTutorId } });
+    expect(left).toBe(0);
   });
 
   it('tutorSignup rejects a duplicate email', async () => {
