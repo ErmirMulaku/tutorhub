@@ -62,6 +62,7 @@ async function run(fn: () => Promise<void>, fallback: string): Promise<ActionRes
 export interface SignupActionResult extends ActionResult {
   /** Non-production helper so the verify step can prefill the emailed code. */
   devCode?: string | null;
+  demoCode?: string | null;
 }
 
 /** Step 1–2: create the account and start email verification (no session yet). */
@@ -71,8 +72,8 @@ export async function signupAction(
   password: string,
 ): Promise<SignupActionResult> {
   try {
-    const { devCode } = await signup(fullName, email, password);
-    return { ok: true, devCode };
+    const { devCode, demoCode } = await signup(fullName, email, password);
+    return { ok: true, devCode, demoCode };
   } catch (err) {
     return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'SIGNUP_FAILED' };
   }
@@ -91,8 +92,8 @@ export async function verifyEmailAction(email: string, code: string): Promise<Ac
 
 export async function resendCodeAction(email: string): Promise<SignupActionResult> {
   try {
-    const { devCode } = await resendVerificationCode(email);
-    return { ok: true, devCode };
+    const { devCode, demoCode } = await resendVerificationCode(email);
+    return { ok: true, devCode, demoCode };
   } catch (err) {
     return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'RESEND_FAILED' };
   }

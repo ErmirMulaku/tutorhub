@@ -250,6 +250,7 @@
     "verify": "Verify",
     "resend": "Resend code",
     "devCodeNote": "Demo code: {code}",
+    "demoCodeNote": "Demo — this site can only email its owner, so {code} is accepted for any address. It skips the check rather than passing it.",
     "terms": "By continuing you agree to our Terms and Privacy Policy.",
     "oauthUnavailable": "Social sign-in is not configured."
   },

@@ -319,6 +319,7 @@ type ReferralProgram {
 }
 
 type ResendPayload {
+  demoCode: String
   devCode: String
 }
 
@@ -359,6 +360,7 @@ enum ServiceType {
 }
 
 type SignupPayload {
+  demoCode: String
   devCode: String
   requiresVerification: Boolean!
   studentId: ID!
@@ -486,6 +488,7 @@ type TutorSettings {
 }
 
 type TutorSignupPayload {
+  demoCode: String
   devCode: String
   requiresVerification: Boolean!
   tutorId: ID!
