@@ -23,6 +23,14 @@ const LEVEL_LABEL: Record<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED', string> = {
   ADVANCED: 'Advanced',
 };
 
+/** GraphQL errors reach us as a CUSTOM_ERROR whose `error` is the message. */
+function errorMessage(err: unknown): string {
+  if (typeof err === 'object' && err !== null && 'error' in err && typeof err.error === 'string') {
+    return err.error;
+  }
+  return 'Could not publish your profile.';
+}
+
 export function OnboardingWizard(): JSX.Element {
   const navigate = useNavigate();
   const { data: settings } = useGetTutorSettingsQuery();
@@ -32,6 +40,7 @@ export function OnboardingWizard(): JSX.Element {
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState({ name: '', headline: '', about: '' });
   const [addSubjectOpen, setAddSubjectOpen] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   // Prefill once settings load.
   if (settings && profile.name === '' && step === 1) {
@@ -43,9 +52,14 @@ export function OnboardingWizard(): JSX.Element {
     if (step < STEPS.length) setStep(step + 1);
   }
   function finish(): void {
+    setPublishError(null);
     void publish()
       .unwrap()
-      .then(() => navigate('/dashboard', { replace: true }));
+      .then(() => navigate('/dashboard', { replace: true }))
+      // The API refuses to publish a profile with no live service, subject or
+      // availability, and says which are missing. Without this the button would
+      // just do nothing and leave the tutor guessing.
+      .catch((err: unknown) => setPublishError(errorMessage(err)));
   }
 
   return (
@@ -166,6 +180,7 @@ export function OnboardingWizard(): JSX.Element {
               <div className="ob__check">✓</div>
               <h1>You're all set, {profile.name.split(' ')[0] || 'there'}!</h1>
               <p className="muted">Publish your profile to start receiving bookings.</p>
+              {publishError !== null && <p className="error">{publishError}</p>}
             </>
           )}
         </div>
