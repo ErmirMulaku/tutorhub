@@ -43,7 +43,7 @@ export class TutorsResolver {
 
   @Query(() => TutorModel, { name: 'tutor', nullable: true })
   tutor(@Args('id', { type: () => ID }) id: string): Promise<Tutor | null> {
-    return this.tutors.findOneOrNull(id);
+    return this.tutors.findPublishedOne(id);
   }
 
   @ResolveField(() => [SubjectModel])

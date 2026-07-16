@@ -4,7 +4,7 @@ import { Button, Card } from '@ermulaku/ui';
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { getMyFavorites, type DiscoverTutor } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { requireSessionToken } from '@/lib/session';
 import { TutorCard } from '@/components/TutorCard';
 
 export default async function FavouritesPage({
@@ -19,9 +19,12 @@ export default async function FavouritesPage({
   const t = dict.favourites;
   const currency = localeCurrency[locale];
 
+  // Outside the try: `redirect` signals by throwing, so a catch-all would swallow it.
+  const token = await requireSessionToken(locale);
+
   let tutors: DiscoverTutor[];
   try {
-    tutors = await getMyFavorites(await getTokenOrDemo());
+    tutors = await getMyFavorites(token);
   } catch {
     tutors = [];
   }

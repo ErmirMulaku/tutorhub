@@ -16,8 +16,15 @@ async function bootstrap(): Promise<void> {
   // controller can verify the event signature against the exact bytes sent.
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  // Allow the dashboard (separate origin in dev) to call REST + connect via Socket.IO.
-  app.enableCors({ origin: true });
+  // Allow the browser apps (separate origins) to call REST + connect via Socket.IO.
+  // In production, pin this to the deployed front-end origins via CORS_ORIGINS
+  // (comma-separated); reflecting any origin would let any site call the API
+  // with a user's cookies/token.
+  const corsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter((o) => o !== '');
+  app.enableCors({ origin: corsOrigins.length > 0 ? corsOrigins : true, credentials: true });
 
   // Record request metrics + structured access logs for every HTTP request.
   app.use(createRequestMetrics(app.get(MetricsService)));
@@ -37,20 +44,25 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
-  // gRPC microservice (SPEC §9), reusing the same service layer.
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.GRPC,
-    options: {
-      package: 'tutorhub.v1',
-      protoPath: PROTO_PATH,
-      url: process.env.GRPC_URL ?? '0.0.0.0:50051',
-      loader: { longs: Number, enums: String, defaults: true, oneofs: true },
-    },
-  });
-  await app.startAllMicroservices();
+  // gRPC microservice (SPEC §9), reusing the same service layer. It binds a
+  // *second* port, which serverless hosts like Cloud Run cannot expose (exactly
+  // one port per container), so it is opt-out via GRPC_ENABLED=false there.
+  if (process.env.GRPC_ENABLED !== 'false') {
+    app.connectMicroservice<MicroserviceOptions>({
+      transport: Transport.GRPC,
+      options: {
+        package: 'tutorhub.v1',
+        protoPath: PROTO_PATH,
+        url: process.env.GRPC_URL ?? '0.0.0.0:50051',
+        loader: { longs: Number, enums: String, defaults: true, oneofs: true },
+      },
+    });
+    await app.startAllMicroservices();
+  }
 
+  // Cloud Run injects PORT (8080) and requires binding on 0.0.0.0.
   const port = Number(process.env.PORT ?? 4000);
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 }
 
 void bootstrap();

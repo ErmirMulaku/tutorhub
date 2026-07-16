@@ -25,7 +25,7 @@ import { getDictionary } from '@/i18n/dictionaries';
 import { Header } from '@/components/Header';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { getMe, getNotifications } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { getSessionToken } from '@/lib/session';
 
 export const metadata: Metadata = {
   title: 'TutorHub — find and book a tutor',
@@ -55,15 +55,18 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
 
   const dict = getDictionary(locale);
-  // The header must never hard-crash if the API is unreachable: degrade to the
-  // logged-out state instead. `getTokenOrDemo` itself can throw (dev-login fetch).
-  let me: Awaited<ReturnType<typeof getMe>>;
+  // Identity comes from the session cookie alone — no guest fallback — so signing
+  // out really renders the signed-out header. Also never hard-crash if the API is
+  // unreachable: degrade to the signed-out state instead.
+  let me: Awaited<ReturnType<typeof getMe>> = null;
   let feed: Awaited<ReturnType<typeof getNotifications>> = { items: [], unread: 0 };
-  try {
-    const token = await getTokenOrDemo();
-    [me, feed] = await Promise.all([getMe(token), getNotifications(token)]);
-  } catch {
-    me = null;
+  const token = await getSessionToken();
+  if (token !== null) {
+    try {
+      [me, feed] = await Promise.all([getMe(token), getNotifications(token)]);
+    } catch {
+      me = null;
+    }
   }
 
   // Lead the font stack with the script that matches the locale.

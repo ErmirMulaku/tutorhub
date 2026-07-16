@@ -4,7 +4,7 @@ import { Button } from '@ermulaku/ui';
 import { isLocale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { getMyBookings, type MyBooking } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { requireSessionToken } from '@/lib/session';
 import { LessonsView } from '@/components/LessonsView';
 
 export default async function LessonsPage({
@@ -18,9 +18,12 @@ export default async function LessonsPage({
   const dict = getDictionary(locale);
   const t = dict.lessons;
 
+  // Outside the try: `redirect` signals by throwing, so a catch-all would swallow it.
+  const token = await requireSessionToken(locale);
+
   let bookings: MyBooking[];
   try {
-    bookings = await getMyBookings(await getTokenOrDemo());
+    bookings = await getMyBookings(token);
   } catch {
     bookings = [];
   }

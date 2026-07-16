@@ -151,7 +151,9 @@
     "payNow": "Pay {amount}",
     "payProcessing": "Processing payment…",
     "payError": "Payment failed. Please check your card and try again.",
-    "paySecure": "Payments are processed securely by Stripe."
+    "paySecure": "Payments are processed securely by Stripe.",
+    "signInToBook": "Please sign in to book and pay for a lesson.",
+    "signInCta": "Sign in"
   },
   "lessons": {
     "title": "My lessons",
@@ -246,7 +248,8 @@
     "verify": "Verify",
     "resend": "Resend code",
     "devCodeNote": "Demo code: {code}",
-    "terms": "By continuing you agree to our Terms and Privacy Policy."
+    "terms": "By continuing you agree to our Terms and Privacy Policy.",
+    "oauthUnavailable": "Social sign-in is not configured."
   },
   "account": {
     "title": "Account",

@@ -2,6 +2,7 @@ import { type FormEvent, type JSX, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@ermulaku/ui';
 import { API_URL } from '../../env';
+import { isValidEmail } from '../../lib/validation';
 import { useAppDispatch } from '../../store/hooks';
 import { setCredentials } from '../../store/auth-slice';
 
@@ -22,6 +23,14 @@ export function LoginScreen(): JSX.Element {
 
   async function signIn(e: FormEvent): Promise<void> {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (password === '') {
+      setError('Enter your password.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -65,6 +74,7 @@ export function LoginScreen(): JSX.Element {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
+              required
             />
           </label>
           <label className="login__field">
@@ -74,6 +84,7 @@ export function LoginScreen(): JSX.Element {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              required
             />
           </label>
           {error && <p className="login__error">{error}</p>}

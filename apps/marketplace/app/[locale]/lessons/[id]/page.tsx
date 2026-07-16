@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { isLocale, localeCurrency } from '@/i18n/config';
 import { getDictionary } from '@/i18n/dictionaries';
 import { getAvailability, getMyBookings, type Slot } from '@/lib/queries';
-import { getTokenOrDemo } from '@/lib/session';
+import { requireSessionToken } from '@/lib/session';
 import { upcomingDates } from '@/lib/datetime';
 import { LessonDetailView } from '@/components/LessonDetailView';
 
@@ -19,7 +19,7 @@ export default async function LessonDetailPage({
   const t = dict.lessons;
   const currency = localeCurrency[locale];
 
-  const token = await getTokenOrDemo();
+  const token = await requireSessionToken(locale);
   const bookings = await getMyBookings(token).catch(() => []);
   const booking = bookings.find((b) => b.id === id);
   if (!booking) notFound();

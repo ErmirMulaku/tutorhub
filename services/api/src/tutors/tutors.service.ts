@@ -66,7 +66,10 @@ export class TutorsService {
       some.level = filter.level;
     }
 
-    const and: Prisma.TutorWhereInput[] = [];
+    // Only published tutors are discoverable — a fresh signup starts inactive
+    // (empty profile, no subjects, $0/hr) until they finish onboarding and hit
+    // "Publish", which flips this flag.
+    const and: Prisma.TutorWhereInput[] = [{ isActive: true }];
     if (Object.keys(some).length > 0) and.push({ subjects: { some } });
     if (filter.maxPrice != null) and.push({ hourlyCents: { lte: filter.maxPrice * 100 } });
     if (filter.query != null && filter.query !== '') {
@@ -137,6 +140,11 @@ export class TutorsService {
 
   findOneOrNull(id: string): Promise<Tutor | null> {
     return this.prisma.tutor.findUnique({ where: { id } });
+  }
+
+  /** Public marketplace profile lookup — hidden until the tutor has published. */
+  findPublishedOne(id: string): Promise<Tutor | null> {
+    return this.prisma.tutor.findFirst({ where: { id, isActive: true } });
   }
 
   subjectsOf(tutorId: string): Promise<Subject[]> {

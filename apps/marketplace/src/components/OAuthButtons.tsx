@@ -4,7 +4,7 @@ import { useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
-import { appleSigninAction, googleSigninAction, oauthSigninAction } from '@/lib/actions';
+import { appleSigninAction, googleSigninAction } from '@/lib/actions';
 
 // Minimal typings for the provider SDKs we load at runtime (avoids `any`).
 interface GoogleCredentialResponse {
@@ -95,8 +95,8 @@ interface OAuthButtonsProps {
  * Social sign-in. When `NEXT_PUBLIC_GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_APPLE_CLIENT_ID`
  * are configured, this uses the real provider SDKs (Google Identity Services and
  * Sign in with Apple JS) and verifies the returned ID token on the server.
- * Without those env vars it falls back to a simulated handshake so the buttons
- * still work in local dev.
+ * A provider without its client id configured is disabled — there is deliberately
+ * no unverified fallback, since that would let anyone sign in as anyone.
  */
 export function OAuthButtons({ locale, dict, onError, disabled }: OAuthButtonsProps): React.JSX.Element {
   const t = dict.auth;
@@ -159,62 +159,40 @@ export function OAuthButtons({ locale, dict, onError, disabled }: OAuthButtonsPr
     };
   }, [appleClientId, locale]);
 
-  const googleFallback = (): void => {
-    startTransition(async () => {
-      const res = await oauthSigninAction(
-        'GOOGLE',
-        'google-demo-user',
-        'google.user@example.com',
-        'Google User',
-      );
-      if (res.ok) finish();
-      else onError();
-    });
-  };
-
   const appleSignIn = (): void => {
     const appleId = window.AppleID;
-    if (appleClientId && appleId) {
-      startTransition(async () => {
-        try {
-          const data = await appleId.auth.signIn();
-          const res = await appleSigninAction(data.authorization.id_token);
-          if (res.ok) finish();
-          else onError();
-        } catch {
-          onError();
-        }
-      });
-      return;
-    }
+    if (!appleClientId || !appleId) return; // not configured — button is disabled
     startTransition(async () => {
-      const res = await oauthSigninAction(
-        'APPLE',
-        'apple-demo-user',
-        'apple.user@example.com',
-        'Apple User',
-      );
-      if (res.ok) finish();
-      else onError();
+      try {
+        const data = await appleId.auth.signIn();
+        const res = await appleSigninAction(data.authorization.id_token);
+        if (res.ok) finish();
+        else onError();
+      } catch {
+        onError();
+      }
     });
   };
 
+  // A provider with no client id configured cannot verify anything, so its
+  // button is disabled rather than falling back to an unverified sign-in.
   return (
     <div className="auth-card__oauth">
       {googleClientId ? (
         <div ref={googleBtnRef} className="gsi-button" />
       ) : (
-        <button
-          type="button"
-          className="oauth-btn"
-          onClick={googleFallback}
-          disabled={pending || disabled}
-        >
+        <button type="button" className="oauth-btn" disabled title={t.oauthUnavailable}>
           <GoogleGlyph />
           {t.continueGoogle}
         </button>
       )}
-      <button type="button" className="oauth-btn" onClick={appleSignIn} disabled={pending || disabled}>
+      <button
+        type="button"
+        className="oauth-btn"
+        onClick={appleSignIn}
+        disabled={pending || disabled || !appleClientId}
+        title={appleClientId ? undefined : t.oauthUnavailable}
+      >
         <AppleGlyph />
         {t.continueApple}
       </button>

@@ -12,6 +12,7 @@ import { AvailabilityModule } from './availability/availability.module.js';
 import { BookingsModule } from './bookings/bookings.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { EarningsModule } from './earnings/earnings.module.js';
+import { EmailModule } from './email/email.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { MarketingModule } from './marketing/marketing.module.js';
 import { HealthController } from './health/health.controller.js';
@@ -28,8 +29,13 @@ import { TutorSettingsModule } from './tutor-settings/tutor-settings.module.js';
 import { TutorsModule } from './tutors/tutors.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
 
-// Written to the repo-root docs/ on boot; committed as the GraphQL SDL (SPEC §9).
-const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
+// In dev the SDL is written to the repo-root docs/ on boot and committed
+// (SPEC §9). A deployed container has no such directory — and no business
+// writing to the source tree — so there we generate the schema in memory.
+const isProd = process.env.NODE_ENV === 'production';
+const schemaFile = isProd
+  ? true
+  : fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
 
 @Module({
   imports: [
@@ -43,6 +49,7 @@ const schemaFile = fileURLToPath(new URL('../../../docs/schema.graphql', import.
     }),
     PrismaModule,
     StripeModule,
+    EmailModule,
     AuthModule,
     AccountModule,
     TutorsModule,

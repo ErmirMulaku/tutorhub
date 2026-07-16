@@ -15,7 +15,6 @@ import {
   leaveReview as leaveReviewMutation,
   markAllNotificationsRead as markAllNotificationsReadMutation,
   markNotificationRead as markNotificationReadMutation,
-  oauthSignin,
   redeemGiftCard as redeemGiftCardMutation,
   resendVerificationCode,
   verifyEmail,
@@ -29,20 +28,30 @@ import {
   type BookLessonInput,
   type BuyGiftCardInput,
 } from './queries';
-import { clearSession, getTokenOrDemo, setSessionToken } from './session';
+import {
+  clearSession,
+  NotAuthenticatedError,
+  requireSessionTokenForAction,
+  setSessionToken,
+} from './session';
 
 export interface ActionResult {
   ok: boolean;
   /** Present when `ok` is false: the GraphQL message or a generic code. */
   error?: string;
+  /** True when the action needs a signed-in student — prompt them to sign in. */
+  needsAuth?: boolean;
 }
 
-/** Run a mutation, mapping GraphQL errors onto a uniform result shape. */
+/** Run a mutation, mapping GraphQL and auth errors onto a uniform result shape. */
 async function run(fn: () => Promise<void>, fallback: string): Promise<ActionResult> {
   try {
     await fn();
     return { ok: true };
   } catch (err) {
+    if (err instanceof NotAuthenticatedError) {
+      return { ok: false, needsAuth: true, error: 'NOT_AUTHENTICATED' };
+    }
     const error = err instanceof GraphQLRequestError ? err.message : fallback;
     return { ok: false, error };
   }
@@ -99,24 +108,10 @@ export async function signinAction(email: string, password: string): Promise<Act
   }
 }
 
-/**
- * Sign in via a social provider. The provider handshake is simulated client-
- * side (no external secret); the backend upsert + session are real.
- */
-export async function oauthSigninAction(
-  provider: 'GOOGLE' | 'APPLE',
-  providerUserId: string,
-  email: string,
-  fullName: string,
-): Promise<ActionResult> {
-  try {
-    const { accessToken } = await oauthSignin(provider, providerUserId, email, fullName);
-    await setSessionToken(accessToken);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof GraphQLRequestError ? err.message : 'OAUTH_FAILED' };
-  }
-}
+// `oauthSigninAction` was removed: it accepted a client-asserted (provider,
+// email) pair, which meant anyone invoking the Server Action could sign in as
+// any user. Social sign-in now goes exclusively through the ID-token actions
+// below, which the API verifies against the provider's JWKS.
 
 /** Real Google sign-in: exchange the GIS ID token for a session. */
 export async function googleSigninAction(idToken: string): Promise<ActionResult> {
@@ -149,7 +144,7 @@ export async function logoutAction(): Promise<void> {
 
 export async function markAllNotificationsReadAction(): Promise<ActionResult> {
   const result = await run(async () => {
-    await markAllNotificationsReadMutation(await getTokenOrDemo());
+    await markAllNotificationsReadMutation(await requireSessionTokenForAction());
   }, 'NOTIFS_FAILED');
   if (result.ok) revalidatePath('/', 'layout');
   return result;
@@ -157,7 +152,7 @@ export async function markAllNotificationsReadAction(): Promise<ActionResult> {
 
 export async function markNotificationReadAction(id: string): Promise<ActionResult> {
   const result = await run(async () => {
-    await markNotificationReadMutation(id, await getTokenOrDemo());
+    await markNotificationReadMutation(id, await requireSessionTokenForAction());
   }, 'NOTIF_FAILED');
   if (result.ok) revalidatePath('/', 'layout');
   return result;
@@ -167,7 +162,7 @@ export async function markNotificationReadAction(id: string): Promise<ActionResu
 
 export async function bookLessonAction(input: BookLessonInput): Promise<ActionResult> {
   const result = await run(async () => {
-    const token = await getTokenOrDemo();
+    const token = await requireSessionTokenForAction();
     await bookLesson(input, token);
   }, 'BOOKING_FAILED');
   if (result.ok) revalidatePath('/[locale]/lessons', 'page');
@@ -186,11 +181,14 @@ export async function createLessonPaymentIntentAction(
   input: BookLessonInput,
 ): Promise<PaymentIntentActionResult> {
   try {
-    const token = await getTokenOrDemo();
+    const token = await requireSessionTokenForAction();
     const intent = await createLessonPaymentIntent(input, token);
     revalidatePath('/[locale]/lessons', 'page');
     return { ok: true, clientSecret: intent.clientSecret, bookingId: intent.bookingId };
   } catch (err) {
+    if (err instanceof NotAuthenticatedError) {
+      return { ok: false, needsAuth: true, error: 'NOT_AUTHENTICATED' };
+    }
     if (err instanceof GraphQLRequestError && err.message.includes('not configured')) {
       return { ok: false, paymentsDisabled: true, error: err.message };
     }
@@ -203,7 +201,7 @@ export async function createLessonPaymentIntentAction(
 
 export async function cancelBookingAction(id: string): Promise<ActionResult> {
   const result = await run(async () => {
-    await cancelBookingMutation(id, await getTokenOrDemo());
+    await cancelBookingMutation(id, await requireSessionTokenForAction());
   }, 'CANCEL_FAILED');
   if (result.ok) revalidatePath('/[locale]/lessons', 'page');
   return result;
@@ -214,7 +212,7 @@ export async function rescheduleBookingAction(
   startTime: string,
 ): Promise<ActionResult> {
   const result = await run(async () => {
-    await rescheduleBookingMutation(id, startTime, await getTokenOrDemo());
+    await rescheduleBookingMutation(id, startTime, await requireSessionTokenForAction());
   }, 'RESCHEDULE_FAILED');
   if (result.ok) revalidatePath('/[locale]/lessons', 'page');
   return result;
@@ -226,7 +224,7 @@ export async function leaveReviewAction(
   comment: string | null,
 ): Promise<ActionResult> {
   const result = await run(async () => {
-    await leaveReviewMutation(bookingId, rating, comment, await getTokenOrDemo());
+    await leaveReviewMutation(bookingId, rating, comment, await requireSessionTokenForAction());
   }, 'REVIEW_FAILED');
   if (result.ok) revalidatePath('/[locale]/lessons', 'page');
   return result;
@@ -239,7 +237,7 @@ export async function toggleFavoriteAction(
   favorited: boolean,
 ): Promise<ActionResult> {
   const result = await run(async () => {
-    await setFavoriteMutation(tutorId, favorited, await getTokenOrDemo());
+    await setFavoriteMutation(tutorId, favorited, await requireSessionTokenForAction());
   }, 'FAVORITE_FAILED');
   if (result.ok) revalidatePath('/[locale]/favourites', 'page');
   return result;
@@ -249,7 +247,7 @@ export async function toggleFavoriteAction(
 
 export async function redeemGiftCardAction(code: string): Promise<ActionResult> {
   const result = await run(async () => {
-    await redeemGiftCardMutation(code, await getTokenOrDemo());
+    await redeemGiftCardMutation(code, await requireSessionTokenForAction());
   }, 'REDEEM_FAILED');
   if (result.ok) revalidatePath('/[locale]/wallet', 'page');
   return result;
@@ -257,7 +255,7 @@ export async function redeemGiftCardAction(code: string): Promise<ActionResult> 
 
 export async function buyGiftCardAction(input: BuyGiftCardInput): Promise<ActionResult> {
   const result = await run(async () => {
-    await buyGiftCardMutation(input, await getTokenOrDemo());
+    await buyGiftCardMutation(input, await requireSessionTokenForAction());
   }, 'GIFTCARD_FAILED');
   if (result.ok) revalidatePath('/[locale]/wallet', 'page');
   return result;
@@ -270,7 +268,13 @@ export async function addPaymentMethodAction(
   expYear: number,
 ): Promise<ActionResult> {
   const result = await run(async () => {
-    await addPaymentMethodMutation(brand, last4, expMonth, expYear, await getTokenOrDemo());
+    await addPaymentMethodMutation(
+      brand,
+      last4,
+      expMonth,
+      expYear,
+      await requireSessionTokenForAction(),
+    );
   }, 'PAYMENT_METHOD_FAILED');
   if (result.ok) revalidatePath('/[locale]/wallet', 'page');
   return result;
@@ -284,7 +288,7 @@ export async function updateProfileAction(input: {
   avatarColor?: string;
 }): Promise<ActionResult> {
   const result = await run(async () => {
-    await updateProfileMutation(input, await getTokenOrDemo());
+    await updateProfileMutation(input, await requireSessionTokenForAction());
   }, 'PROFILE_FAILED');
   if (result.ok) revalidatePath('/[locale]/account', 'page');
   return result;
@@ -299,7 +303,7 @@ export async function updateNotificationPrefsAction(
   }>,
 ): Promise<ActionResult> {
   const result = await run(async () => {
-    await updateNotificationPrefsMutation(prefs, await getTokenOrDemo());
+    await updateNotificationPrefsMutation(prefs, await requireSessionTokenForAction());
   }, 'PREFS_FAILED');
   if (result.ok) revalidatePath('/[locale]/account', 'page');
   return result;
@@ -307,7 +311,7 @@ export async function updateNotificationPrefsAction(
 
 export async function setTwoFactorAction(enabled: boolean): Promise<ActionResult> {
   const result = await run(async () => {
-    await setTwoFactorMutation(enabled, await getTokenOrDemo());
+    await setTwoFactorMutation(enabled, await requireSessionTokenForAction());
   }, 'TWO_FACTOR_FAILED');
   if (result.ok) revalidatePath('/[locale]/account', 'page');
   return result;
@@ -318,13 +322,17 @@ export async function changePasswordAction(
   newPassword: string,
 ): Promise<ActionResult> {
   return run(async () => {
-    await changePasswordMutation(currentPassword, newPassword, await getTokenOrDemo());
+    await changePasswordMutation(
+      currentPassword,
+      newPassword,
+      await requireSessionTokenForAction(),
+    );
   }, 'PASSWORD_FAILED');
 }
 
 export async function deleteAccountAction(): Promise<ActionResult> {
   const result = await run(async () => {
-    await deleteAccountMutation(await getTokenOrDemo());
+    await deleteAccountMutation(await requireSessionTokenForAction());
   }, 'DELETE_FAILED');
   if (result.ok) {
     await clearSession();

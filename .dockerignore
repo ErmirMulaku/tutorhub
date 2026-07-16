@@ -1,0 +1,35 @@
+# Keep the build context small and secrets out of the image.
+# NOTE: package-lock.json and every workspace package.json MUST stay included.
+
+node_modules
+**/node_modules
+
+# Build output (regenerated inside the image)
+dist
+**/dist
+.next
+**/.next
+out
+**/out
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Secrets — never bake env files into an image
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local tooling / caches
+.git
+.github
+.nx
+.claude
+coverage
+**/coverage
+cypress/videos
+cypress/screenshots
+**/.DS_Store
+*.log
+npm-debug.log*

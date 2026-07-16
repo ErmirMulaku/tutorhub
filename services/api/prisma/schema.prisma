@@ -102,7 +102,19 @@ model Tutor {
   promotions    Promotion[]
   referral      Referral?
   giftCards     GiftCard[]
+  emailCodes    TutorEmailVerification[]
   createdAt     DateTime       @default(now())
+}
+
+model TutorEmailVerification {
+  id        String   @id @default(uuid())
+  tutor     Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  tutorId   String
+  code      String // 6-digit numeric code
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([tutorId])
 }
 
 enum PromotionState {

@@ -573,37 +573,9 @@ export async function resendVerificationCode(email: string): Promise<{ devCode: 
 
 export type OAuthProvider = 'GOOGLE' | 'APPLE';
 
-const OAUTH_SIGNIN_MUTATION = /* GraphQL */ `
-  mutation OauthSignin(
-    $provider: OAuthProvider!
-    $providerUserId: String!
-    $email: String!
-    $fullName: String!
-  ) {
-    oauthSignin(
-      provider: $provider
-      providerUserId: $providerUserId
-      email: $email
-      fullName: $fullName
-    ) {
-      accessToken
-      studentId
-    }
-  }
-`;
-
-export async function oauthSignin(
-  provider: OAuthProvider,
-  providerUserId: string,
-  email: string,
-  fullName: string,
-): Promise<AuthResult> {
-  const data = await graphqlRequest<{ oauthSignin: AuthResult }>(OAUTH_SIGNIN_MUTATION, {
-    variables: { provider, providerUserId, email, fullName },
-    cache: 'no-store',
-  });
-  return data.oauthSignin;
-}
+// There is no unverified `oauthSignin` client mutation by design: social
+// sign-in always exchanges a provider-issued ID token (see googleSignin /
+// appleSignin), which the API verifies against the provider's JWKS.
 
 const GOOGLE_SIGNIN_MUTATION = /* GraphQL */ `
   mutation GoogleSignin($idToken: String!) {

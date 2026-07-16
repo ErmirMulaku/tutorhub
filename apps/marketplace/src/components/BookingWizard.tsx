@@ -23,7 +23,7 @@ interface BookingWizardProps {
 }
 
 type Step = 1 | 2 | 3;
-type Phase = 'form' | 'pay' | 'success' | 'error';
+type Phase = 'form' | 'pay' | 'auth' | 'success' | 'error';
 
 /**
  * Three-step booking flow (subject → time → confirm) rendered inline in the
@@ -78,13 +78,19 @@ export function BookingWizard({
           setPhase('pay');
           return;
         }
+        if (intent.needsAuth) {
+          setPhase('auth');
+          return;
+        }
         if (!intent.paymentsDisabled) {
           setPhase('error');
           return;
         }
       }
       const result = await bookLessonAction(input);
-      if (result.ok) {
+      if (result.needsAuth) {
+        setPhase('auth');
+      } else if (result.ok) {
         setPhase('success');
         router.refresh();
       } else {
@@ -92,6 +98,20 @@ export function BookingWizard({
       }
     });
   };
+
+  if (phase === 'auth') {
+    return (
+      <div className="wizard wizard--done">
+        <p className="booking__summary">{t.signInToBook}</p>
+        <Button block onClick={() => router.push(`/${locale}/login`)}>
+          {t.signInCta}
+        </Button>
+        <button type="button" className="wizard__back" onClick={reset}>
+          {t.back}
+        </button>
+      </div>
+    );
+  }
 
   if (phase === 'pay' && slot && clientSecret) {
     return (

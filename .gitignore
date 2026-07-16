@@ -161,6 +161,9 @@ apps/mobile/dist
 # Prisma generated client (run `npm run db:generate`)
 **/src/generated/
 
+# Vercel CLI link (project/org ids, machine-local)
+.vercel
+
 
 # macOS Finder metadata
 .DS_Store
