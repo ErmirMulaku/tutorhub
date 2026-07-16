@@ -3,7 +3,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
-import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
+import {
+  BadRequestDomainError,
+  EmailNotVerifiedError,
+  EntityNotFoundError,
+} from '../common/errors.js';
 import { EmailService } from '../email/email.service.js';
 import { OAuthProvider } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -240,6 +244,11 @@ export class AuthService {
     if (!verifyPassword(password, student.passwordHash)) {
       throw new UnauthorizedException('Invalid email or password.');
     }
+    // Checked after the password so this cannot be used to probe which emails
+    // have an unverified account.
+    if (!student.emailVerified) {
+      throw new EmailNotVerifiedError();
+    }
     return { accessToken: await this.signFor(student.id), studentId: student.id };
   }
 
@@ -324,6 +333,11 @@ export class AuthService {
     }
     if (!verifyPassword(password, tutor.passwordHash)) {
       throw new UnauthorizedException('Invalid email or password.');
+    }
+    // Checked after the password so this cannot be used to probe which emails
+    // have an unverified account.
+    if (!tutor.emailVerified) {
+      throw new EmailNotVerifiedError();
     }
     return { accessToken: await this.sign(tutor.id, 'tutor'), tutorId: tutor.id };
   }

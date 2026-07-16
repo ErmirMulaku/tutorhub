@@ -147,6 +147,37 @@ describe('Tutor auth (e2e)', () => {
     expect(data.data.tutorSignin.tutorId).toBe(signupTutorId);
   });
 
+  it('tutorSignin refuses an unverified tutor, even with the right password', async () => {
+    // The whole point of verification: without this, signing up with someone
+    // else's address and then signing in with your own password is enough.
+    const stamp = `${Date.now()}-unverified`;
+    const email = `e2e-unverified+${stamp}@example.com`;
+    const created = await prisma.tutor.create({
+      data: {
+        name: 'Never Verified',
+        timezone: 'Europe/London',
+        hourlyCents: 4000,
+        workingHours: [],
+        email,
+        passwordHash: hashPassword('s3cret-pass'),
+        emailVerified: false,
+      },
+    });
+    try {
+      const res = await gql(
+        `mutation { tutorSignin(email: "${email}", password: "s3cret-pass") { accessToken } }`,
+      ).expect(200);
+      const body = res.body as {
+        data?: { tutorSignin: unknown };
+        errors?: { message: string; extensions?: { code?: string } }[];
+      };
+      expect(body.data?.tutorSignin ?? null).toBeNull();
+      expect(body.errors?.[0]?.extensions?.code).toBe('EMAIL_NOT_VERIFIED');
+    } finally {
+      await prisma.tutor.deleteMany({ where: { id: created.id } });
+    }
+  });
+
   it('tutorSignin verifies the password and returns a token', async () => {
     const res = await gql(
       `mutation { tutorSignin(email: "${tutorEmail}", password: "s3cret-pass") { tutorId accessToken } }`,
