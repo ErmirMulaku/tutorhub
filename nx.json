@@ -26,6 +26,7 @@
       "cache": true
     },
     "lint": {
+      "dependsOn": ["^build"],
       "cache": true
     }
   }
