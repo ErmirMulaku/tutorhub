@@ -22,14 +22,14 @@ export interface TutorAuthResult {
 export interface SignupResult {
   studentId: string;
   requiresVerification: boolean;
-  /** Surfaced only when Resend isn't configured, so local dev still works. */
+  /** Off-production only, and only without an email transport. Never in production. */
   devCode: string | null;
 }
 
 export interface TutorSignupResult {
   tutorId: string;
   requiresVerification: boolean;
-  /** Surfaced only when Resend isn't configured, so local dev still works. */
+  /** Off-production only, and only without an email transport. Never in production. */
   devCode: string | null;
 }
 
@@ -54,6 +54,23 @@ export class AuthService {
   /** Mint a JWT for a principal. `kind` discriminates students from tutors. */
   private sign(sub: string, kind: 'student' | 'tutor'): Promise<string> {
     return this.jwt.signAsync({ sub, kind });
+  }
+
+  /**
+   * The verification code to hand back to the caller, or `null` to withhold it.
+   *
+   * It exists so local dev can verify an account without a Resend account, and
+   * is returned only off-production, and only when there is no email transport.
+   *
+   * Gating on the transport alone fails open: a production deploy missing
+   * `RESEND_API_KEY` would return the code to whoever asked for it, letting
+   * anyone verify an address they do not control. {@link EmailService} refuses
+   * to boot in that case; this is the second lock, so the code cannot leak even
+   * if that rule is ever relaxed.
+   */
+  private devCodeFor(code: string): string | null {
+    if (this.config.get<string>('NODE_ENV') === 'production') return null;
+    return this.email.enabled ? null : code;
   }
 
   private signFor(studentId: string): Promise<string> {
@@ -102,7 +119,7 @@ export class AuthService {
     return {
       studentId: student.id,
       requiresVerification: true,
-      devCode: this.email.enabled ? null : code,
+      devCode: this.devCodeFor(code),
     };
   }
 
@@ -134,7 +151,7 @@ export class AuthService {
       throw new EntityNotFoundError('Student', email);
     }
     const code = await this.issueVerificationCode(student.id, email);
-    return { devCode: this.email.enabled ? null : code };
+    return { devCode: this.devCodeFor(code) };
   }
 
   /**
@@ -267,7 +284,7 @@ export class AuthService {
     return {
       tutorId: tutor.id,
       requiresVerification: true,
-      devCode: this.email.enabled ? null : code,
+      devCode: this.devCodeFor(code),
     };
   }
 
@@ -296,7 +313,7 @@ export class AuthService {
       throw new EntityNotFoundError('Tutor', email);
     }
     const code = await this.issueTutorVerificationCode(tutor.id, email);
-    return { devCode: this.email.enabled ? null : code };
+    return { devCode: this.devCodeFor(code) };
   }
 
   /** Verify a tutor's email + password and return a tutor session token. */
