@@ -514,6 +514,8 @@ export interface SignupResult {
   requiresVerification: boolean;
   /** Non-production only — surfaced so the verify step can prefill the code. */
   devCode: string | null;
+  /** A fixed code this deployment accepts from anyone, shown as a demo shortcut. */
+  demoCode: string | null;
 }
 
 const SIGNUP_MUTATION = /* GraphQL */ `
@@ -522,6 +524,7 @@ const SIGNUP_MUTATION = /* GraphQL */ `
       studentId
       requiresVerification
       devCode
+      demoCode
     }
   }
 `;
@@ -559,15 +562,17 @@ const RESEND_CODE_MUTATION = /* GraphQL */ `
   mutation ResendCode($email: String!) {
     resendVerificationCode(email: $email) {
       devCode
+      demoCode
     }
   }
 `;
 
-export async function resendVerificationCode(email: string): Promise<{ devCode: string | null }> {
-  const data = await graphqlRequest<{ resendVerificationCode: { devCode: string | null } }>(
-    RESEND_CODE_MUTATION,
-    { variables: { email }, cache: 'no-store' },
-  );
+export async function resendVerificationCode(
+  email: string,
+): Promise<{ devCode: string | null; demoCode: string | null }> {
+  const data = await graphqlRequest<{
+    resendVerificationCode: { devCode: string | null; demoCode: string | null };
+  }>(RESEND_CODE_MUTATION, { variables: { email }, cache: 'no-store' });
   return data.resendVerificationCode;
 }
 

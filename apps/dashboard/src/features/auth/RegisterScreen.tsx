@@ -11,7 +11,12 @@ type Phase = 'form' | 'verify';
 
 interface TutorSignupResult {
   data?: {
-    tutorSignup?: { tutorId: string; requiresVerification: boolean; devCode: string | null };
+    tutorSignup?: {
+      tutorId: string;
+      requiresVerification: boolean;
+      devCode: string | null;
+      demoCode: string | null;
+    };
   };
   errors?: GraphqlError[];
 }
@@ -25,6 +30,7 @@ export function RegisterScreen(): JSX.Element {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -48,7 +54,7 @@ export function RegisterScreen(): JSX.Element {
     setError(null);
     try {
       const body = await graphql<TutorSignupResult>(
-        `mutation($n:String!,$e:String!,$p:String!){ tutorSignup(fullName:$n,email:$e,password:$p){ tutorId requiresVerification devCode } }`,
+        `mutation($n:String!,$e:String!,$p:String!){ tutorSignup(fullName:$n,email:$e,password:$p){ tutorId requiresVerification devCode demoCode } }`,
         { n: fullName, e: email, p: password },
       );
       const payload = body.data?.tutorSignup;
@@ -57,6 +63,7 @@ export function RegisterScreen(): JSX.Element {
         return;
       }
       setDevCode(payload.devCode);
+      setDemoCode(payload.demoCode);
       setPhase('verify');
     } catch {
       setError('Could not reach the server.');
@@ -75,6 +82,7 @@ export function RegisterScreen(): JSX.Element {
           <VerifyPanel
             email={email}
             initialDevCode={devCode}
+            initialDemoCode={demoCode}
             subtitle={
               <p className="login__subtitle">
                 We sent a 6-digit code to <strong>{email}</strong>.

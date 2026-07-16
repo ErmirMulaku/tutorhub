@@ -28,6 +28,8 @@ export interface SignupResult {
   requiresVerification: boolean;
   /** Off-production only, and only without an email transport. Never in production. */
   devCode: string | null;
+  /** Set when this deployment accepts a fixed code from anyone. */
+  demoCode: string | null;
 }
 
 export interface TutorSignupResult {
@@ -35,6 +37,8 @@ export interface TutorSignupResult {
   requiresVerification: boolean;
   /** Off-production only, and only without an email transport. Never in production. */
   devCode: string | null;
+  /** Set when this deployment accepts a fixed code from anyone. */
+  demoCode: string | null;
 }
 
 /** 15-minute lifetime for an email verification code. */
@@ -75,6 +79,23 @@ export class AuthService {
   private devCodeFor(code: string): string | null {
     if (this.config.get<string>('NODE_ENV') === 'production') return null;
     return this.email.enabled ? null : code;
+  }
+
+  /**
+   * A code that verifies any address, or `null` when not configured.
+   *
+   * This exists so a public demo is usable: the shared Resend test domain only
+   * delivers to the account owner, so no visitor can ever receive a real code.
+   *
+   * It defeats email verification by design — anyone who knows it can verify an
+   * address they do not own. Enabling it is a deliberate statement that this
+   * deployment's verification is for show. Off unless DEMO_VERIFICATION_CODE is
+   * set, so no one inherits it by accident, and surfaced to the client so the UI
+   * can say plainly that it is a shortcut rather than hiding it.
+   */
+  private get demoCode(): string | null {
+    const code = this.config.get<string>('DEMO_VERIFICATION_CODE');
+    return code === undefined || code === '' ? null : code;
   }
 
   private signFor(studentId: string): Promise<string> {
@@ -124,6 +145,7 @@ export class AuthService {
       studentId: student.id,
       requiresVerification: true,
       devCode: this.devCodeFor(code),
+      demoCode: this.demoCode,
     };
   }
 
@@ -133,12 +155,14 @@ export class AuthService {
     if (student === null) {
       throw new EntityNotFoundError('Student', email);
     }
-    const record = await this.prisma.emailVerification.findFirst({
-      where: { studentId: student.id, code },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (record === null || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestDomainError('That code is invalid or has expired.');
+    if (code !== this.demoCode) {
+      const record = await this.prisma.emailVerification.findFirst({
+        where: { studentId: student.id, code },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (record === null || record.expiresAt.getTime() < Date.now()) {
+        throw new BadRequestDomainError('That code is invalid or has expired.');
+      }
     }
     await this.prisma.student.update({
       where: { id: student.id },
@@ -149,13 +173,15 @@ export class AuthService {
   }
 
   /** Re-issue a verification code for a pending signup. */
-  async resendVerificationCode(email: string): Promise<{ devCode: string | null }> {
+  async resendVerificationCode(
+    email: string,
+  ): Promise<{ devCode: string | null; demoCode: string | null }> {
     const student = await this.prisma.student.findUnique({ where: { email } });
     if (student === null) {
       throw new EntityNotFoundError('Student', email);
     }
     const code = await this.issueVerificationCode(student.id, email);
-    return { devCode: this.devCodeFor(code) };
+    return { devCode: this.devCodeFor(code), demoCode: this.demoCode };
   }
 
   /**
@@ -294,6 +320,7 @@ export class AuthService {
       tutorId: tutor.id,
       requiresVerification: true,
       devCode: this.devCodeFor(code),
+      demoCode: this.demoCode,
     };
   }
 
@@ -303,12 +330,14 @@ export class AuthService {
     if (tutor === null) {
       throw new EntityNotFoundError('Tutor', email);
     }
-    const record = await this.prisma.tutorEmailVerification.findFirst({
-      where: { tutorId: tutor.id, code },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (record === null || record.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestDomainError('That code is invalid or has expired.');
+    if (code !== this.demoCode) {
+      const record = await this.prisma.tutorEmailVerification.findFirst({
+        where: { tutorId: tutor.id, code },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (record === null || record.expiresAt.getTime() < Date.now()) {
+        throw new BadRequestDomainError('That code is invalid or has expired.');
+      }
     }
     await this.prisma.tutor.update({ where: { id: tutor.id }, data: { emailVerified: true } });
     await this.prisma.tutorEmailVerification.deleteMany({ where: { tutorId: tutor.id } });
@@ -316,13 +345,15 @@ export class AuthService {
   }
 
   /** Re-issue a verification code for a pending tutor signup. */
-  async resendTutorVerificationCode(email: string): Promise<{ devCode: string | null }> {
+  async resendTutorVerificationCode(
+    email: string,
+  ): Promise<{ devCode: string | null; demoCode: string | null }> {
     const tutor = await this.prisma.tutor.findUnique({ where: { email } });
     if (tutor === null) {
       throw new EntityNotFoundError('Tutor', email);
     }
     const code = await this.issueTutorVerificationCode(tutor.id, email);
-    return { devCode: this.devCodeFor(code) };
+    return { devCode: this.devCodeFor(code), demoCode: this.demoCode };
   }
 
   /** Verify a tutor's email + password and return a tutor session token. */

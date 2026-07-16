@@ -29,6 +29,7 @@ export function AuthForm({
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const finish = (): void => {
@@ -62,6 +63,7 @@ export function AuthForm({
       const res = await signupAction(name, email, password);
       if (res.ok) {
         setDevCode(res.devCode ?? null);
+        setDemoCode(res.demoCode ?? null);
         setStep(3);
       } else {
         setError(res.error ?? t.error);
@@ -82,7 +84,10 @@ export function AuthForm({
   const resend = (): void => {
     startTransition(async () => {
       const res = await resendCodeAction(email);
-      if (res.ok) setDevCode(res.devCode ?? null);
+      if (res.ok) {
+        setDevCode(res.devCode ?? null);
+        setDemoCode(res.demoCode ?? null);
+      }
     });
   };
 
@@ -257,6 +262,9 @@ export function AuthForm({
               />
             </label>
             {devCode && <p className="auth-card__devcode">{interpolate(t.devCodeNote, { code: devCode })}</p>}
+            {demoCode && (
+              <p className="auth-card__devcode">{interpolate(t.demoCodeNote, { code: demoCode })}</p>
+            )}
             {error && <p className="booking__error">{error}</p>}
             <Button type="submit" block disabled={isPending || code.length < 6}>
               {isPending ? dict.common.loading : t.verify}
