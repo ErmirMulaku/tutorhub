@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
 import type { Notification } from '@/lib/queries';
+import { AssistantNavTrigger } from './AssistantNavTrigger';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import { NotificationsMenu } from './NotificationsMenu';
 import { ThemeToggle } from './ThemeToggle';
@@ -60,12 +61,9 @@ export function Header({
               {dict.nav.lessons}
             </Link>
           )}
-          {/* Signed-in only: the assistant books on the caller's account. */}
-          {loggedIn && (
-            <Link href={`/${locale}/assistant`} className="site-header__nav-link">
-              {dict.nav.assistant}
-            </Link>
-          )}
+          {/* Opens the global assistant widget. Public: anyone can open it; it
+              prompts for sign-in before a turn, as it books on the caller's account. */}
+          <AssistantNavTrigger label={dict.nav.assistant} />
           <div className="site-header__controls">
             <LocaleSwitcher current={locale} />
             <ThemeToggle dict={dict} />
