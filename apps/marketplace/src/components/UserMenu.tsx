@@ -7,6 +7,7 @@ import { Avatar } from '@ermulaku/ui';
 import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
 import { logoutAction } from '@/lib/actions';
+import { TUTOR_APP_URL } from '@/lib/env';
 
 interface UserMenuProps {
   locale: Locale;
@@ -15,7 +16,7 @@ interface UserMenuProps {
   dict: Dictionary;
 }
 
-type IconName = 'lessons' | 'favourites' | 'wallet' | 'account';
+type IconName = 'lessons' | 'favourites' | 'wallet' | 'account' | 'tutor';
 
 function MenuIcon({ name }: { name: IconName }): React.JSX.Element {
   const common = {
@@ -55,6 +56,13 @@ function MenuIcon({ name }: { name: IconName }): React.JSX.Element {
         <svg {...common}>
           <circle cx="12" cy="8" r="4" />
           <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+      );
+    case 'tutor':
+      return (
+        <svg {...common}>
+          <path d="M12 4 2 9l10 5 8-4v6" />
+          <path d="M6 11.5V16c0 1.1 2.7 2.5 6 2.5s6-1.4 6-2.5v-4.5" />
         </svg>
       );
   }
@@ -166,6 +174,33 @@ export function UserMenu({ locale, name, email, dict }: UserMenuProps): React.JS
             </span>
             {dict.nav.signOut}
           </button>
+          {/* External link to the tutor-facing app — also in the header, kept here
+              so it's reachable on mobile where the header pill is hidden. */}
+          <a
+            href={`${TUTOR_APP_URL}/signup`}
+            role="menuitem"
+            className="user-menu__item user-menu__item--cta"
+            onClick={() => setOpen(false)}
+          >
+            <span className="user-menu__item-icon" aria-hidden="true">
+              <MenuIcon name="tutor" />
+            </span>
+            {dict.nav.becomeTutor}
+            <svg
+              className="user-menu__item-arrow"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </a>
         </div>
       )}
     </div>

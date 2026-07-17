@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
+import { TUTOR_APP_URL } from '@/lib/env';
 import type { Notification } from '@/lib/queries';
 import { AssistantNavTrigger } from './AssistantNavTrigger';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -65,6 +66,26 @@ export function Header({
               prompts for sign-in before a turn, as it books on the caller's account. */}
           <AssistantNavTrigger label={dict.nav.assistant} />
           <div className="site-header__controls">
+            {/* CTA to the tutor-facing app — anyone browsing can sign up to teach. */}
+            <a href={`${TUTOR_APP_URL}/signup`} className="site-header__become-tutor">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 4 2 9l10 5 8-4v6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6 11.5V16c0 1.1 2.7 2.5 6 2.5s6-1.4 6-2.5v-4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {dict.nav.becomeTutor}
+            </a>
             <LocaleSwitcher current={locale} />
             <ThemeToggle dict={dict} />
             {loggedIn ? (

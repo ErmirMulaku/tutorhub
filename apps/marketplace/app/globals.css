@@ -536,6 +536,37 @@ button.site-header__nav-link {
   font-size: 0.9375rem;
   color: var(--th-primary);
 }
+/* "Become a tutor" CTA — a pill linking to the tutor-facing app. */
+.site-header__become-tutor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-1);
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--th-border);
+  border-radius: 999px;
+  background: var(--th-surface);
+  color: var(--th-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--th-shadow-1);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.site-header__become-tutor:hover {
+  border-color: var(--th-primary);
+  color: var(--th-primary);
+  transform: translateY(-1px);
+}
+.site-header__become-tutor:focus-visible {
+  outline: 2px solid var(--th-primary);
+  outline-offset: 2px;
+}
+/* Secondary CTA — drop it on narrow headers to avoid crowding. */
+@media (max-width: 48rem) {
+  .site-header__become-tutor {
+    display: none;
+  }
+}
 
 /* ---- User menu ----------------------------------------------------------- */
 .user-menu {
@@ -630,6 +661,23 @@ button.site-header__nav-link {
 }
 .user-menu__item--danger .user-menu__item-icon {
   color: var(--th-danger);
+}
+.user-menu__item--cta {
+  margin-block-start: 2px;
+  border-block-start: 1px solid var(--th-border-soft);
+  padding-block-start: var(--th-space-3);
+  color: var(--th-primary);
+  font-weight: 600;
+}
+.user-menu__item--cta .user-menu__item-icon {
+  color: var(--th-primary);
+}
+.user-menu__item-arrow {
+  margin-inline-start: auto;
+  color: var(--th-primary);
+}
+[dir='rtl'] .user-menu__item-arrow {
+  transform: scaleX(-1);
 }
 
 /* ---- Theme toggle -------------------------------------------------------- */

@@ -9,7 +9,8 @@
     "wallet": "Wallet",
     "account": "Account",
     "signIn": "Sign in",
-    "signOut": "Log out"
+    "signOut": "Log out",
+    "becomeTutor": "Become a tutor"
   },
   "theme": {
     "toLight": "Switch to light mode",
