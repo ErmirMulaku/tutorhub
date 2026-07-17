@@ -2392,6 +2392,42 @@ button.site-header__nav-link {
 .aw-tools svg {
   color: var(--th-primary);
 }
+/* Follow-up navigation links suggested by the reply. */
+.aw-actions {
+  margin-block-start: var(--th-space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--th-space-2);
+}
+.aw-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--th-primary) 40%, var(--th-border));
+  border-radius: 999px;
+  background: var(--th-primary-50);
+  color: var(--th-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.aw-action:hover {
+  background: color-mix(in srgb, var(--th-primary) 16%, var(--th-surface));
+  border-color: var(--th-primary);
+  transform: translateY(-1px);
+}
+.aw-action:focus-visible {
+  outline: 2px solid var(--th-primary);
+  outline-offset: 2px;
+}
+.aw-action svg {
+  flex: none;
+}
+[dir='rtl'] .aw-action svg {
+  transform: scaleX(-1);
+}
 .aw-notice {
   margin: 0;
   align-self: center;
@@ -2570,7 +2606,8 @@ button.site-header__nav-link {
   .aw-launcher__icon,
   .aw-panel,
   .aw-msg,
-  .aw-send {
+  .aw-send,
+  .aw-action {
     animation: none !important;
     transition: none !important;
   }

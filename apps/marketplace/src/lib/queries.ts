@@ -912,10 +912,21 @@ export interface AssistantTurn {
   content: string;
 }
 
+/**
+ * A follow-up destination the reply suggests, derived from the tools the model
+ * ran. The API names *what* to open; the client turns it into a localized URL.
+ */
+export type AssistantAction =
+  | { kind: 'search'; subject?: string; level?: string }
+  | { kind: 'tutor'; tutorId: string; tutorName?: string }
+  | { kind: 'lessons' };
+
 export interface AssistantReply {
   reply: string;
   /** Tools the model invoked this turn, surfaced so the UI can show its working. */
   toolsUsed: string[];
+  /** In-app links to offer beneath the reply (may be absent on older servers). */
+  actions?: AssistantAction[];
 }
 
 /**

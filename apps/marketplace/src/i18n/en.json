@@ -352,7 +352,12 @@
     "greeting": "Hi! How can I help you find a tutor?",
     "suggest1": "Find a maths tutor",
     "suggest2": "Who's free this week?",
-    "suggest3": "Book a beginner guitar lesson"
+    "suggest3": "Book a beginner guitar lesson",
+    "viewResults": "See {subject} tutors",
+    "browseTutors": "Browse all tutors",
+    "viewTutor": "View {name}'s profile",
+    "viewProfile": "View tutor profile",
+    "viewLessons": "View my lessons"
   },
   "common": {
     "back": "Back",

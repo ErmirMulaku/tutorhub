@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { Locale } from '@/i18n/config';
 import { interpolate, type Dictionary } from '@/i18n/dictionaries';
 import { assistantChatAction } from '@/lib/actions';
-import type { AssistantTurn } from '@/lib/queries';
+import type { AssistantAction, AssistantTurn } from '@/lib/queries';
 
 /** Other components (e.g. the header link) open the widget by firing this. */
 export const ASSISTANT_OPEN_EVENT = 'tutorhub:assistant-open';
@@ -14,6 +14,41 @@ export const ASSISTANT_OPEN_EVENT = 'tutorhub:assistant-open';
 interface Shown extends AssistantTurn {
   /** Tools the model ran for this reply, shown so its actions aren't invisible. */
   toolsUsed?: string[];
+  /** In-app destinations to offer as follow-up links beneath this reply. */
+  actions?: AssistantAction[];
+}
+
+/** Map a semantic action to a localized in-app link. */
+function actionLink(
+  action: AssistantAction,
+  locale: Locale,
+  t: Dictionary['assistant'],
+): { href: string; label: string } {
+  switch (action.kind) {
+    case 'search': {
+      const params = new URLSearchParams();
+      if (action.subject !== undefined) params.set('query', action.subject);
+      if (action.level !== undefined) params.set('level', action.level);
+      const qs = params.toString();
+      return {
+        href: `/${locale}/tutors${qs === '' ? '' : `?${qs}`}`,
+        label:
+          action.subject !== undefined
+            ? interpolate(t.viewResults, { subject: action.subject })
+            : t.browseTutors,
+      };
+    }
+    case 'tutor':
+      return {
+        href: `/${locale}/tutor/${action.tutorId}`,
+        label:
+          action.tutorName !== undefined && action.tutorName !== ''
+            ? interpolate(t.viewTutor, { name: action.tutorName })
+            : t.viewProfile,
+      };
+    case 'lessons':
+      return { href: `/${locale}/lessons`, label: t.viewLessons };
+  }
 }
 
 /** The orbit mark used across the brand, reused as the assistant's avatar. */
@@ -121,7 +156,12 @@ export function AssistantWidget({
           }
           setTurns([
             ...history,
-            { role: 'assistant', content: res.reply, toolsUsed: res.toolsUsed },
+            {
+              role: 'assistant',
+              content: res.reply,
+              toolsUsed: res.toolsUsed,
+              actions: res.actions,
+            },
           ]);
           // A turn may have booked a lesson; refresh so /lessons isn't stale.
           if (res.toolsUsed.includes('bookLesson')) router.refresh();
@@ -264,6 +304,34 @@ export function AssistantWidget({
                       {interpolate(t.toolsUsed, { tools: turn.toolsUsed.join(', ') })}
                     </p>
                   )}
+                  {turn.role === 'assistant' &&
+                    turn.actions !== undefined &&
+                    turn.actions.length > 0 && (
+                      <div className="aw-actions">
+                        {turn.actions.map((action, ai) => {
+                          const { href, label } = actionLink(action, locale, t);
+                          return (
+                            <Link
+                              key={ai}
+                              href={href}
+                              className="aw-action"
+                              onClick={() => setOpen(false)}
+                            >
+                              {label}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path
+                                  d="M5 12h14M13 6l6 6-6 6"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                 </div>
               </div>
             ))}

@@ -32,12 +32,13 @@ describe('Assistant (e2e)', () => {
   let subjectId = '';
   let studentId = '';
   let bookingId = '';
+  let authToken = '';
   const startTime = '2026-07-06T09:00:00.000Z'; // a future Monday
 
   beforeAll(async () => {
-    // The assistant books as DEMO_STUDENT_EMAIL — point it at a student we create.
+    // The assistant books as the authenticated caller, so we create a student,
+    // then sign in as them (below) to drive the guarded endpoint.
     const email = `assistant+${Date.now().toString()}@example.com`;
-    process.env.DEMO_STUDENT_EMAIL = email;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(OpenAiService)
@@ -65,6 +66,14 @@ describe('Assistant (e2e)', () => {
     });
     tutorId = tutor.id;
     subjectId = tutor.subjects[0]?.id ?? '';
+
+    // The endpoint is guarded now (it books on the caller's account), so acquire
+    // a real student JWT the same way the app does.
+    const login = await request(app.getHttpServer() as Server)
+      .post('/auth/dev-login')
+      .send({ email })
+      .expect(200);
+    authToken = (login.body as { accessToken: string }).accessToken;
   });
 
   afterAll(async () => {
@@ -72,7 +81,6 @@ describe('Assistant (e2e)', () => {
     if (subjectId !== '') await prisma.subject.deleteMany({ where: { id: subjectId } });
     if (tutorId !== '') await prisma.tutor.deleteMany({ where: { id: tutorId } });
     if (studentId !== '') await prisma.student.deleteMany({ where: { id: studentId } });
-    delete process.env.DEMO_STUDENT_EMAIL;
     await app.close();
   });
 
@@ -105,12 +113,16 @@ describe('Assistant (e2e)', () => {
 
     const res = await http()
       .post('/assistant/chat')
+      .set('authorization', `Bearer ${authToken}`)
       .send({ messages: [{ role: 'user', content: 'Book me a beginner maths lesson on July 6.' }] })
       .expect(201);
 
-    const body = res.body as { reply: string; toolsUsed: string[] };
+    const body = res.body as { reply: string; toolsUsed: string[]; actions: unknown[] };
     expect(body.reply).toContain('booked');
     expect(body.toolsUsed).toContain('bookLesson');
+    // A successful booking offers follow-up links to the tutor and the lessons page.
+    expect(body.actions).toContainEqual({ kind: 'lessons' });
+    expect(body.actions).toContainEqual({ kind: 'tutor', tutorId });
 
     // The tool actually wrote a booking through the real service layer.
     const booking = await prisma.booking.findFirst({ where: { tutorId, studentId } });
@@ -119,12 +131,45 @@ describe('Assistant (e2e)', () => {
     bookingId = booking?.id ?? '';
   });
 
+  it('offers a search link derived from the tutors it found', async () => {
+    // Turn 1: the model searches. Turn 2: it replies in prose.
+    openai.script = [
+      {
+        role: 'assistant',
+        content: null,
+        refusal: null,
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'searchTutors',
+              arguments: JSON.stringify({ subject: 'Assistant Math' }),
+            },
+          },
+        ],
+      },
+      { role: 'assistant', content: 'Here are some maths tutors.', refusal: null },
+    ];
+
+    const res = await http()
+      .post('/assistant/chat')
+      .set('authorization', `Bearer ${authToken}`)
+      .send({ messages: [{ role: 'user', content: 'Find me a maths tutor.' }] })
+      .expect(201);
+
+    const body = res.body as { actions: unknown[] };
+    // The link carries the searched subject, so the tutors page opens pre-filtered.
+    expect(body.actions).toContainEqual({ kind: 'search', subject: 'Assistant Math' });
+  });
+
   it('returns 503 when the assistant is not configured', async () => {
     openai.script = [];
     openai.configured = false;
     try {
       await http()
         .post('/assistant/chat')
+        .set('authorization', `Bearer ${authToken}`)
         .send({ messages: [{ role: 'user', content: 'hi' }] })
         .expect(503);
     } finally {
