@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { GraphQLRequestError } from './graphql';
 import {
   addPaymentMethod as addPaymentMethodMutation,
+  assistantChat,
   bookLesson,
   buyGiftCard as buyGiftCardMutation,
   cancelBooking as cancelBookingMutation,
@@ -25,6 +26,8 @@ import {
   signup,
   updateNotificationPrefs as updateNotificationPrefsMutation,
   updateProfile as updateProfileMutation,
+  type AssistantAction,
+  type AssistantTurn,
   type BookLessonInput,
   type BuyGiftCardInput,
 } from './queries';
@@ -340,4 +343,32 @@ export async function deleteAccountAction(): Promise<ActionResult> {
     revalidatePath('/', 'layout');
   }
   return result;
+}
+
+/**
+ * One booking-assistant turn.
+ *
+ * The token stays server-side: the assistant can create bookings, so the
+ * browser never holds a credential that could drive it directly.
+ *
+ * `unavailable` and `rateLimited` are ordinary states, not failures — the
+ * deployment may have no OpenAI key, and every caller has a turn budget.
+ */
+export async function assistantChatAction(
+  messages: AssistantTurn[],
+): Promise<
+  | { ok: true; reply: string; toolsUsed: string[]; actions: AssistantAction[] }
+  | { ok: false; reason: 'UNAVAILABLE' | 'RATE_LIMITED' | 'NOT_AUTHENTICATED' | 'FAILED' }
+> {
+  try {
+    const res = await assistantChat(messages, await requireSessionTokenForAction());
+    if ('unavailable' in res) return { ok: false, reason: 'UNAVAILABLE' };
+    if ('rateLimited' in res) return { ok: false, reason: 'RATE_LIMITED' };
+    return { ok: true, reply: res.reply, toolsUsed: res.toolsUsed, actions: res.actions ?? [] };
+  } catch (err) {
+    // The page is public but a turn books on the caller's account, so a
+    // signed-out visitor gets a "please sign in" prompt, not a generic failure.
+    if (err instanceof NotAuthenticatedError) return { ok: false, reason: 'NOT_AUTHENTICATED' };
+    return { ok: false, reason: 'FAILED' };
+  }
 }

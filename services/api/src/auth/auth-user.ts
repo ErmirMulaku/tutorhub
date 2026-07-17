@@ -1,3 +1,6 @@
+import type { ExecutionContext } from '@nestjs/common';
+import { GqlExecutionContext, type GqlContextType } from '@nestjs/graphql';
+
 /** The kind of principal a JWT represents. Absent on legacy tokens ⇒ student. */
 export type PrincipalKind = 'student' | 'tutor';
 
@@ -17,7 +20,7 @@ export interface TutorPrincipal {
   tutorId: string;
 }
 
-interface RequestWithUser {
+export interface RequestWithUser {
   headers: { authorization?: string };
   user?: AuthUser;
   tutor?: TutorPrincipal;
@@ -26,4 +29,18 @@ interface RequestWithUser {
 /** Shape of the GraphQL execution context our guards/decorators rely on. */
 export interface GqlAuthContext {
   req: RequestWithUser;
+}
+
+/**
+ * The request behind an execution context, whichever transport it arrived on.
+ *
+ * `GqlExecutionContext.getContext()` only yields `{ req }` for GraphQL; on an
+ * HTTP handler it returns the third handler argument instead, so a guard that
+ * assumes GraphQL reads `undefined.req` and fails on any REST route.
+ */
+export function requestOf(context: ExecutionContext): RequestWithUser {
+  if (context.getType<GqlContextType>() === 'graphql') {
+    return GqlExecutionContext.create(context).getContext<GqlAuthContext>().req;
+  }
+  return context.switchToHttp().getRequest<RequestWithUser>();
 }

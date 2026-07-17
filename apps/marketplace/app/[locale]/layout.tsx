@@ -22,6 +22,7 @@ const notoArabic = Noto_Sans_Arabic({
   display: 'swap',
 });
 import { getDictionary } from '@/i18n/dictionaries';
+import { AssistantWidget } from '@/components/AssistantWidget';
 import { Header } from '@/components/Header';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { getMe, getNotifications } from '@/lib/queries';
@@ -108,6 +109,9 @@ export default async function LocaleLayout({
           unread={feed.unread}
         />
         <main className="container">{children}</main>
+        {/* Global floating assistant. `me !== null` matches the header's own
+            logged-in check, so a stale token counts as signed out. */}
+        <AssistantWidget dict={dict} locale={locale} authenticated={me !== null} />
       </body>
     </html>
   );
