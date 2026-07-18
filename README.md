@@ -140,10 +140,11 @@ relevant in-app pages (e.g. the pre-filtered tutor search) from its replies.
 
 ## Deployment
 
-Shipped by three GitHub Actions on push to `master`: the **API** builds to a Docker image in
-**Amazon ECR** and rolls out to **AWS App Runner** (via GitHub OIDC); the **marketplace** and
-**dashboard** deploy to **Vercel**. The database is managed Postgres (e.g. Amazon RDS). Full
-runbook — infra, env vars/secrets, migrations, and wiring — in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+Shipped by four GitHub Actions on push to `master`: the **API** builds to a Docker image in
+**Amazon ECR** and rolls out to **AWS App Runner** (via GitHub OIDC); the **marketplace**,
+**dashboard**, and **Storybook** each deploy to their own **Vercel** project. The database is
+managed Postgres (e.g. Amazon RDS). Full runbook — infra, env vars/secrets, migrations, and
+wiring — in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Roadmap
 

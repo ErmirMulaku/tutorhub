@@ -31,7 +31,13 @@ import '@ermulaku/ui/styles.css'; // once, at the app root
 
 ```bash
 npm run storybook -w @ermulaku/ui        # dev Storybook on :6006
-npm run build-storybook -w @ermulaku/ui  # static Storybook
+npm run build-storybook -w @ermulaku/ui  # static Storybook → storybook-static
 npm run build -w @ermulaku/ui            # tsc → dist + styles.css
 npm test -w @ermulaku/ui                 # Jest + Testing Library
 ```
+
+## Deployment
+
+Storybook is deployed as a static site to its own **Vercel** project (Root Directory
+`packages/ui`) by `.github/workflows/deploy-storybook.yml`. See
+[`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md).

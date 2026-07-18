@@ -25,7 +25,7 @@ ECR**; the front-ends are Next.js/SPA builds on **Vercel**.
 
 ## How it ships (CI/CD)
 
-Three GitHub Actions workflows in `.github/workflows/`, each triggered by a push to
+Four GitHub Actions workflows in `.github/workflows/`, each triggered by a push to
 `master` that touches the relevant paths (plus manual `workflow_dispatch`):
 
 | Workflow                 | Target                   | What it does                                                                                                                                                                                                |
@@ -33,6 +33,7 @@ Three GitHub Actions workflows in `.github/workflows/`, each triggered by a push
 | `deploy-api.yml`         | AWS App Runner (via ECR) | Builds `services/api/Dockerfile` (context = repo root, `linux/amd64`), pushes to ECR (`:<sha>` + `:latest`), runs `aws apprunner start-deployment`, polls the operation, then smoke-checks `POST /graphql`. |
 | `deploy-marketplace.yml` | Vercel (marketplace)     | `vercel deploy --prod` for the marketplace project.                                                                                                                                                         |
 | `deploy-dashboard.yml`   | Vercel (dashboard)       | `vercel deploy --prod` for the dashboard project.                                                                                                                                                           |
+| `deploy-storybook.yml`   | Vercel (Storybook)       | `vercel deploy --prod` for the `@ermulaku/ui` Storybook static build.                                                                                                                                       |
 
 The API workflow authenticates to AWS with **GitHub OIDC** — it assumes an IAM role,
 so there are **no long-lived AWS keys** in GitHub.
@@ -74,12 +75,13 @@ app connects via `DATABASE_URL`. App Runner reaches a **private** RDS through a 
 connector**; if the instance is publicly reachable instead, lock it down by security
 group and use strong credentials. Migrations are a manual release step (see §4).
 
-### Vercel (front-ends)
+### Vercel (front-ends + Storybook)
 
-Two Vercel projects from this repo, each with a different **Root Directory**
-(`apps/marketplace`, `apps/dashboard`) and **Node.js 22.x** (Next 16 fails on Node 18).
-Each app's `vercel.json` already sets the install/build commands (they `cd` to the
-repo root so npm workspaces + Nx resolve). GitHub config the Vercel workflows expect:
+Three Vercel projects from this repo, each with a different **Root Directory**
+(`apps/marketplace`, `apps/dashboard`, `packages/ui`) and **Node.js 22.x** (Next 16
+fails on Node 18). Each project's `vercel.json` already sets the install/build
+commands (they `cd` to the repo root so npm workspaces + Nx resolve). GitHub config
+the Vercel workflows expect:
 
 | Kind     | Name                            |
 | -------- | ------------------------------- |
@@ -87,6 +89,7 @@ repo root so npm workspaces + Nx resolve). GitHub config the Vercel workflows ex
 | variable | `VERCEL_ORG_ID`                 |
 | variable | `VERCEL_PROJECT_ID_MARKETPLACE` |
 | variable | `VERCEL_PROJECT_ID_DASHBOARD`   |
+| variable | `VERCEL_PROJECT_ID_STORYBOOK`   |
 
 ---
 
@@ -131,7 +134,7 @@ aws secretsmanager create-secret --name tutorhub/openai-api-key \
 
 ---
 
-## 3. Runtime configuration — Vercel (front-ends)
+## 3. Runtime configuration — Vercel (front-ends + Storybook)
 
 **marketplace** — Root Directory `apps/marketplace`
 
@@ -157,6 +160,10 @@ Changing it requires a **redeploy**, not just an env edit.
 
 > The App Runner **service URL** (`aws apprunner describe-service … Service.ServiceUrl`)
 > has no scheme — use `https://<ServiceUrl>` (or a custom domain) for `API_URL`.
+
+**Storybook** — Root Directory `packages/ui`. No env vars; it's a static build of
+the component catalog (`npx nx build-storybook @ermulaku/ui` → `storybook-static`),
+so nothing to configure beyond the project itself (see §1).
 
 ---
 
