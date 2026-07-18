@@ -38,10 +38,10 @@ Four GitHub Actions workflows in `.github/workflows/`, each triggered by a push 
 The API workflow authenticates to AWS with **GitHub OIDC** — it assumes an IAM role,
 so there are **no long-lived AWS keys** in GitHub.
 
-⚠️ **Disable Vercel's own Git integration** for both Vercel projects, or every merge
-deploys twice (once from Vercel's git hook, once from the workflow). Project Settings
-→ Git → disconnect, or set `"git": { "deploymentEnabled": false }` in the app's
-`vercel.json`.
+⚠️ **Disable Vercel's own Git integration** for all three Vercel projects, or every
+merge deploys twice (once from Vercel's git hook, once from the workflow). Project
+Settings → Git → disconnect, or set `"git": { "deploymentEnabled": false }` in the
+project's `vercel.json`.
 
 ---
 
