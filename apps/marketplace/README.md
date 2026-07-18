@@ -23,8 +23,15 @@ schedule, save favourites, top up a wallet, and manage their account.
   GraphQL endpoint through a tiny typed `fetch` client (`src/lib/graphql.ts`, `src/lib/queries.ts`)
   — no client-side data library. Writes go through **Server Actions** (`src/lib/actions.ts`).
 - **Real sessions.** Sign up / sign in mint a student JWT stored in an httpOnly cookie
-  (`src/lib/session.ts`); when there is no session the storefront falls back to the seeded demo
-  student so it is usable out of the box. Authenticated reads/writes carry the token server-side.
+  (`src/lib/session.ts`). There is **no guest/demo fallback** — signed-out visitors browse the
+  public pages, and anything personal (lessons, wallet, booking, the assistant) requires a real
+  session. Authenticated reads/writes carry the token server-side.
+- **AI booking assistant.** A floating chat widget (`AssistantWidget`) on every page talks to the
+  API's OpenAI-backed `/assistant/chat`; it can search tutors, check availability, and book — and
+  offers **in-app links** to the results (e.g. "See maths tutors"). It's public, but sending a turn
+  prompts sign-in, since it books on the caller's account.
+- **Become a tutor.** A header CTA (and account-menu entry) links to the tutor dashboard app's
+  `/signup`, configured via `TUTOR_APP_URL`.
 - **Internationalised, RTL-ready.** A dependency-free i18n layer (`src/i18n`) with
   locale-prefixed routes (`/en`, `/ar`). Arabic renders fully mirrored via `dir="rtl"` and the
   CSS logical properties baked into `@ermulaku/ui`.
@@ -38,7 +45,11 @@ npm run dev -w @ermulaku/marketplace      # http://localhost:3200 (→ /en)
 npm run build -w @ermulaku/marketplace
 ```
 
-`API_URL` (default `http://localhost:4000`) points the GraphQL client at the API.
+Environment (`.env.local`; see `.env.example`): `API_URL` (default
+`http://localhost:4000`) points the GraphQL client at the API, and `TUTOR_APP_URL`
+(default `http://localhost:3100`) is where "Become a tutor" links. Both are read
+server-side. In production these are set on the Vercel project — see
+[`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md).
 
 ## Structure
 
@@ -54,7 +65,16 @@ src/i18n/                locales, dictionaries (en.json / ar.json), interpolate(
 src/lib/graphql.ts       typed GraphQL-over-fetch client
 src/lib/queries.ts       typed GraphQL operations (reads + mutations)
 src/lib/actions.ts       Server Actions (auth, booking, favourites, wallet, account)
-src/lib/session.ts       httpOnly-cookie JWT session (+ demo fallback)
+src/lib/session.ts       httpOnly-cookie JWT session (no guest fallback)
+src/lib/env.ts           API_URL / TUTOR_APP_URL resolution
 src/components/          Header, UserMenu, TutorCard, DiscoverFilters, BookingWizard,
-                         FavoriteButton, LessonsView, WalletView, AccountView, AuthForm
+                         FavoriteButton, LessonsView, WalletView, AccountView, AuthForm,
+                         AssistantWidget (floating chat), AssistantNavTrigger
 ```
+
+The AI assistant is a **global floating widget** mounted in `layout.tsx`, not a page.
+
+## Deployment
+
+Deployed to **Vercel** (SSR) by `.github/workflows/deploy-marketplace.yml`; the API runs
+on AWS App Runner. See [`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md).
