@@ -6,7 +6,7 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^@ermulaku/types$': '<rootDir>/../../packages/types/src/index.ts',
-    '^@ermulaku/slot-engine$': '<rootDir>/../../packages/slot-engine/src/index.ts',
+    '^tutorhub-slot-engine$': '<rootDir>/../../packages/slot-engine/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {

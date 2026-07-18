@@ -1,4 +1,4 @@
-/** Public types for `@ermulaku/slot-engine`. */
+/** Public types for `tutorhub-slot-engine`. */
 
 /**
  * An absolute instant as an ISO-8601 UTC string, e.g.

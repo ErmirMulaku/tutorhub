@@ -8,7 +8,7 @@
  * into these base types.
  *
  * Timestamps are ISO-8601 UTC strings (e.g. `"2025-03-30T08:00:00.000Z"`) to
- * stay serialisable and consistent with `@ermulaku/slot-engine`.
+ * stay serialisable and consistent with `tutorhub-slot-engine`.
  */
 
 import type { BookingStatus, Level, PaymentStatus } from './enums.js';

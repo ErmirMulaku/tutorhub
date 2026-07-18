@@ -4,7 +4,7 @@ import {
   type BookingInterval,
   type Slot,
   type WorkingWindow,
-} from '@ermulaku/slot-engine';
+} from 'tutorhub-slot-engine';
 import { EntityNotFoundError } from '../common/errors.js';
 import { BookingStatus, type TimeOff } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';

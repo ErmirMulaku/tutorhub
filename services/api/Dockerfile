@@ -41,7 +41,7 @@ RUN npx prisma generate --schema services/api/prisma/schema.prisma
 
 # Build the dependency chain directly with tsc (no Nx daemon inside the image).
 RUN npm run build --workspace=@ermulaku/types \
- && npm run build --workspace=@ermulaku/slot-engine \
+ && npm run build --workspace=tutorhub-slot-engine \
  && npm run build --workspace=@ermulaku/api
 
 # ---- runtime: production dependencies only ---------------------------------

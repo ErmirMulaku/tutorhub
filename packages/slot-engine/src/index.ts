@@ -1,5 +1,5 @@
 /**
- * `@ermulaku/slot-engine` — a zero-dependency, timezone- and DST-aware engine
+ * `tutorhub-slot-engine` — a zero-dependency, timezone- and DST-aware engine
  * that computes bookable lesson slots for a tutor on a given day.
  *
  * @packageDocumentation

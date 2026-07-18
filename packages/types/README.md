@@ -30,7 +30,7 @@ function isOpen(status: BookingStatus): boolean {
 ## Conventions
 
 - **Timestamps** are ISO-8601 UTC strings (e.g. `"2025-03-30T08:00:00.000Z"`),
-  matching `@ermulaku/slot-engine`.
+  matching `tutorhub-slot-engine`.
 - Entities carry **foreign-key ids** (`tutorId`, `studentId`, …); resolved
   relation graphs are composed per-query at the API layer, not baked in here.
 

@@ -1,9 +1,8 @@
 {
-  "name": "@ermulaku/slot-engine",
+  "name": "tutorhub-slot-engine",
   "version": "0.1.0",
   "description": "Zero-dependency, timezone- and DST-aware availability slot engine.",
   "license": "MIT",
-  "author": "Ermir Mulaku",
   "homepage": "https://github.com/ErmirMulaku/tutorhub/tree/master/packages/slot-engine#readme",
   "repository": {
     "type": "git",
