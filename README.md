@@ -41,7 +41,7 @@ Per-phase build log and decisions: [`AGENTS.md`](./AGENTS.md) and [`docs/`](./do
 TypeScript · React 19 + Redux Toolkit · Next.js 16 (SSR/PWA) · custom Webpack 5 ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
-Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + Cloud SQL.
+Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Amazon RDS.
 
 ## Monorepo
 

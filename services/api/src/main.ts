@@ -45,8 +45,9 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
   // gRPC microservice (SPEC §9), reusing the same service layer. It binds a
-  // *second* port, which serverless hosts like Cloud Run cannot expose (exactly
-  // one port per container), so it is opt-out via GRPC_ENABLED=false there.
+  // *second* port, which single-port container hosts like App Runner cannot
+  // expose (exactly one port per container), so it is opt-out via
+  // GRPC_ENABLED=false there.
   if (process.env.GRPC_ENABLED !== 'false') {
     app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.GRPC,
@@ -60,7 +61,8 @@ async function bootstrap(): Promise<void> {
     await app.startAllMicroservices();
   }
 
-  // Cloud Run injects PORT (8080) and requires binding on 0.0.0.0.
+  // Listen on $PORT (App Runner routes to the container's configured port;
+  // default 8080 in the image) and bind on 0.0.0.0.
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port, '0.0.0.0');
 }

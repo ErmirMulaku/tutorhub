@@ -1,4 +1,5 @@
-# Local PostgreSQL for services/api. Not used in production (Cloud SQL, SPEC §14).
+# Local PostgreSQL for services/api. Not used in production (managed Postgres,
+# e.g. Amazon RDS; SPEC §14).
 #   docker compose up -d db
 services:
   db:

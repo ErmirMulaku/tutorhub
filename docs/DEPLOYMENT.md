@@ -1,4 +1,4 @@
-# Deployment — Cloud Run (API) + Vercel (front-ends)
+# Deployment — AWS App Runner (API) + Vercel (front-ends)
 
 ```
                          ┌───────────────────────────┐
@@ -6,9 +6,10 @@
                          └──────────┬────────────────┘
                                     │  API_URL
                          ┌──────────▼────────────────┐      ┌──────────────┐
-  tutors    ─────────▶   │ Cloud Run · API (Docker)  │─────▶│  Cloud SQL   │
-                         └──────────▲────────────────┘      │  (Postgres)  │
-                                    │                       └──────────────┘
+  tutors    ─────────▶   │ AWS App Runner · API      │─────▶│  Postgres    │
+                         │ (Docker image from ECR)   │      │  (e.g. RDS)  │
+                         └──────────▲────────────────┘      └──────────────┘
+                                    │
                          ┌──────────┴────────────────┐
                          │ Vercel · dashboard        │  static SPA
                          └───────────────────────────┘
@@ -16,160 +17,196 @@
                          Stripe ────┘  webhook → https://<api>/stripe/webhook
 ```
 
-The API **must** run on Cloud Run, not Vercel: it is a long-lived Nest server with
-Socket.IO WebSockets and a Prisma pool, none of which survive serverless functions.
+The API runs as a **long-lived container on AWS App Runner** (a Nest server with
+Socket.IO WebSockets and a Prisma pool). App Runner pulls the image from **Amazon
+ECR**; the front-ends are Next.js/SPA builds on **Vercel**.
 
 ---
 
-## 0. Prerequisites
+## How it ships (CI/CD)
+
+Three GitHub Actions workflows in `.github/workflows/`, each triggered by a push to
+`master` that touches the relevant paths (plus manual `workflow_dispatch`):
+
+| Workflow                 | Target                   | What it does                                                                                                                                                                                                |
+| ------------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy-api.yml`         | AWS App Runner (via ECR) | Builds `services/api/Dockerfile` (context = repo root, `linux/amd64`), pushes to ECR (`:<sha>` + `:latest`), runs `aws apprunner start-deployment`, polls the operation, then smoke-checks `POST /graphql`. |
+| `deploy-marketplace.yml` | Vercel (marketplace)     | `vercel deploy --prod` for the marketplace project.                                                                                                                                                         |
+| `deploy-dashboard.yml`   | Vercel (dashboard)       | `vercel deploy --prod` for the dashboard project.                                                                                                                                                           |
+
+The API workflow authenticates to AWS with **GitHub OIDC** — it assumes an IAM role,
+so there are **no long-lived AWS keys** in GitHub.
+
+⚠️ **Disable Vercel's own Git integration** for both Vercel projects, or every merge
+deploys twice (once from Vercel's git hook, once from the workflow). Project Settings
+→ Git → disconnect, or set `"git": { "deploymentEnabled": false }` in the app's
+`vercel.json`.
+
+---
+
+## 1. One-time infrastructure
+
+### AWS (API)
+
+- **ECR repository** — create it and set the GitHub **repo variable** `ECR_REPOSITORY`
+  (e.g. `tutorhub-api`). Everything uses region **`eu-central-1`**.
+- **App Runner service** — source = that ECR repository, port **4000** (or `PORT`),
+  health-check path **`/health`** (liveness — do **not** use `/ready`, which is
+  DB-gated and would block deploys when the DB blips). Record its ARN as the GitHub
+  **secret** `APPRUNNER_SERVICE_ARN`.
+- **GitHub OIDC deploy role** — an IAM role GitHub can assume, trusted for this repo,
+  allowing `ecr:*` on the repo plus `apprunner:StartDeployment`,
+  `apprunner:DescribeService`, and `apprunner:ListOperations`. Record its ARN as the
+  GitHub **secret** `AWS_DEPLOY_ROLE_ARN`.
+
+GitHub config the API workflow expects:
+
+| Kind     | Name                    |
+| -------- | ----------------------- |
+| secret   | `AWS_DEPLOY_ROLE_ARN`   |
+| secret   | `APPRUNNER_SERVICE_ARN` |
+| variable | `ECR_REPOSITORY`        |
+
+### Database (Postgres)
+
+A managed Postgres instance — **Amazon RDS for PostgreSQL** is the natural fit. The
+app connects via `DATABASE_URL`. App Runner reaches a **private** RDS through a **VPC
+connector**; if the instance is publicly reachable instead, lock it down by security
+group and use strong credentials. Migrations are a manual release step (see §4).
+
+### Vercel (front-ends)
+
+Two Vercel projects from this repo, each with a different **Root Directory**
+(`apps/marketplace`, `apps/dashboard`) and **Node.js 22.x** (Next 16 fails on Node 18).
+Each app's `vercel.json` already sets the install/build commands (they `cd` to the
+repo root so npm workspaces + Nx resolve). GitHub config the Vercel workflows expect:
+
+| Kind     | Name                            |
+| -------- | ------------------------------- |
+| secret   | `VERCEL_TOKEN`                  |
+| variable | `VERCEL_ORG_ID`                 |
+| variable | `VERCEL_PROJECT_ID_MARKETPLACE` |
+| variable | `VERCEL_PROJECT_ID_DASHBOARD`   |
+
+---
+
+## 2. Runtime configuration — App Runner (API)
+
+Set these on the App Runner service's **instance configuration** (Console → your
+service → Configuration → Edit → Environment, or `aws apprunner update-service`).
+Store plain values as **environment variables** and credentials as **runtime
+secrets** that reference **AWS Secrets Manager** (or SSM Parameter Store). Saving a
+change triggers an App Runner redeployment.
+
+> The App Runner **instance role** must be allowed to read the referenced secrets
+> (`secretsmanager:GetSecretValue`, or `ssm:GetParameters` for SSM).
+
+| Key                     | Kind   | Value / notes                                                                                                                               |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | secret | Postgres connection string.                                                                                                                 |
+| `JWT_SECRET`            | secret | Long random value — not the `dev-only-change-me` default.                                                                                   |
+| `STRIPE_SECRET_KEY`     | secret | `sk_…` (test or live). Omit to disable payments.                                                                                            |
+| `STRIPE_WEBHOOK_SECRET` | secret | `whsec_…` from the production webhook endpoint (§5).                                                                                        |
+| `OPENAI_API_KEY`        | secret | Powers the booking assistant (`/assistant/chat`). **Omit → the endpoint returns 503.** Only the API calls OpenAI; never put this on Vercel. |
+| `OPENAI_MODEL`          | env    | Optional; defaults to `gpt-4o-mini`.                                                                                                        |
+| `NODE_ENV`              | env    | `production`.                                                                                                                               |
+| `GRPC_ENABLED`          | env    | `false` — App Runner exposes exactly one port; the gRPC microservice binds `:50051`.                                                        |
+| `CORS_ORIGINS`          | env    | `https://<marketplace>,https://<dashboard>` (the API otherwise reflects any origin).                                                        |
+| `DASHBOARD_URL`         | env    | `https://<dashboard>` — where Stripe Connect returns tutors after payout onboarding.                                                        |
+
+**Adding the OpenAI key** (the API, not Vercel):
 
 ```bash
-gcloud auth login
-gcloud config set project <PROJECT_ID>
-gcloud services enable run.googleapis.com sqladmin.googleapis.com \
-  artifactregistry.googleapis.com secretmanager.googleapis.com
+# 1. Store the key in Secrets Manager (run this yourself; the value never leaves AWS).
+aws secretsmanager create-secret --name tutorhub/openai-api-key \
+  --secret-string 'sk-REPLACE_ME' --region eu-central-1
+# (already exists? use: aws secretsmanager put-secret-value --secret-id tutorhub/openai-api-key --secret-string 'sk-…')
+
+# 2. Reference it as a runtime secret on the service:
+#    Console → App Runner → your service → Configuration → Edit → Environment
+#      → Add environment secret:
+#        OPENAI_API_KEY = arn:aws:secretsmanager:eu-central-1:<acct-id>:secret:tutorhub/openai-api-key
+#    Saving redeploys the service. Once live, /assistant/chat stops returning 503.
 ```
 
-Pick a region and reuse it everywhere (examples use `europe-west1`).
+---
 
-## 1. Cloud SQL (Postgres)
-
-```bash
-gcloud sql instances create tutorhub-db \
-  --database-version=POSTGRES_17 --tier=db-f1-micro --region=europe-west1
-gcloud sql databases create tutorhub --instance=tutorhub-db
-gcloud sql users create tutorhub --instance=tutorhub-db --password='<DB_PASSWORD>'
-```
-
-The Cloud Run connection string uses the **Unix socket**, not a host/port:
-
-```
-postgresql://tutorhub:<DB_PASSWORD>@localhost/tutorhub?host=/cloudsql/<PROJECT_ID>:europe-west1:tutorhub-db&schema=public
-```
-
-## 2. Secrets
-
-```bash
-for s in DATABASE_URL JWT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET OPENAI_API_KEY; do
-  gcloud secrets create $s --replication-policy=automatic
-done
-# then add a version to each, e.g.
-printf '%s' '<the connection string above>' | gcloud secrets versions add DATABASE_URL --data-file=-
-# and the OpenAI key for the booking assistant (the API, not Vercel, calls OpenAI):
-printf '%s' '<sk-...>' | gcloud secrets versions add OPENAI_API_KEY --data-file=-
-```
-
-Use a **strong** `JWT_SECRET` — not the `dev-only-change-me` default.
-
-## 3. Build and push the API image
-
-Build from the **repo root** (the API is an npm-workspace package):
-
-```bash
-gcloud artifacts repositories create tutorhub \
-  --repository-format=docker --location=europe-west1
-
-REG=europe-west1-docker.pkg.dev/<PROJECT_ID>/tutorhub
-gcloud auth configure-docker europe-west1-docker.pkg.dev
-
-docker build --platform linux/amd64 -f services/api/Dockerfile -t $REG/api:latest .
-docker push $REG/api:latest
-```
-
-`--platform linux/amd64` matters on Apple Silicon — Cloud Run will not run an arm64 image.
-
-## 4. Run the migrations
-
-Migrations are a **release step**, never run on boot. From your machine, via the proxy:
-
-```bash
-cloud-sql-proxy <PROJECT_ID>:europe-west1:tutorhub-db &
-DATABASE_URL='postgresql://tutorhub:<DB_PASSWORD>@localhost:5432/tutorhub?schema=public' \
-  npx prisma migrate deploy --schema services/api/prisma/schema.prisma
-```
-
-## 5. Deploy the API to Cloud Run
-
-```bash
-gcloud run deploy tutorhub-api \
-  --image=$REG/api:latest \
-  --region=europe-west1 \
-  --allow-unauthenticated \
-  --add-cloudsql-instances=<PROJECT_ID>:europe-west1:tutorhub-db \
-  --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest \
-  --set-env-vars=NODE_ENV=production,GRPC_ENABLED=false \
-  --session-affinity                       # required for Socket.IO
-```
-
-`OPENAI_API_KEY` powers the booking assistant (`/assistant/chat`). Only the **API**
-talks to OpenAI — the marketplace proxies to it — so the key lives here, never on
-Vercel. Leave it out to ship with the assistant disabled (the endpoint returns 503).
-Optionally add `OPENAI_MODEL` via `--set-env-vars` (defaults to `gpt-4o-mini`).
-
-Note the resulting URL, e.g. `https://tutorhub-api-xxxx.europe-west1.run.app`.
-
-`GRPC_ENABLED=false` is essential: Cloud Run exposes exactly **one** port, and the gRPC
-microservice binds a second one (`:50051`). It stays available locally.
-
-## 6. Deploy the front-ends to Vercel
-
-Create **two** Vercel projects from the same repo, each with a different **Root Directory**.
-Both need **Node.js 22.x** in project settings — Next.js 16 fails to build on Node 18.
-Each app's `vercel.json` already sets the install/build commands (they `cd` to the repo
-root so npm workspaces + Nx resolve).
+## 3. Runtime configuration — Vercel (front-ends)
 
 **marketplace** — Root Directory `apps/marketplace`
 
-| Env var                              | Value                                                             |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `API_URL`                            | `https://<api>.run.app` (server-side fetches)                     |
-| `TUTOR_APP_URL`                      | `https://<dashboard>.vercel.app` (Become a tutor → its `/signup`) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_…`                                                       |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`       | your Google OAuth client id                                       |
+| Env var                              | Value                                                            |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| `API_URL`                            | `https://<app-runner-service-url>` (server-side fetches)         |
+| `TUTOR_APP_URL`                      | `https://<dashboard>` — "Become a tutor" links to its `/signup`. |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_…`                                                           |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`       | your Google OAuth client id                                      |
 
 `TUTOR_APP_URL` is read server-side (in `Header`) and passed to the client menu, so
-an env edit + redeploy is enough — no rebuild-inlining caveat. Without it, the
-"Become a tutor" links fall back to `http://localhost:3100`.
+an env edit + redeploy is enough. Without it, the "Become a tutor" links fall back to
+`http://localhost:3100`.
 
 **dashboard** — Root Directory `apps/dashboard`
 
-| Env var   | Value                   |
-| --------- | ----------------------- |
-| `API_URL` | `https://<api>.run.app` |
+| Env var   | Value                              |
+| --------- | ---------------------------------- |
+| `API_URL` | `https://<app-runner-service-url>` |
 
-⚠️ The dashboard inlines `API_URL` at **build time** (webpack `DefinePlugin`). Changing it
-requires a **redeploy**, not just an env edit.
+⚠️ The dashboard inlines `API_URL` at **build time** (webpack `DefinePlugin`).
+Changing it requires a **redeploy**, not just an env edit.
 
-## 7. Wire the three services together
+> The App Runner **service URL** (`aws apprunner describe-service … Service.ServiceUrl`)
+> has no scheme — use `https://<ServiceUrl>` (or a custom domain) for `API_URL`.
 
-Once you know the Vercel URLs, close the loop:
+---
 
-**a. Lock down CORS** (the API defaults to reflecting any origin):
+## 4. Migrations
+
+Migrations are a **release step**, never run on boot or in the deploy workflow (an
+auto-migrate on every merge can drop/rewrite columns with no review). Run them
+yourself against a reachable database **before** merging the schema change:
 
 ```bash
-gcloud run services update tutorhub-api --region=europe-west1 \
-  --set-env-vars=CORS_ORIGINS=https://<marketplace>.vercel.app\,https://<dashboard>.vercel.app,DASHBOARD_URL=https://<dashboard>.vercel.app
+DATABASE_URL='<prod url>' \
+  npx prisma migrate deploy --schema services/api/prisma/schema.prisma
 ```
 
-`DASHBOARD_URL` is where Stripe Connect returns tutors after payout onboarding.
+Because the API workflow auto-deploys, a merge containing both a migration and the
+code that needs it ships the code first — so **migrate, then merge**.
 
-**b. Stripe webhook.** The local `stripe listen` secret does **not** work in production.
-In the Stripe dashboard → Developers → Webhooks, add an endpoint:
+---
 
-- URL: `https://<api>.run.app/stripe/webhook`
+## 5. Wire the services together
+
+Once the App Runner and Vercel URLs exist, close the loop:
+
+**a. CORS + Connect return URL.** Set `CORS_ORIGINS` and `DASHBOARD_URL` on the App
+Runner service (§2) to the real Vercel origins.
+
+**b. Stripe webhook.** The local `stripe listen` secret does **not** work in
+production. In the Stripe dashboard → Developers → Webhooks, add an endpoint:
+
+- URL: `https://<api>/stripe/webhook`
 - Events: `payment_intent.succeeded`, `payment_intent.payment_failed`, `account.updated`
 
-Copy the **new** `whsec_…` into the `STRIPE_WEBHOOK_SECRET` secret and redeploy.
+Put the new `whsec_…` into the `STRIPE_WEBHOOK_SECRET` secret; App Runner redeploys.
 
-**c. Google OAuth.** Add the production origin to your OAuth client's
-**Authorized JavaScript origins**: `https://<marketplace>.vercel.app`.
+**c. Google OAuth.** Add the production origin to your OAuth client's **Authorized
+JavaScript origins**: `https://<marketplace>`.
+
+---
 
 ## Gotchas worth remembering
 
 - **Node 22 everywhere.** Node 18 fails both the Next build and the API's `lru-cache`.
-- **Build from the repo root.** `docker build -f services/api/Dockerfile .` — not from `services/api`.
-- **`--platform linux/amd64`** when building on Apple Silicon.
-- **Cloud Run = one port.** Hence `GRPC_ENABLED=false`.
-- **Session affinity** is required or Socket.IO will keep dropping.
-- **Never commit secrets.** `.env` / `.env.local` are gitignored; `.env.example` is committed,
-  so keep it filled with empty placeholders only.
+- **Build from the repo root.** The API is an npm-workspace package —
+  `docker build -f services/api/Dockerfile .`, not from `services/api`.
+- **`linux/amd64`.** App Runner is x86_64; an arm64 image (Apple Silicon / arm runner)
+  will not start. The workflow already pins the platform.
+- **App Runner = one port.** Hence `GRPC_ENABLED=false`.
+- **Socket.IO + autoscaling.** App Runner has no sticky sessions, so scaling past one
+  instance needs a shared adapter (e.g. Redis) or the client's long-polling fallback.
+- **Health check `/health`, not `/ready`.** `/ready` is DB-gated and would fail deploys
+  during a DB blip.
+- **Never commit secrets.** `.env` / `.env.local` are gitignored; `.env.example` is
+  committed, so keep it filled with empty placeholders only.

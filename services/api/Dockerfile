@@ -1,4 +1,4 @@
-# TutorHub API — NestJS on Cloud Run.
+# TutorHub API — NestJS on AWS App Runner.
 #
 # IMPORTANT: build from the REPO ROOT, not this directory — the API is an
 # npm-workspace package that depends on packages/*:
@@ -7,8 +7,9 @@
 # The install is scoped to the @ermulaku/api workspace (+ root), so the image
 # never pulls the front-end toolchains (Next, webpack, Storybook, Cypress).
 #
-# Cloud Run injects PORT (8080) and exposes exactly one port per container, so
-# the gRPC microservice is disabled here via GRPC_ENABLED=false.
+# App Runner runs a single container that exposes exactly one port, so the gRPC
+# microservice is disabled here via GRPC_ENABLED=false. The app listens on $PORT
+# (default 8080 below) — set the App Runner service port to match.
 
 # ---- deps ------------------------------------------------------------------
 FROM node:22-alpine AS deps
@@ -47,7 +48,8 @@ RUN npm run build --workspace=@ermulaku/types \
 FROM node:22-alpine AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
-# Cloud Run injects PORT=8080; default to it so the image is correct standalone.
+# Listen on $PORT; default 8080 so the image is correct standalone. Set the
+# App Runner service port to match this.
 ENV PORT=8080
 ENV GRPC_ENABLED=false
 
