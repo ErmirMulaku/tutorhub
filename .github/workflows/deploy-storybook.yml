@@ -1,0 +1,71 @@
+name: Deploy Storybook
+
+# Deploys the @ermulaku/ui component catalog (Storybook) to Vercel production.
+#
+# ⚠️ Vercel's Git integration must be DISABLED for this project, or every merge
+# deploys twice — once from Vercel's own git hook and once from here.
+# Project Settings → Git → disconnect, or add to packages/ui/vercel.json:
+#     "git": { "deploymentEnabled": false }
+#
+# Secrets/vars this workflow assumes:
+#   - secrets.VERCEL_TOKEN              (Account Settings → Tokens)
+#   - vars.VERCEL_ORG_ID                (packages/*/.vercel/project.json → orgId)
+#   - vars.VERCEL_PROJECT_ID_STORYBOOK  (packages/ui/.vercel → projectId)
+#
+# The CLI runs from the REPO ROOT, not packages/ui. The Vercel project already
+# sets Root Directory to packages/ui, and running from there makes it apply
+# that twice:
+#     The provided path ".../packages/ui/packages/ui" does not exist
+# The project is selected by the VERCEL_* env vars instead of by directory.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'packages/ui/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-storybook.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-storybook
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID_STORYBOOK }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          URL=$(npx vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "Deployed to $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Smoke check
+        run: |
+          # Deployment Protection makes the *-<hash>.vercel.app URL answer with
+          # Vercel's own login page, so this asserts the deployment serves — not
+          # that Storybook rendered. Point it at a public production domain to
+          # make it mean more than that.
+          curl -sf -o /dev/null -w 'HTTP %{http_code} in %{time_total}s\n' \
+            -L "${{ steps.deploy.outputs.url }}/"

@@ -13,7 +13,7 @@ domain over **REST, GraphQL, and gRPC**.
 
 > Status: ✅ All phases (1–7) complete — see [Roadmap](#roadmap).
 > API docs: [`docs/API.md`](./docs/API.md) · Storybook: `npm run storybook` · npm:
-> [`@ermulaku/slot-engine`](https://www.npmjs.com/package/@ermulaku/slot-engine)
+> [`tutorhub-slot-engine`](https://www.npmjs.com/package/tutorhub-slot-engine)
 
 ## Why this project
 
@@ -45,16 +45,16 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Ama
 
 ## Monorepo
 
-| Path                                    | What                                                                                                         |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                     |
-| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)                                                               |
-| `apps/mobile`                           | Expo / React Native student app                                                                              |
-| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                 |
-| `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                            |
-| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](https://www.npmjs.com/package/@ermulaku/slot-engine)) |
-| `packages/ui`                           | shared component library + Storybook                                                                         |
-| `packages/types`, `packages/api-client` | shared TS types & typed client                                                                               |
+| Path                                    | What                                                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                    |
+| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)                                                              |
+| `apps/mobile`                           | Expo / React Native student app                                                                             |
+| `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                |
+| `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                           |
+| `packages/slot-engine`                  | timezone-aware availability engine ([published to npm](https://www.npmjs.com/package/tutorhub-slot-engine)) |
+| `packages/ui`                           | shared component library + Storybook                                                                        |
+| `packages/types`, `packages/api-client` | shared TS types & typed client                                                                              |
 
 ## Getting started
 
@@ -140,10 +140,11 @@ relevant in-app pages (e.g. the pre-filtered tutor search) from its replies.
 
 ## Deployment
 
-Shipped by three GitHub Actions on push to `master`: the **API** builds to a Docker image in
-**Amazon ECR** and rolls out to **AWS App Runner** (via GitHub OIDC); the **marketplace** and
-**dashboard** deploy to **Vercel**. The database is managed Postgres (e.g. Amazon RDS). Full
-runbook — infra, env vars/secrets, migrations, and wiring — in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+Shipped by four GitHub Actions on push to `master`: the **API** builds to a Docker image in
+**Amazon ECR** and rolls out to **AWS App Runner** (via GitHub OIDC); the **marketplace**,
+**dashboard**, and **Storybook** each deploy to their own **Vercel** project. The database is
+managed Postgres (e.g. Amazon RDS). Full runbook — infra, env vars/secrets, migrations, and
+wiring — in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Roadmap
 

@@ -7,7 +7,7 @@ module.exports = {
   moduleNameMapper: {
     // Resolve the workspace types package to source so tests need no prior build.
     '^@ermulaku/types$': '<rootDir>/../../packages/types/src/index.ts',
-    '^@ermulaku/slot-engine$': '<rootDir>/../../packages/slot-engine/src/index.ts',
+    '^tutorhub-slot-engine$': '<rootDir>/../../packages/slot-engine/src/index.ts',
     // Allow NodeNext-style `./foo.js` imports to resolve to `.ts` in tests.
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },

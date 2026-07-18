@@ -1,8 +1,8 @@
-# @ermulaku/slot-engine
+# tutorhub-slot-engine
 
-[![npm version](https://img.shields.io/npm/v/@ermulaku/slot-engine.svg)](https://www.npmjs.com/package/@ermulaku/slot-engine)
-[![license](https://img.shields.io/npm/l/@ermulaku/slot-engine.svg)](./LICENSE)
-[![types](https://img.shields.io/npm/types/@ermulaku/slot-engine.svg)](./dist/index.d.ts)
+[![npm version](https://img.shields.io/npm/v/tutorhub-slot-engine.svg)](https://www.npmjs.com/package/tutorhub-slot-engine)
+[![license](https://img.shields.io/npm/l/tutorhub-slot-engine.svg)](./LICENSE)
+[![types](https://img.shields.io/npm/types/tutorhub-slot-engine.svg)](./dist/index.d.ts)
 
 A **zero-dependency**, timezone- and DST-aware availability engine. Given a
 tutor's weekly working hours, existing bookings, and a target day, it computes
@@ -23,13 +23,13 @@ all of them by reasoning entirely in absolute UTC, using the runtime's built-in
 ## Install
 
 ```bash
-npm install @ermulaku/slot-engine
+npm install tutorhub-slot-engine
 ```
 
 ## Usage
 
 ```ts
-import { getAvailableSlots } from '@ermulaku/slot-engine';
+import { getAvailableSlots } from 'tutorhub-slot-engine';
 
 const slots = getAvailableSlots({
   workingHours: [

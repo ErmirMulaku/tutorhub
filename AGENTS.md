@@ -116,7 +116,7 @@ gRPC later). Domain errors map to HTTP via a global filter (404/409/400).
 **Built (in six reviewed commits):** a code-first **Apollo GraphQL** API
 (`autoSchemaFile` → committed `docs/schema.graphql`) with object/input types, enums, pagination,
 nested resolvers, a built-in `DateTime` scalar, and an `availability` query that calls
-`@ermulaku/slot-engine`; **minimal JWT auth** (dev-login + GraphQL guard + `@CurrentUser`) for
+`tutorhub-slot-engine`; **minimal JWT auth** (dev-login + GraphQL guard + `@CurrentUser`) for
 `me`/`myBookings`/mutations; **typed GraphQL errors** (`NOT_FOUND` / `BAD_USER_INPUT`) via a
 context-aware exception filter; and a **gRPC** microservice from `proto/booking.proto`
 (`tutorhub.v1`) reusing `BookingService`, with `Timestamp`↔`Date` mapping, gRPC status codes, and a
@@ -223,12 +223,12 @@ isomorphic typed client (GraphQL reads + booking, REST dev-login) reusing `@ermu
 `apps/mobile` — an **Expo / React Native** student app (SDK 56) that lists tutors, shows availability
 in the tutor's timezone, and books a lesson through `api-client`; `services/notifications` — an
 **Elixir / Phoenix** service (the one non-TS service) that turns booking events into lesson reminders
-via a `GenServer` store + a periodic scheduler, delivery mocked; and **`@ermulaku/slot-engine`
+via a `GenServer` store + a periodic scheduler, delivery mocked; and **`tutorhub-slot-engine`
 published to npm** (metadata, `prepublishOnly`, LICENSE, badges).
 
 **Verified (not just generated):**
 
-- **`slot-engine` is live on npm** (`@ermulaku/slot-engine@0.1.0`), verified with `npm publish
+- **`slot-engine` is live on npm** (`tutorhub-slot-engine@0.1.0`), verified with `npm publish
 --dry-run` before the real publish (run by the maintainer; publishing is an irreversible public act).
 - **The mobile app books a lesson** — driven in a real browser via the Expo **web** export: tapped a
   tutor → real availability in their timezone → tapped a slot → confirmation, and the booking

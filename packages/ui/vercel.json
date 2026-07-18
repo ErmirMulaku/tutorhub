@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "cd ../.. && npm ci --workspace=@ermulaku/ui --include-workspace-root",
+  "buildCommand": "cd ../.. && npx nx build-storybook @ermulaku/ui",
+  "outputDirectory": "storybook-static"
+}

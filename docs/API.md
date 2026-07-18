@@ -77,13 +77,13 @@ Endpoint `POST /graphql`; full SDL in [`schema.graphql`](./schema.graphql).
 
 ### Queries
 
-| Operation                                                | Auth    | Notes                        |
-| -------------------------------------------------------- | ------- | ---------------------------- |
-| `tutors(subject, level, limit=20, offset=0): TutorPage!` | public  | pagination + filters         |
-| `tutor(id: ID!): Tutor`                                  | public  | `null` if missing            |
-| `availability(tutorId: ID!, date: String!): [Slot!]!`    | public  | uses `@ermulaku/slot-engine` |
-| `me: Student!`                                           | **JWT** | current student              |
-| `myBookings(status: BookingStatus): [Booking!]!`         | **JWT** | current student's bookings   |
+| Operation                                                | Auth    | Notes                       |
+| -------------------------------------------------------- | ------- | --------------------------- |
+| `tutors(subject, level, limit=20, offset=0): TutorPage!` | public  | pagination + filters        |
+| `tutor(id: ID!): Tutor`                                  | public  | `null` if missing           |
+| `availability(tutorId: ID!, date: String!): [Slot!]!`    | public  | uses `tutorhub-slot-engine` |
+| `me: Student!`                                           | **JWT** | current student             |
+| `myBookings(status: BookingStatus): [Booking!]!`         | **JWT** | current student's bookings  |
 
 ### Mutations
 
