@@ -252,7 +252,7 @@
     "verify": "Verify",
     "resend": "Resend code",
     "devCodeNote": "Demo code: {code}",
-    "demoCodeNote": "Demo — this site can only email its owner, so {code} is accepted for any address. It skips the check rather than passing it.",
+    "demoCodeNote": "Demo mode — email delivery isn't live yet, so enter {code} to verify any address. We're setting up our own domain soon; after that, real codes are emailed to any address.",
     "terms": "By continuing you agree to our Terms and Privacy Policy.",
     "oauthUnavailable": "Social sign-in is not configured."
   },

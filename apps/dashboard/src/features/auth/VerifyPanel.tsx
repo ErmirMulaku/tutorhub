@@ -110,8 +110,9 @@ export function VerifyPanel({
         )}
         {demoCode !== null && (
           <p className="login__hint">
-            Demo — this site can only email its owner, so <strong>{demoCode}</strong> is accepted for
-            any address. It skips the check rather than passing it.
+            Demo mode — email delivery isn’t live yet, so enter <strong>{demoCode}</strong> to verify
+            any address. We’re setting up our own domain soon; after that, real codes are emailed to
+            any address.
           </p>
         )}
         {sent && devCode === null && <p className="login__hint">A new code is on its way.</p>}
