@@ -31,6 +31,10 @@ export function Header({
   unread,
 }: HeaderProps): React.JSX.Element {
   const loggedIn = userName !== null;
+  // Resolved here (a Server Component) so the tutor-app origin comes from the
+  // runtime env; passed to UserMenu because a client component can't read a
+  // non-NEXT_PUBLIC var.
+  const becomeTutorHref = `${TUTOR_APP_URL}/signup`;
   return (
     <header className="site-header">
       <div className="container site-header__inner">
@@ -67,7 +71,7 @@ export function Header({
           <AssistantNavTrigger label={dict.nav.assistant} />
           <div className="site-header__controls">
             {/* CTA to the tutor-facing app — anyone browsing can sign up to teach. */}
-            <a href={`${TUTOR_APP_URL}/signup`} className="site-header__become-tutor">
+            <a href={becomeTutorHref} className="site-header__become-tutor">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M12 4 2 9l10 5 8-4v6"
@@ -96,7 +100,13 @@ export function Header({
                   items={notifications}
                   unread={unread}
                 />
-                <UserMenu locale={locale} name={userName} email={userEmail ?? ''} dict={dict} />
+                <UserMenu
+                  locale={locale}
+                  name={userName}
+                  email={userEmail ?? ''}
+                  dict={dict}
+                  becomeTutorHref={becomeTutorHref}
+                />
               </>
             ) : (
               <Link href={`/${locale}/login`} className="site-header__signin">

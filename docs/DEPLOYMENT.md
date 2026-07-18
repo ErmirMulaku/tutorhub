@@ -50,11 +50,13 @@ postgresql://tutorhub:<DB_PASSWORD>@localhost/tutorhub?host=/cloudsql/<PROJECT_I
 ## 2. Secrets
 
 ```bash
-for s in DATABASE_URL JWT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+for s in DATABASE_URL JWT_SECRET STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET OPENAI_API_KEY; do
   gcloud secrets create $s --replication-policy=automatic
 done
 # then add a version to each, e.g.
 printf '%s' '<the connection string above>' | gcloud secrets versions add DATABASE_URL --data-file=-
+# and the OpenAI key for the booking assistant (the API, not Vercel, calls OpenAI):
+printf '%s' '<sk-...>' | gcloud secrets versions add OPENAI_API_KEY --data-file=-
 ```
 
 Use a **strong** `JWT_SECRET` — not the `dev-only-change-me` default.
@@ -94,10 +96,15 @@ gcloud run deploy tutorhub-api \
   --region=europe-west1 \
   --allow-unauthenticated \
   --add-cloudsql-instances=<PROJECT_ID>:europe-west1:tutorhub-db \
-  --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest \
+  --set-secrets=DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest \
   --set-env-vars=NODE_ENV=production,GRPC_ENABLED=false \
   --session-affinity                       # required for Socket.IO
 ```
+
+`OPENAI_API_KEY` powers the booking assistant (`/assistant/chat`). Only the **API**
+talks to OpenAI — the marketplace proxies to it — so the key lives here, never on
+Vercel. Leave it out to ship with the assistant disabled (the endpoint returns 503).
+Optionally add `OPENAI_MODEL` via `--set-env-vars` (defaults to `gpt-4o-mini`).
 
 Note the resulting URL, e.g. `https://tutorhub-api-xxxx.europe-west1.run.app`.
 
@@ -113,11 +120,16 @@ root so npm workspaces + Nx resolve).
 
 **marketplace** — Root Directory `apps/marketplace`
 
-| Env var                              | Value                                         |
-| ------------------------------------ | --------------------------------------------- |
-| `API_URL`                            | `https://<api>.run.app` (server-side fetches) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_…`                                   |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`       | your Google OAuth client id                   |
+| Env var                              | Value                                                             |
+| ------------------------------------ | ----------------------------------------------------------------- |
+| `API_URL`                            | `https://<api>.run.app` (server-side fetches)                     |
+| `TUTOR_APP_URL`                      | `https://<dashboard>.vercel.app` (Become a tutor → its `/signup`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_…`                                                       |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`       | your Google OAuth client id                                       |
+
+`TUTOR_APP_URL` is read server-side (in `Header`) and passed to the client menu, so
+an env edit + redeploy is enough — no rebuild-inlining caveat. Without it, the
+"Become a tutor" links fall back to `http://localhost:3100`.
 
 **dashboard** — Root Directory `apps/dashboard`
 
