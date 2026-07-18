@@ -41,16 +41,28 @@ npm run build -w @ermulaku/api && npm run start -w @ermulaku/api
 
 ## REST endpoints
 
-| Method & path                                                           | Purpose                                    |
-| ----------------------------------------------------------------------- | ------------------------------------------ |
-| `GET /health`                                                           | Liveness probe                             |
-| `POST/GET /tutors`, `GET/PATCH/DELETE /tutors/:id`                      | Tutor CRUD                                 |
-| `POST/GET /subjects` (`?tutorId`), `GET/PATCH/DELETE /subjects/:id`     | Subject CRUD                               |
-| `POST/GET /bookings` (`?status,tutorId,studentId`), `GET /bookings/:id` | Booking create/list/get                    |
-| `PATCH /bookings/:id/status`                                            | Status change (enforces the state machine) |
+| Method & path                                                           | Purpose                                             |
+| ----------------------------------------------------------------------- | --------------------------------------------------- |
+| `GET /health`                                                           | Liveness probe                                      |
+| `GET /ready`                                                            | Readiness probe (checks the database)               |
+| `GET /metrics`                                                          | Prometheus metrics (process + request rate/latency) |
+| `GET /status`                                                           | Self-contained HTML status page                     |
+| `POST/GET /tutors`, `GET/PATCH/DELETE /tutors/:id`                      | Tutor CRUD                                          |
+| `POST/GET /subjects` (`?tutorId`), `GET/PATCH/DELETE /subjects/:id`     | Subject CRUD                                        |
+| `POST/GET /bookings` (`?status,tutorId,studentId`), `GET /bookings/:id` | Booking create/list/get                             |
+| `PATCH /bookings/:id/status`                                            | Status change (enforces the state machine)          |
+| `POST /auth/dev-login`, `POST /auth/tutor/dev-login`                    | Mint a student / tutor JWT by email (dev)           |
+| `POST /assistant/chat`                                                  | OpenAI booking assistant (JWT + rate-limited)       |
+| `POST /stripe/webhook`                                                  | Stripe payment/Connect webhook                      |
 
 Input is validated with `class-validator`; domain errors map to HTTP via a
 global filter (`404` not found, `409` illegal transition, `400` validation).
+
+Most of the app surface — including the Phase-8 tutor-dashboard modules
+(**catalog, availability, messaging, earnings, marketing, reviews, analytics,
+tutor-settings, account, wallet, favorites, payments**) and student/tutor auth —
+is exposed over **GraphQL**, not REST. See [`docs/schema.graphql`](../../docs/schema.graphql)
+and [`docs/API.md`](../../docs/API.md) for the full contract.
 
 ### Booking lifecycle
 
@@ -82,3 +94,14 @@ npm run db:seed     # seed sample data
 - The datasource URL lives in [`prisma.config.ts`](prisma.config.ts), not the
   schema; runtime connections use the `@prisma/adapter-pg` driver adapter.
 - The generated client uses the ESM `prisma-client` generator.
+
+## Configuration & deployment
+
+Config is env-driven (see [`.env.example`](.env.example)): `DATABASE_URL`,
+`JWT_SECRET`, `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) for the booking
+assistant — unset and `/assistant/chat` returns `503` — Stripe keys, and
+`GRPC_ENABLED=false` where only one port is available.
+
+In production the API runs as a Docker container on **AWS App Runner** (image in
+ECR), shipped by `.github/workflows/deploy-api.yml`. Secrets come from AWS Secrets
+Manager. Full runbook: [`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md).

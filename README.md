@@ -41,7 +41,7 @@ Per-phase build log and decisions: [`AGENTS.md`](./AGENTS.md) and [`docs/`](./do
 TypeScript · React 19 + Redux Toolkit · Next.js 16 (SSR/PWA) · custom Webpack 5 ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
-Lighthouse CI · Storybook · OpenAI (booking assistant) · Google Cloud Run + Cloud SQL.
+Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Amazon RDS.
 
 ## Monorepo
 
@@ -134,7 +134,16 @@ for how I'd own uptime in production (probes, alerts, SLOs, dashboards).
 `POST /assistant/chat` is an OpenAI function-calling assistant: the model picks among
 `searchTutors` / `getAvailability` / `bookLesson` and **the server executes** each via the same
 service layer (validation server-side; the key never leaves the server). Set `OPENAI_API_KEY` to
-enable it — unset, the endpoint returns `503`. Tests mock the model, so CI needs no key.
+enable it — unset, the endpoint returns `503`. Tests mock the model, so CI needs no key. In the
+marketplace it surfaces as a **floating chat widget** on every page that also links back to the
+relevant in-app pages (e.g. the pre-filtered tutor search) from its replies.
+
+## Deployment
+
+Shipped by three GitHub Actions on push to `master`: the **API** builds to a Docker image in
+**Amazon ECR** and rolls out to **AWS App Runner** (via GitHub OIDC); the **marketplace** and
+**dashboard** deploy to **Vercel**. The database is managed Postgres (e.g. Amazon RDS). Full
+runbook — infra, env vars/secrets, migrations, and wiring — in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
 
 ## Roadmap
 

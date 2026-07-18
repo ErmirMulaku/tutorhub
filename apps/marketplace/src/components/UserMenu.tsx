@@ -7,13 +7,14 @@ import { Avatar } from '@ermulaku/ui';
 import type { Locale } from '@/i18n/config';
 import type { Dictionary } from '@/i18n/dictionaries';
 import { logoutAction } from '@/lib/actions';
-import { TUTOR_APP_URL } from '@/lib/env';
 
 interface UserMenuProps {
   locale: Locale;
   name: string;
   email: string;
   dict: Dictionary;
+  /** Absolute URL to the tutor app's signup, resolved server-side (runtime env). */
+  becomeTutorHref: string;
 }
 
 type IconName = 'lessons' | 'favourites' | 'wallet' | 'account' | 'tutor';
@@ -69,7 +70,13 @@ function MenuIcon({ name }: { name: IconName }): React.JSX.Element {
 }
 
 /** Avatar button that opens an account dropdown (account / lessons / wallet / log out). */
-export function UserMenu({ locale, name, email, dict }: UserMenuProps): React.JSX.Element {
+export function UserMenu({
+  locale,
+  name,
+  email,
+  dict,
+  becomeTutorHref,
+}: UserMenuProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -177,7 +184,7 @@ export function UserMenu({ locale, name, email, dict }: UserMenuProps): React.JS
           {/* External link to the tutor-facing app — also in the header, kept here
               so it's reachable on mobile where the header pill is hidden. */}
           <a
-            href={`${TUTOR_APP_URL}/signup`}
+            href={becomeTutorHref}
             role="menuitem"
             className="user-menu__item user-menu__item--cta"
             onClick={() => setOpen(false)}
