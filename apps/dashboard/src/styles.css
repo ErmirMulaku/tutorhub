@@ -152,10 +152,6 @@ body {
   font-weight: 700;
   color: var(--ink);
 }
-.sidebar__profile-meta {
-  font-size: 11.5px;
-  color: var(--muted);
-}
 .sidebar__signout {
   width: 100%;
   border: none;

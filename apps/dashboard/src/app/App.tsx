@@ -11,7 +11,7 @@ import { EarningsScreen } from '../features/earnings/EarningsScreen';
 import { LessonsScreen } from '../features/lessons/LessonsScreen';
 import { MarketingScreen } from '../features/marketing/MarketingScreen';
 import { MessagesScreen } from '../features/messages/MessagesScreen';
-import { OnboardingWizard } from '../features/onboarding/OnboardingWizard';
+import { OnboardingRoute } from '../features/onboarding/OnboardingRoute';
 import { ReviewsScreen } from '../features/reviews/ReviewsScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
 import { AppShell } from './AppShell';
@@ -24,7 +24,7 @@ export function App(): JSX.Element {
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
       <Route path="/signup" element={<RegisterScreen />} />
-      <Route path="/onboarding" element={<OnboardingWizard />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardScreen />} />

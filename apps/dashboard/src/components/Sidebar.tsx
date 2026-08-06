@@ -5,10 +5,12 @@ import { useGetDashboardSummaryQuery, useGetMeTutorQuery } from '../store/api';
 import { type NavItem, NAV_GROUPS } from '../app/nav';
 import { useAppDispatch } from '../store/hooks';
 import { clearCredentials } from '../store/auth-slice';
+import { useProfilePublished } from '../features/onboarding/use-profile-published';
 
 export function Sidebar(): JSX.Element {
   const { data: me } = useGetMeTutorQuery();
   const { data: summary } = useGetDashboardSummaryQuery();
+  const { published } = useProfilePublished();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -74,11 +76,12 @@ export function Sidebar(): JSX.Element {
         >
           Settings
         </NavLink>
-        <NavLink to="/onboarding" className="sidebar__profile">
+        {/* Onboarding runs once, so a published tutor edits their profile in
+            Settings rather than being sent back through the wizard. */}
+        <NavLink to={published ? '/settings' : '/onboarding'} className="sidebar__profile">
           <Avatar name={me?.name ?? 'Tutor'} size="sm" />
           <div className="sidebar__profile-text">
             <div className="sidebar__profile-name">{me?.name ?? 'Loading…'}</div>
-            <div className="sidebar__profile-meta">Profile 80% complete</div>
           </div>
         </NavLink>
         <button type="button" className="sidebar__link sidebar__signout" onClick={signOut}>

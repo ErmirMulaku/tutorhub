@@ -5,7 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": [],
+    // `node` is needed for the jsdom polyfills in test/setup.ts.
+    "types": ["node"],
     "noEmit": true,
     "resolveJsonModule": true
   },

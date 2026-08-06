@@ -12,6 +12,7 @@ import { BellIcon, CalendarIcon, DollarIcon, StarIcon } from '../../components/i
 import { KPIStat } from '../../components/KPIStat';
 import { StatusPill } from '../../components/StatusPill';
 import { money, timeOf } from '../../lib/format';
+import { useProfilePublished } from '../onboarding/use-profile-published';
 
 const BANNER_KEY = 'th_setup_dismissed';
 
@@ -47,6 +48,7 @@ export function DashboardScreen(): JSX.Element {
   const { data: summary, isLoading } = useGetDashboardSummaryQuery();
   const { data: today } = useGetTodayScheduleQuery();
   const { data: reviews } = useGetMyReviewsQuery('all');
+  const { published } = useProfilePublished();
 
   const upNext = today?.find((b) => b.status === 'CONFIRMED');
   const firstName = me?.name?.split(' ')[0] ?? 'there';
@@ -70,7 +72,8 @@ export function DashboardScreen(): JSX.Element {
 
   return (
     <div className="dash">
-      {!bannerDismissed && (
+      {/* Setup is a one-time flow — once published there is nothing to go back to. */}
+      {!published && !bannerDismissed && (
         <div className="setup-banner">
           <div className="setup-banner__text">
             <strong>Finish setting up your tutor profile</strong>
