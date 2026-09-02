@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type {
@@ -18,7 +18,7 @@ export class OpenAiService {
   private readonly client: OpenAI | null;
   readonly model: string;
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     const apiKey = config.get<string>('OPENAI_API_KEY');
     this.model = config.get<string>('OPENAI_MODEL') ?? 'gpt-4o-mini';
     this.client = apiKey ? new OpenAI({ apiKey }) : null;

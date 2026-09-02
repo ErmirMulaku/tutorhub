@@ -21,7 +21,7 @@ export class TutorSettingsResolver {
   @Mutation(() => TutorSettingsModel, { name: 'updateTutorProfile' })
   updateTutorProfile(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: UpdateTutorProfileInput,
+    @Args('input', { type: () => UpdateTutorProfileInput }) input: UpdateTutorProfileInput,
   ): Promise<Tutor> {
     return this.settings.updateProfile(tutor.tutorId, input);
   }
@@ -29,7 +29,8 @@ export class TutorSettingsResolver {
   @Mutation(() => TutorSettingsModel, { name: 'updateTutorNotificationPrefs' })
   updateTutorNotificationPrefs(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: UpdateNotificationPrefsInput,
+    @Args('input', { type: () => UpdateNotificationPrefsInput })
+    input: UpdateNotificationPrefsInput,
   ): Promise<Tutor> {
     return this.settings.updateNotificationPrefs(tutor.tutorId, input);
   }

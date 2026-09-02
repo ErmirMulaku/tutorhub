@@ -33,7 +33,10 @@ export class BookingResolver {
 
   @Mutation(() => BookingModel, { name: 'bookLesson' })
   @UseGuards(JwtAuthGuard)
-  bookLesson(@CurrentUser() user: AuthUser, @Args('input') input: BookInput): Promise<Booking> {
+  bookLesson(
+    @CurrentUser() user: AuthUser,
+    @Args('input', { type: () => BookInput }) input: BookInput,
+  ): Promise<Booking> {
     return this.bookings.bookLesson(input, user.studentId);
   }
 

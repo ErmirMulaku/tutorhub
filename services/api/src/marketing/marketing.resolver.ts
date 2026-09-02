@@ -35,7 +35,7 @@ export class MarketingResolver {
   @Mutation(() => PromotionModel, { name: 'createPromotion' })
   createPromotion(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: CreatePromotionInput,
+    @Args('input', { type: () => CreatePromotionInput }) input: CreatePromotionInput,
   ): Promise<Promotion> {
     return this.marketing.createPromotion(tutor.tutorId, input);
   }

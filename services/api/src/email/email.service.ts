@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
@@ -25,7 +25,7 @@ export class EmailService {
   private readonly client: Resend | null;
   private readonly from: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     const key = this.config.get<string>('RESEND_API_KEY');
     this.from = this.config.get<string>('EMAIL_FROM') ?? DEFAULT_FROM;
     if (key === undefined || key === '') {
