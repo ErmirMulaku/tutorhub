@@ -16,7 +16,7 @@ export class PaymentsResolver {
   @UseGuards(JwtAuthGuard)
   createLessonPaymentIntent(
     @CurrentUser() user: AuthUser,
-    @Args('input') input: BookInput,
+    @Args('input', { type: () => BookInput }) input: BookInput,
   ): Promise<LessonPaymentIntent> {
     return this.payments.createLessonPaymentIntent(user.studentId, input);
   }

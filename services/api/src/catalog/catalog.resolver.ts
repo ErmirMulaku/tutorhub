@@ -21,7 +21,7 @@ export class CatalogResolver {
   @Mutation(() => ServiceModel, { name: 'createService' })
   createService(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: CreateServiceInput,
+    @Args('input', { type: () => CreateServiceInput }) input: CreateServiceInput,
   ): Promise<Service> {
     return this.catalog.create(tutor.tutorId, input);
   }
@@ -29,7 +29,7 @@ export class CatalogResolver {
   @Mutation(() => ServiceModel, { name: 'updateService' })
   updateService(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: UpdateServiceInput,
+    @Args('input', { type: () => UpdateServiceInput }) input: UpdateServiceInput,
   ): Promise<Service> {
     return this.catalog.update(tutor.tutorId, input);
   }

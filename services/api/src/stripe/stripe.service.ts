@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 
@@ -19,7 +19,7 @@ export class StripeService {
   private readonly logger = new Logger(StripeService.name);
   private readonly stripe: Stripe | null;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
     if (key === undefined || key === '') {
       this.stripe = null;

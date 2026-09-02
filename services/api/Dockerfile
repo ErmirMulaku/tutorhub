@@ -78,4 +78,4 @@ COPY --from=build /repo/proto ./proto
 
 USER node
 EXPOSE 8080
-CMD ["node", "services/api/dist/main.js"]
+CMD ["node", "--import", "./services/api/dist/tracing.js", "services/api/dist/main.js"]

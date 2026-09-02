@@ -42,7 +42,7 @@ export class AvailabilityResolver {
   @UseGuards(TutorAuthGuard)
   updateBookingRules(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('rules') rules: BookingRulesInput,
+    @Args('rules', { type: () => BookingRulesInput }) rules: BookingRulesInput,
   ): Promise<MyAvailability> {
     return this.availability.updateBookingRules(tutor.tutorId, rules);
   }
@@ -51,7 +51,7 @@ export class AvailabilityResolver {
   @UseGuards(TutorAuthGuard)
   addTimeOff(
     @CurrentTutor() tutor: TutorPrincipal,
-    @Args('input') input: TimeOffInput,
+    @Args('input', { type: () => TimeOffInput }) input: TimeOffInput,
   ): Promise<MyAvailability> {
     return this.availability.addTimeOff(tutor.tutorId, input);
   }
