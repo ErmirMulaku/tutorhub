@@ -13,6 +13,7 @@ import {
   deleteAccount as deleteAccountMutation,
   appleSignin,
   googleSignin,
+  helpQuestion,
   leaveReview as leaveReviewMutation,
   markAllNotificationsRead as markAllNotificationsReadMutation,
   markNotificationRead as markNotificationReadMutation,
@@ -30,6 +31,7 @@ import {
   type AssistantTurn,
   type BookLessonInput,
   type BuyGiftCardInput,
+  type HelpSource,
 } from './queries';
 import {
   clearSession,
@@ -368,6 +370,29 @@ export async function assistantChatAction(
   } catch (err) {
     // The page is public but a turn books on the caller's account, so a
     // signed-out visitor gets a "please sign in" prompt, not a generic failure.
+    if (err instanceof NotAuthenticatedError) return { ok: false, reason: 'NOT_AUTHENTICATED' };
+    return { ok: false, reason: 'FAILED' };
+  }
+}
+
+/**
+ * One help-center question (the AI gateway's `help_question` task, not the
+ * booking assistant). The token stays server-side, same as above, even
+ * though this task only reads — it's still per-caller rate-limited and
+ * budget-tracked server-side.
+ */
+export async function helpQuestionAction(
+  question: string,
+): Promise<
+  | { ok: true; answer: string; sources: HelpSource[] }
+  | { ok: false; reason: 'UNAVAILABLE' | 'RATE_LIMITED' | 'NOT_AUTHENTICATED' | 'FAILED' }
+> {
+  try {
+    const res = await helpQuestion(question, await requireSessionTokenForAction());
+    if ('unavailable' in res) return { ok: false, reason: 'UNAVAILABLE' };
+    if ('rateLimited' in res) return { ok: false, reason: 'RATE_LIMITED' };
+    return { ok: true, answer: res.answer, sources: res.sources };
+  } catch (err) {
     if (err instanceof NotAuthenticatedError) return { ok: false, reason: 'NOT_AUTHENTICATED' };
     return { ok: false, reason: 'FAILED' };
   }

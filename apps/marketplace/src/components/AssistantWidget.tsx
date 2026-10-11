@@ -5,8 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '@/i18n/config';
 import { interpolate, type Dictionary } from '@/i18n/dictionaries';
-import { assistantChatAction } from '@/lib/actions';
-import type { AssistantAction, AssistantTurn } from '@/lib/queries';
+import { assistantChatAction, helpQuestionAction } from '@/lib/actions';
+import type { AssistantAction, AssistantTurn, HelpSource } from '@/lib/queries';
+
+type Mode = 'booking' | 'help';
+
+interface HelpAnswer {
+  question: string;
+  answer: string;
+  sources: HelpSource[];
+}
 
 /** Other components (e.g. the header link) open the widget by firing this. */
 export const ASSISTANT_OPEN_EVENT = 'tutorhub:assistant-open';
@@ -82,9 +90,11 @@ export function AssistantWidget({
 }): React.JSX.Element {
   const t = dict.assistant;
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>('booking');
   const [open, setOpen] = useState(false);
   const [render, setRender] = useState(false);
   const [turns, setTurns] = useState<Shown[]>([]);
+  const [helpAnswer, setHelpAnswer] = useState<HelpAnswer | null>(null);
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -125,9 +135,9 @@ export function AssistantWidget({
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [turns, pending, render]);
+  }, [turns, helpAnswer, pending, render]);
 
-  const submit = useCallback(
+  const submitBooking = useCallback(
     (content: string): void => {
       const text = content.trim();
       if (text === '' || pending) return;
@@ -171,6 +181,38 @@ export function AssistantWidget({
     [pending, turns, t, router],
   );
 
+  // One question → one answer. No history: each submit replaces the last Q&A.
+  const submitHelp = useCallback(
+    (content: string): void => {
+      const text = content.trim();
+      if (text === '' || pending) return;
+
+      setInput('');
+      setNotice(null);
+      setHelpAnswer(null);
+
+      startTransition(() => {
+        void helpQuestionAction(text).then((res) => {
+          if (!res.ok) {
+            setNotice(
+              res.reason === 'UNAVAILABLE'
+                ? t.unavailable
+                : res.reason === 'RATE_LIMITED'
+                  ? t.rateLimited
+                  : res.reason === 'NOT_AUTHENTICATED'
+                    ? t.signInRequired
+                    : t.failed,
+            );
+            return;
+          }
+          setHelpAnswer({ question: text, answer: res.answer, sources: res.sources });
+        });
+      });
+    },
+    [pending, t],
+  );
+
+  const submit = mode === 'booking' ? submitBooking : submitHelp;
   const suggestions = [t.suggest1, t.suggest2, t.suggest3];
 
   return (
@@ -222,7 +264,7 @@ export function AssistantWidget({
                 {t.status}
               </p>
             </div>
-            {turns.length > 0 && (
+            {mode === 'booking' && turns.length > 0 && (
               <button
                 type="button"
                 className="aw-head__btn"
@@ -257,8 +299,37 @@ export function AssistantWidget({
             </button>
           </header>
 
+          <div className="aw-modes" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'booking'}
+              data-active={mode === 'booking'}
+              className="aw-mode-btn"
+              onClick={() => {
+                setMode('booking');
+                setNotice(null);
+              }}
+            >
+              {t.modeBooking}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'help'}
+              data-active={mode === 'help'}
+              className="aw-mode-btn"
+              onClick={() => {
+                setMode('help');
+                setNotice(null);
+              }}
+            >
+              {t.modeHelp}
+            </button>
+          </div>
+
           <div className="aw-log" role="log" aria-live="polite">
-            {turns.length === 0 && !pending && (
+            {mode === 'booking' && turns.length === 0 && !pending && (
               <div className="aw-empty">
                 <span className="aw-empty__avatar" aria-hidden="true">
                   <AssistantMark size={26} />
@@ -281,7 +352,8 @@ export function AssistantWidget({
               </div>
             )}
 
-            {turns.map((turn, i) => (
+            {mode === 'booking' &&
+              turns.map((turn, i) => (
               <div key={i} className={`aw-msg aw-msg--${turn.role}`}>
                 {turn.role === 'assistant' && (
                   <span className="aw-msg__avatar" aria-hidden="true">
@@ -336,6 +408,44 @@ export function AssistantWidget({
               </div>
             ))}
 
+            {mode === 'help' && helpAnswer === null && !pending && (
+              <div className="aw-empty">
+                <span className="aw-empty__avatar" aria-hidden="true">
+                  <AssistantMark size={26} />
+                </span>
+                <p className="aw-empty__greeting">{t.helpGreeting}</p>
+              </div>
+            )}
+
+            {mode === 'help' && helpAnswer !== null && (
+              <>
+                <div className="aw-msg aw-msg--user">
+                  <div className="aw-msg__body">
+                    <div className="aw-bubble">{helpAnswer.question}</div>
+                  </div>
+                </div>
+                <div className="aw-msg aw-msg--assistant">
+                  <span className="aw-msg__avatar" aria-hidden="true">
+                    <AssistantMark size={16} />
+                  </span>
+                  <div className="aw-msg__body">
+                    <div className="aw-bubble">{helpAnswer.answer}</div>
+                    {helpAnswer.sources.length > 0 && (
+                      <ul className="aw-sources">
+                        <li className="aw-sources__label">{t.helpSources}</li>
+                        {helpAnswer.sources.map((source) => (
+                          <li key={source.n} className="aw-source">
+                            <span className="aw-source__n">[{source.n}]</span>
+                            {source.title}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             {pending && (
               <div className="aw-msg aw-msg--assistant">
                 <span className="aw-msg__avatar" aria-hidden="true">
@@ -375,8 +485,8 @@ export function AssistantWidget({
                     submit(input);
                   }
                 }}
-                placeholder={t.placeholder}
-                aria-label={t.placeholder}
+                placeholder={mode === 'booking' ? t.placeholder : t.helpPlaceholder}
+                aria-label={mode === 'booking' ? t.placeholder : t.helpPlaceholder}
                 maxLength={2000}
                 disabled={pending}
               />
