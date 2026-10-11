@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PrincipalKind } from '../../auth/auth-user.js';
+import type { Principal } from '../auth/principal.js';
 
 export type TaskName = 'help_question' | 'summarize_conversation';
 
@@ -24,6 +25,7 @@ export interface TaskResult {
 
 export interface TaskContext<TInput extends object = object> {
   input: TInput;
+  principal: Principal;
 }
 
 export interface TaskDefinition<TInput extends object = object> {

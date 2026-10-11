@@ -1,7 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it } from '@jest/globals';
 import { IsString } from 'class-validator';
 import { AiGatewayController } from '../ai-gateway.controller.js';
+import type { Principal } from '../auth/principal.js';
 import type { TaskDefinition } from '../tasks/task-registry.js';
 import { TaskRegistryService } from '../tasks/task-registry.js';
 
@@ -10,8 +11,16 @@ class EchoInputDto {
   question!: string;
 }
 
+class ConversationIdInputDto {
+  @IsString()
+  conversationId!: string;
+}
+
+const student: Principal = { id: 's1', kind: 'student' };
+const tutor: Principal = { id: 't1', kind: 'tutor' };
+
 function makeController(): AiGatewayController {
-  const task: TaskDefinition = {
+  const helpQuestion: TaskDefinition = {
     name: 'help_question',
     allowedKinds: ['student', 'tutor'],
     modelChain: ['stub-model'],
@@ -27,20 +36,40 @@ function makeController(): AiGatewayController {
         usage: { inputTokens: 1, outputTokens: 1, costUsd: 0 },
       }),
   };
-  return new AiGatewayController(new TaskRegistryService([task]));
+  const summarizeConversation: TaskDefinition = {
+    name: 'summarize_conversation',
+    allowedKinds: ['tutor'],
+    modelChain: ['stub-model'],
+    promptVersion: 1,
+    maxOutputTokens: 100,
+    temperature: 0,
+    cacheTtlSeconds: null,
+    inputDto: ConversationIdInputDto,
+    run: () =>
+      Promise.resolve({
+        answer: 'summary',
+        model: 'stub-model',
+        usage: { inputTokens: 1, outputTokens: 1, costUsd: 0 },
+      }),
+  };
+  return new AiGatewayController(new TaskRegistryService([helpQuestion, summarizeConversation]));
 }
 
 describe('AiGatewayController', () => {
-  it('lists registered tasks', () => {
+  it('lists only the tasks the caller may use', () => {
     const controller = makeController();
 
-    expect(controller.tasks()).toEqual([{ name: 'help_question' }]);
+    expect(controller.tasks(student)).toEqual([{ name: 'help_question' }]);
+    expect(controller.tasks(tutor)).toEqual([
+      { name: 'help_question' },
+      { name: 'summarize_conversation' },
+    ]);
   });
 
   it('runs a known task and returns its result', async () => {
     const controller = makeController();
 
-    const result = await controller.chat({
+    const result = await controller.chat(student, {
       task: 'help_question',
       input: { question: 'Can I cancel?' },
     });
@@ -57,7 +86,7 @@ describe('AiGatewayController', () => {
   it('rejects an unknown task with 400', async () => {
     const controller = makeController();
 
-    await expect(controller.chat({ task: 'not_a_task', input: {} })).rejects.toThrow(
+    await expect(controller.chat(student, { task: 'not_a_task', input: {} })).rejects.toThrow(
       BadRequestException,
     );
   });
@@ -66,7 +95,26 @@ describe('AiGatewayController', () => {
     const controller = makeController();
 
     await expect(
-      controller.chat({ task: 'help_question', input: { question: 123 } }),
+      controller.chat(student, { task: 'help_question', input: { question: 123 } }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects a student calling a tutor-only task with 403', async () => {
+    const controller = makeController();
+
+    await expect(
+      controller.chat(student, { task: 'summarize_conversation', input: {} }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('allows a tutor to call a tutor-only task', async () => {
+    const controller = makeController();
+
+    const result = await controller.chat(tutor, {
+      task: 'summarize_conversation',
+      input: { conversationId: 'c1' },
+    });
+
+    expect(result.answer).toBe('summary');
   });
 });

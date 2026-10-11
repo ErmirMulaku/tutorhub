@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
@@ -16,11 +16,7 @@ const SYSTEM_PROMPT =
   'Summarize this tutor/student conversation in at most 3 bullet points. ' +
   'Only state facts that appear in the messages — never invent details.';
 
-/**
- * Summarizes the last 30 messages of a conversation. Ownership scoping
- * (the conversation must belong to the calling tutor) lands in Block 2,
- * once a principal exists to scope against.
- */
+/** Summarizes the last 30 messages of a conversation the calling tutor owns. */
 @Injectable()
 export class SummarizeConversationTask implements TaskDefinition<SummarizeConversationInputDto> {
   readonly name = 'summarize_conversation' as const;
@@ -44,6 +40,16 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
   }
 
   async run(ctx: TaskContext<SummarizeConversationInputDto>): Promise<TaskResult> {
+    // Same 404 whether the conversation doesn't exist or belongs to another
+    // tutor — don't let the response reveal which.
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: ctx.input.conversationId },
+      select: { tutorId: true },
+    });
+    if (conversation === null || conversation.tutorId !== ctx.principal.id) {
+      throw new NotFoundException('Conversation not found.');
+    }
+
     const messages = await this.prisma.message.findMany({
       where: { conversationId: ctx.input.conversationId },
       orderBy: { createdAt: 'desc' },
