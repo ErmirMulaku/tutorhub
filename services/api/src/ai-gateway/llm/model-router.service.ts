@@ -6,6 +6,7 @@ import {
   type ConverseRequest,
   type ConverseResult,
   type LlmClient,
+  type StreamToken,
 } from './llm-client.js';
 import { costUsd, parseModelPrices, type ModelPrice } from './pricing.js';
 import { withRetry } from './retry.js';
@@ -16,6 +17,13 @@ const TIMEOUT_MS = 30_000;
 
 export interface RouterResult {
   text: string;
+  modelId: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+export interface RouterStreamResult {
   modelId: string;
   inputTokens: number;
   outputTokens: number;
@@ -72,6 +80,58 @@ export class ModelRouterService {
     return this.llm
       .converse({ ...request, modelId, signal: controller.signal })
       .finally(() => clearTimeout(timeout));
+  }
+
+  /**
+   * Streaming counterpart to {@link run}. No retry/backoff here — once a
+   * model starts sending tokens, we're committed to it (the caller may
+   * already have forwarded tokens to a client). Fallback to the next model
+   * in `modelChain` only happens if a model fails before its first token.
+   *
+   * `externalSignal` lets the caller (the SSE controller, on `res.on('close')`)
+   * cancel the in-flight Bedrock call so a disconnected client stops costing money.
+   */
+  async *runStream(
+    modelChain: string[],
+    request: RouterRequest,
+    externalSignal?: AbortSignal,
+  ): AsyncGenerator<StreamToken, RouterStreamResult> {
+    let lastError: unknown;
+
+    for (const modelId of modelChain) {
+      let sentFirstToken = false;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const onExternalAbort = (): void => controller.abort();
+      externalSignal?.addEventListener('abort', onExternalAbort);
+
+      try {
+        const stream = this.llm.converseStream({ ...request, modelId, signal: controller.signal });
+        let next = await stream.next();
+        while (!next.done) {
+          sentFirstToken = true;
+          yield next.value;
+          next = await stream.next();
+        }
+        const { inputTokens, outputTokens } = next.value;
+        return {
+          modelId,
+          inputTokens,
+          outputTokens,
+          costUsd: costUsd(this.prices, modelId, inputTokens, outputTokens),
+        };
+      } catch (err) {
+        lastError = err;
+        if (sentFirstToken) {
+          throw err;
+        }
+      } finally {
+        clearTimeout(timeout);
+        externalSignal?.removeEventListener('abort', onExternalAbort);
+      }
+    }
+
+    throw lastError;
   }
 }
 

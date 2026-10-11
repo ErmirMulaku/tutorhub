@@ -20,9 +20,19 @@ export interface ConverseResult {
   modelId: string;
 }
 
-/** One turn with a model. `converseStream` (SSE) lands in Block 9. */
+export interface StreamToken {
+  text: string;
+}
+
+export interface StreamResult {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface LlmClient {
   converse(req: ConverseRequest): Promise<ConverseResult>;
+  /** Yields tokens as they arrive; the generator's return value is the final usage. */
+  converseStream(req: ConverseRequest): AsyncGenerator<StreamToken, StreamResult>;
 }
 
 /** DI token — `LlmClient` is an interface, so it has no class Nest can inject by type. */

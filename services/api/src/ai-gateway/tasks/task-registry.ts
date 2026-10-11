@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PrincipalKind } from '../../auth/auth-user.js';
 import type { Principal } from '../auth/principal.js';
+import type { StreamToken } from '../llm/llm-client.js';
 
 export type TaskName = 'help_question' | 'summarize_conversation';
 
@@ -49,6 +50,15 @@ export interface TaskDefinition<TInput extends object = object> {
    */
   cacheKey?(ctx: TaskContext<TInput>): Promise<string>;
   run(ctx: TaskContext<TInput>): Promise<TaskResult>;
+  /**
+   * Streaming counterpart to `run()`. Optional — a task without it doesn't
+   * support `POST /ai/chat/stream`. `signal` fires if the client disconnects
+   * (`res.on('close')`), so the task can stop paying for tokens no one will see.
+   */
+  runStream?(
+    ctx: TaskContext<TInput>,
+    signal?: AbortSignal,
+  ): AsyncGenerator<StreamToken, TaskResult>;
 }
 
 /** DI token for the array of registered task definitions (see {@link AiGatewayModule}). */
