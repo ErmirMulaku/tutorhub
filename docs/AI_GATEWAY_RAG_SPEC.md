@@ -239,6 +239,20 @@ Mapping to the "real" platform design (put this table in the README):
 
 ---
 
+### Block 11 — Help center mode in the marketplace widget (NICE — only after Blocks 0–10 MUST are done)
+
+- Where: `apps/marketplace/src/components/AssistantWidget.tsx` (floating chat, ~410 lines) — today it calls `/assistant/chat` through the server action `assistantChatAction` (token stays server-side) and texts come from `dict.assistant`.
+- Add a small **mode toggle** at the top of the panel: **"Book a lesson"** (existing behaviour, unchanged) / **"Help center"**.
+- Help center mode:
+  - new server action `helpQuestionAction(question)` (same pattern as `assistantChatAction`, token server-side) → `POST /ai/chat` with `{ task: 'help_question', input: { question } }`;
+  - one question → one answer (no history needed); show the answer + a **"Sources"** list under it (article titles from `sources`);
+  - map 401 → sign-in notice, 429 → existing rate-limited notice, 503 → existing unavailable notice;
+  - add the new strings to **every locale** dictionary (same keys in all).
+- Keep the change small: don't refactor the widget; booking mode must behave exactly as before.
+- **Done when:** in the browser, toggle to "Help center", ask _"Can I cancel 2 hours before?"_ → answer with the 50% fee + "Cancellation policy" source; toggle back → booking assistant still works. Typecheck/lint of `apps/marketplace` pass.
+
+---
+
 ## 3. Acceptance checks (manual, curl)
 
 Use the existing dev-login flow to get a **student** token and a **tutor** token.
@@ -258,4 +272,4 @@ Use the existing dev-login flow to get a **student** token and a **tutor** token
 
 ## 4. Out of scope
 
-Cognito, ALB, ECS, ElastiCache, DynamoDB, CloudWatch, deploying Redis, changing the existing `/assistant` module, frontend UI.
+Cognito, ALB, ECS, ElastiCache, DynamoDB, CloudWatch, deploying Redis, changing the existing `/assistant` backend module, any frontend UI other than Block 11 (dashboard, mobile).
