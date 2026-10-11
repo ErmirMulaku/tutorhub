@@ -1,5 +1,5 @@
 import { PutVectorsCommand, S3VectorsClient } from '@aws-sdk/client-s3vectors';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { promisePool } from './promise-pool.js';
 import type { ArticleChunk } from './chunker.js';
@@ -20,7 +20,7 @@ export class VectorStoreService {
   private readonly bucket: string;
   private readonly index: string;
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     this.client = new S3VectorsClient({
       region: config.get<string>('AWS_REGION', 'us-east-1'),
     });

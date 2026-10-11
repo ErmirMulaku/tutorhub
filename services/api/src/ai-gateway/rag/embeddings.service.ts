@@ -1,5 +1,5 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface TitanEmbeddingResponse {
@@ -12,7 +12,7 @@ export class EmbeddingsService {
   private readonly client: BedrockRuntimeClient;
   private readonly modelId: string;
 
-  constructor(config: ConfigService) {
+  constructor(@Inject(ConfigService) config: ConfigService) {
     this.client = new BedrockRuntimeClient({
       region: config.get<string>('AWS_REGION', 'us-east-1'),
     });

@@ -7,6 +7,7 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Inject,
   Logger,
   Post,
   Res,
@@ -47,11 +48,11 @@ export class AiGatewayController {
   private readonly logger = new Logger(AiGatewayController.name);
 
   constructor(
-    private readonly registry: TaskRegistryService,
-    private readonly limits: RateLimitService,
-    private readonly cache: AiCacheService,
-    private readonly usageLog: UsageLogService,
-    private readonly metrics: MetricsService,
+    @Inject(TaskRegistryService) private readonly registry: TaskRegistryService,
+    @Inject(RateLimitService) private readonly limits: RateLimitService,
+    @Inject(AiCacheService) private readonly cache: AiCacheService,
+    @Inject(UsageLogService) private readonly usageLog: UsageLogService,
+    @Inject(MetricsService) private readonly metrics: MetricsService,
   ) {}
 
   @Get('tasks')

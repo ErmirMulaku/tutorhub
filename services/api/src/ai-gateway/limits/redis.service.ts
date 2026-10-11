@@ -1,4 +1,4 @@
-import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, type OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 import type { RedisLike } from './redis-like.js';
@@ -12,7 +12,10 @@ import type { RedisLike } from './redis-like.js';
 export class RedisService implements RedisLike, OnModuleDestroy {
   private readonly client: Redis;
 
-  constructor(config: ConfigService) {
+  // Explicit @Inject: tsx/esbuild doesn't emit emitDecoratorMetadata, so a
+  // bare `config: ConfigService` param resolves to undefined under tsx
+  // (dev server, scripts) even though it works fine in a tsc build.
+  constructor(@Inject(ConfigService) config: ConfigService) {
     this.client = new Redis(config.getOrThrow<string>('REDIS_URL'));
   }
 

@@ -1,6 +1,7 @@
 import {
   type CanActivate,
   type ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ const BEARER = 'Bearer ';
  */
 @Injectable()
 export class PrincipalGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(@Inject(JwtService) private readonly jwt: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<RequestWithPrincipal>();

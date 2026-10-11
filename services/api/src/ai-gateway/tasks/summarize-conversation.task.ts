@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
@@ -31,9 +31,9 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
   readonly inputDto = SummarizeConversationInputDto;
 
   constructor(
-    config: ConfigService,
-    private readonly router: ModelRouterService,
-    private readonly prisma: PrismaService,
+    @Inject(ConfigService) config: ConfigService,
+    @Inject(ModelRouterService) private readonly router: ModelRouterService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {
     this.modelChain = modelChainFrom(config);
   }

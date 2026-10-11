@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 export type UsageStatus = 'ok' | 'denied' | 'rate_limited' | 'error';
@@ -28,7 +28,7 @@ export interface UsageLogEntry {
 export class UsageLogService {
   private readonly logger = new Logger(UsageLogService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   record(entry: UsageLogEntry): void {
     this.prisma.aiUsageLog.create({ data: entry }).catch((err: unknown) => {

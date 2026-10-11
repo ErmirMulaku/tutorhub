@@ -46,7 +46,7 @@ export class ModelRouterService {
 
   constructor(
     @Inject(LLM_CLIENT) private readonly llm: LlmClient,
-    config: ConfigService,
+    @Inject(ConfigService) config: ConfigService,
   ) {
     this.prices = parseModelPrices(config.get<string>('AI_MODEL_PRICES_JSON', '{}'));
   }

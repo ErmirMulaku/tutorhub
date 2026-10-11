@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Principal } from '../auth/principal.js';
 import { checkRateLimit, type RateLimitResult } from './rate-limit.js';
@@ -18,8 +18,8 @@ export class RateLimitService {
   private readonly dailyTokenBudget: number;
 
   constructor(
-    private readonly redis: RedisService,
-    config: ConfigService,
+    @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(ConfigService) config: ConfigService,
   ) {
     this.requestsPerMinute = Number(config.get<string>('AI_RATE_LIMIT_PER_MIN', '20'));
     this.dailyTokenBudget = Number(config.get<string>('AI_DAILY_TOKEN_BUDGET', '50000'));

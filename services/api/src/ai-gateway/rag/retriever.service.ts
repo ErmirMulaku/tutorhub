@@ -1,5 +1,5 @@
 import { QueryVectorsCommand, S3VectorsClient } from '@aws-sdk/client-s3vectors';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LruCache } from '../cache/lru-cache.js';
 import { EmbeddingsService } from './embeddings.service.js';
@@ -31,8 +31,8 @@ export class RetrieverService {
   private readonly embeddingCache = new LruCache<string, number[]>(EMBEDDING_CACHE_CAPACITY);
 
   constructor(
-    config: ConfigService,
-    private readonly embeddings: EmbeddingsService,
+    @Inject(ConfigService) config: ConfigService,
+    @Inject(EmbeddingsService) private readonly embeddings: EmbeddingsService,
   ) {
     this.client = new S3VectorsClient({
       region: config.get<string>('AWS_REGION', 'us-east-1'),

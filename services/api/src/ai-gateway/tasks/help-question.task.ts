@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString, MaxLength } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
@@ -43,9 +43,9 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
   private readonly maxDistance: number;
 
   constructor(
-    config: ConfigService,
-    private readonly router: ModelRouterService,
-    private readonly retriever: RetrieverService,
+    @Inject(ConfigService) config: ConfigService,
+    @Inject(ModelRouterService) private readonly router: ModelRouterService,
+    @Inject(RetrieverService) private readonly retriever: RetrieverService,
   ) {
     this.modelChain = modelChainFrom(config);
     this.maxDistance = Number(config.get<string>('RAG_MAX_DISTANCE', '0.6'));
