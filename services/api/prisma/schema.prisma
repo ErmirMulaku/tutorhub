@@ -381,6 +381,13 @@ model Booking {
   review    Review?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  @@index([tutorId, startTime])
+  @@index([studentId, startTime])
+  // Tutor dashboard: bookings for one tutor with one status, newest first.
+  // Equality columns (tutorId, status) lead; the sort column (createdAt)
+  // trails, so the index supplies the ORDER BY and no Sort node is needed.
+  @@index([tutorId, status, createdAt])
 }
 
 model Review {
