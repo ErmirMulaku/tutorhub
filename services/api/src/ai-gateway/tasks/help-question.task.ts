@@ -1,8 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString, MaxLength } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
-import { LLM_CLIENT, type LlmClient } from '../llm/llm-client.js';
+import { ModelRouterService } from '../llm/model-router.service.js';
 import { modelChainFrom } from './model-chain.js';
 import type { TaskContext, TaskDefinition, TaskResult } from './task-registry.js';
 
@@ -25,7 +25,6 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
   readonly name = 'help_question' as const;
   readonly allowedKinds: PrincipalKind[] = ['student', 'tutor'];
   readonly modelChain: string[];
-  private readonly primaryModelId: string;
   readonly promptVersion = 1;
   readonly maxOutputTokens = 400;
   readonly temperature = 0.2;
@@ -34,16 +33,13 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
 
   constructor(
     config: ConfigService,
-    @Inject(LLM_CLIENT) private readonly llm: LlmClient,
+    private readonly router: ModelRouterService,
   ) {
-    const chain = modelChainFrom(config);
-    this.modelChain = chain;
-    this.primaryModelId = chain[0];
+    this.modelChain = modelChainFrom(config);
   }
 
   async run(ctx: TaskContext<HelpQuestionInputDto>): Promise<TaskResult> {
-    const result = await this.llm.converse({
-      modelId: this.primaryModelId,
+    const result = await this.router.run(this.modelChain, {
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: ctx.input.question }],
       maxOutputTokens: this.maxOutputTokens,
@@ -52,7 +48,11 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
     return {
       answer: result.text,
       model: result.modelId,
-      usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: 0 },
+      usage: {
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        costUsd: result.costUsd,
+      },
     };
   }
 }

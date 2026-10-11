@@ -1,9 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
-import { LLM_CLIENT, type LlmClient } from '../llm/llm-client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { ModelRouterService } from '../llm/model-router.service.js';
 import { modelChainFrom } from './model-chain.js';
 import type { TaskContext, TaskDefinition, TaskResult } from './task-registry.js';
 
@@ -22,7 +22,6 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
   readonly name = 'summarize_conversation' as const;
   readonly allowedKinds: PrincipalKind[] = ['tutor'];
   readonly modelChain: string[];
-  private readonly primaryModelId: string;
   readonly promptVersion = 1;
   readonly maxOutputTokens = 300;
   readonly temperature = 0.2;
@@ -31,12 +30,10 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
 
   constructor(
     config: ConfigService,
-    @Inject(LLM_CLIENT) private readonly llm: LlmClient,
+    private readonly router: ModelRouterService,
     private readonly prisma: PrismaService,
   ) {
-    const chain = modelChainFrom(config);
-    this.modelChain = chain;
-    this.primaryModelId = chain[0];
+    this.modelChain = modelChainFrom(config);
   }
 
   async run(ctx: TaskContext<SummarizeConversationInputDto>): Promise<TaskResult> {
@@ -60,8 +57,7 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
       .map((m) => `${m.senderKind}: ${m.body}`)
       .join('\n');
 
-    const result = await this.llm.converse({
-      modelId: this.primaryModelId,
+    const result = await this.router.run(this.modelChain, {
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: transcript }],
       maxOutputTokens: this.maxOutputTokens,
@@ -70,7 +66,11 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
     return {
       answer: result.text,
       model: result.modelId,
-      usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: 0 },
+      usage: {
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+        costUsd: result.costUsd,
+      },
     };
   }
 }

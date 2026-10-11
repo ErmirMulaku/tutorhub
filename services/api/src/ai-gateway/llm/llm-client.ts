@@ -9,6 +9,8 @@ export interface ConverseRequest {
   messages: ConverseMessage[];
   maxOutputTokens: number;
   temperature: number;
+  /** Lets the caller (ModelRouterService) cancel a call that's timed out. */
+  signal?: AbortSignal;
 }
 
 export interface ConverseResult {

@@ -4,8 +4,9 @@ import { AiGatewayController } from './ai-gateway.controller.js';
 import { PrincipalGuard } from './auth/principal.guard.js';
 import { RateLimitService } from './limits/rate-limit.service.js';
 import { RedisService } from './limits/redis.service.js';
+import { BedrockLlmClient } from './llm/bedrock-llm.client.js';
 import { LLM_CLIENT } from './llm/llm-client.js';
-import { StubLlmClient } from './llm/stub-llm.client.js';
+import { ModelRouterService } from './llm/model-router.service.js';
 import { HelpQuestionTask } from './tasks/help-question.task.js';
 import { SummarizeConversationTask } from './tasks/summarize-conversation.task.js';
 import { AI_TASKS, TaskRegistryService, type TaskDefinition } from './tasks/task-registry.js';
@@ -28,8 +29,8 @@ import { AI_TASKS, TaskRegistryService, type TaskDefinition } from './tasks/task
       inject: [HelpQuestionTask, SummarizeConversationTask],
     },
     TaskRegistryService,
-    // Swapped for BedrockLlmClient in Block 4.
-    { provide: LLM_CLIENT, useClass: StubLlmClient },
+    ModelRouterService,
+    { provide: LLM_CLIENT, useClass: BedrockLlmClient },
   ],
 })
 export class AiGatewayModule {}
