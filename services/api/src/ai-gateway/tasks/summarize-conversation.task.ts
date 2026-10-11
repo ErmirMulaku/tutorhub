@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { IsString } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { summarizeConversationCacheKey } from '../cache/cache-keys.js';
 import { ModelRouterService } from '../llm/model-router.service.js';
 import { modelChainFrom } from './model-chain.js';
 import type { TaskContext, TaskDefinition, TaskResult } from './task-registry.js';
@@ -36,16 +37,21 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
     this.modelChain = modelChainFrom(config);
   }
 
+  /**
+   * A cache hit skips `run()` entirely, so this has to re-check ownership
+   * itself — it's the only authorization check a cached call gets.
+   */
+  async cacheKey(ctx: TaskContext<SummarizeConversationInputDto>): Promise<string> {
+    const conversation = await this.ownedConversation(ctx);
+    return summarizeConversationCacheKey(
+      ctx.input.conversationId,
+      conversation.lastMessageAt,
+      this.promptVersion,
+    );
+  }
+
   async run(ctx: TaskContext<SummarizeConversationInputDto>): Promise<TaskResult> {
-    // Same 404 whether the conversation doesn't exist or belongs to another
-    // tutor — don't let the response reveal which.
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: ctx.input.conversationId },
-      select: { tutorId: true },
-    });
-    if (conversation === null || conversation.tutorId !== ctx.principal.id) {
-      throw new NotFoundException('Conversation not found.');
-    }
+    await this.ownedConversation(ctx);
 
     const messages = await this.prisma.message.findMany({
       where: { conversationId: ctx.input.conversationId },
@@ -72,5 +78,22 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
         costUsd: result.costUsd,
       },
     };
+  }
+
+  /**
+   * Same 404 whether the conversation doesn't exist or belongs to another
+   * tutor — don't let the response reveal which.
+   */
+  private async ownedConversation(
+    ctx: TaskContext<SummarizeConversationInputDto>,
+  ): Promise<{ lastMessageAt: Date }> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: ctx.input.conversationId },
+      select: { tutorId: true, lastMessageAt: true },
+    });
+    if (conversation === null || conversation.tutorId !== ctx.principal.id) {
+      throw new NotFoundException('Conversation not found.');
+    }
+    return conversation;
   }
 }

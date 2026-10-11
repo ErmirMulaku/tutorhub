@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IsString, MaxLength } from 'class-validator';
 import type { PrincipalKind } from '../../auth/auth-user.js';
+import { helpQuestionCacheKey } from '../cache/cache-keys.js';
 import { ModelRouterService } from '../llm/model-router.service.js';
 import { RetrieverService } from '../rag/retriever.service.js';
 import { modelChainFrom } from './model-chain.js';
@@ -42,6 +43,10 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
   ) {
     this.modelChain = modelChainFrom(config);
     this.maxDistance = Number(config.get<string>('RAG_MAX_DISTANCE', '0.6'));
+  }
+
+  cacheKey(ctx: TaskContext<HelpQuestionInputDto>): Promise<string> {
+    return Promise.resolve(helpQuestionCacheKey(ctx.input.question, this.promptVersion));
   }
 
   async run(ctx: TaskContext<HelpQuestionInputDto>): Promise<TaskResult> {

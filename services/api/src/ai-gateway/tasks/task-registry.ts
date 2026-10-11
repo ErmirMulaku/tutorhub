@@ -41,6 +41,13 @@ export interface TaskDefinition<TInput extends object = object> {
   cacheTtlSeconds: number | null;
   /** Validates + shapes the raw `input` object the controller receives. */
   inputDto: new () => TInput;
+  /**
+   * Builds this call's cache key. Required whenever `cacheTtlSeconds` isn't
+   * null. Must enforce the same data-scope checks `run()` does — a cache
+   * hit skips `run()` entirely, so it's the only authorization check a
+   * cached call gets.
+   */
+  cacheKey?(ctx: TaskContext<TInput>): Promise<string>;
   run(ctx: TaskContext<TInput>): Promise<TaskResult>;
 }
 

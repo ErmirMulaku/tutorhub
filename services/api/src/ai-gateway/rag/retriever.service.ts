@@ -1,7 +1,11 @@
 import { QueryVectorsCommand, S3VectorsClient } from '@aws-sdk/client-s3vectors';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LruCache } from '../cache/lru-cache.js';
 import { EmbeddingsService } from './embeddings.service.js';
+
+/** Same question asked repeatedly shouldn't re-embed every time. */
+const EMBEDDING_CACHE_CAPACITY = 500;
 
 export interface RetrievedChunk {
   articleId: string;
@@ -24,6 +28,7 @@ export class RetrieverService {
   private readonly client: S3VectorsClient;
   private readonly bucket: string;
   private readonly index: string;
+  private readonly embeddingCache = new LruCache<string, number[]>(EMBEDDING_CACHE_CAPACITY);
 
   constructor(
     config: ConfigService,
@@ -37,7 +42,13 @@ export class RetrieverService {
   }
 
   async search(question: string, k = 4): Promise<RetrievedChunk[]> {
-    const queryEmbedding = await this.embeddings.embed(question);
+    const normalized = question.trim().toLowerCase();
+    let queryEmbedding = this.embeddingCache.get(normalized);
+    if (queryEmbedding === undefined) {
+      queryEmbedding = await this.embeddings.embed(question);
+      this.embeddingCache.set(normalized, queryEmbedding);
+    }
+
     const response = await this.client.send(
       new QueryVectorsCommand({
         vectorBucketName: this.bucket,
@@ -50,7 +61,7 @@ export class RetrieverService {
     );
 
     return (response.vectors ?? []).map((vector) => {
-      const metadata = vector.metadata as ChunkMetadata;
+      const metadata = vector.metadata as unknown as ChunkMetadata;
       return {
         articleId: metadata.articleId,
         title: metadata.title,

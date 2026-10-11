@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { AiGatewayController } from './ai-gateway.controller.js';
 import { PrincipalGuard } from './auth/principal.guard.js';
+import { AiCacheService } from './cache/ai-cache.service.js';
 import { RateLimitService } from './limits/rate-limit.service.js';
 import { RedisService } from './limits/redis.service.js';
 import { BedrockLlmClient } from './llm/bedrock-llm.client.js';
@@ -19,6 +20,7 @@ import { AI_TASKS, TaskRegistryService, type TaskDefinition } from './tasks/task
     PrincipalGuard,
     RedisService,
     RateLimitService,
+    AiCacheService,
     HelpQuestionTask,
     SummarizeConversationTask,
     {

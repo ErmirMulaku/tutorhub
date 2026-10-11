@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { AiCacheService } from './cache/ai-cache.service.js';
 import { CurrentPrincipal } from './auth/current-principal.decorator.js';
 import { PrincipalGuard } from './auth/principal.guard.js';
 import type { Principal } from './auth/principal.js';
@@ -37,6 +38,7 @@ export class AiGatewayController {
   constructor(
     private readonly registry: TaskRegistryService,
     private readonly limits: RateLimitService,
+    private readonly cache: AiCacheService,
   ) {}
 
   @Get('tasks')
@@ -70,6 +72,22 @@ export class AiGatewayController {
     }
 
     const input = await validateTaskInput(task.inputDto, dto.input);
+    const ctx = { input, principal };
+
+    // Cache check happens after auth/permission/rate-limit, before the
+    // budget check — a cache hit doesn't call the model, so it shouldn't
+    // consume budget (it still counted as a request above).
+    const cacheTtl = task.cacheTtlSeconds;
+    let cacheKey: string | null = null;
+    if (cacheTtl !== null && task.cacheKey !== undefined) {
+      cacheKey = await task.cacheKey(ctx);
+    }
+    if (cacheKey !== null) {
+      const cached = await this.cache.getJson<TaskResult>(cacheKey);
+      if (cached !== null) {
+        return { task: task.name, cached: true, ...cached };
+      }
+    }
 
     // Checked before the model call; real usage is only added after it
     // succeeds (see RateLimitService / addUsage for why a slight overshoot
@@ -79,11 +97,14 @@ export class AiGatewayController {
       throw new HttpException('Daily AI usage budget exceeded.', HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    const result = await task.run({ input, principal });
+    const result = await task.run(ctx);
     await this.limits.addTokenUsage(
       principal,
       result.usage.inputTokens + result.usage.outputTokens,
     );
+    if (cacheKey !== null && cacheTtl !== null) {
+      await this.cache.set(cacheKey, result, cacheTtl);
+    }
 
     return { task: task.name, cached: false, ...result };
   }

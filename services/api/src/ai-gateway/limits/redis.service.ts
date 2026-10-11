@@ -36,6 +36,10 @@ export class RedisService implements RedisLike, OnModuleDestroy {
     return this.client.get(key);
   }
 
+  setex(key: string, seconds: number, value: string): Promise<'OK'> {
+    return this.client.setex(key, seconds, value);
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.client.quit();
   }
