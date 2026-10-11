@@ -4,9 +4,12 @@ import { IsString } from 'class-validator';
 import type { Response } from 'express';
 import { AiGatewayController } from '../ai-gateway.controller.js';
 import type { Principal } from '../auth/principal.js';
+import type { AiCacheService } from '../cache/ai-cache.service.js';
 import type { RateLimitService } from '../limits/rate-limit.service.js';
+import type { MetricsService } from '../../monitoring/metrics.service.js';
 import type { TaskDefinition } from '../tasks/task-registry.js';
 import { TaskRegistryService } from '../tasks/task-registry.js';
+import type { UsageLogService } from '../usage/usage-log.service.js';
 
 class EchoInputDto {
   @IsString()
@@ -33,6 +36,13 @@ function fakeLimits(overrides: Partial<RateLimitService> = {}): RateLimitService
     ...overrides,
   } as unknown as RateLimitService;
 }
+
+const fakeCache = {
+  getJson: () => Promise.resolve(null),
+  set: () => Promise.resolve(),
+} as unknown as AiCacheService;
+const fakeUsageLog = { record: () => undefined } as unknown as UsageLogService;
+const fakeMetrics = { observeAiRequest: () => undefined } as unknown as MetricsService;
 
 function makeController(limits: RateLimitService = fakeLimits()): AiGatewayController {
   const helpQuestion: TaskDefinition = {
@@ -70,6 +80,9 @@ function makeController(limits: RateLimitService = fakeLimits()): AiGatewayContr
   return new AiGatewayController(
     new TaskRegistryService([helpQuestion, summarizeConversation]),
     limits,
+    fakeCache,
+    fakeUsageLog,
+    fakeMetrics,
   );
 }
 
