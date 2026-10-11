@@ -9,5 +9,11 @@
     "exactOptionalPropertyTypes": false,
     "types": ["node", "jest"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/**/*.ts", "prisma.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "prisma/**/*.ts",
+    "prisma.config.ts",
+    "scripts/**/*.ts"
+  ]
 }

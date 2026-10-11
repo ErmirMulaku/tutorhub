@@ -7,12 +7,13 @@ import { RedisService } from './limits/redis.service.js';
 import { BedrockLlmClient } from './llm/bedrock-llm.client.js';
 import { LLM_CLIENT } from './llm/llm-client.js';
 import { ModelRouterService } from './llm/model-router.service.js';
+import { RagModule } from './rag/rag.module.js';
 import { HelpQuestionTask } from './tasks/help-question.task.js';
 import { SummarizeConversationTask } from './tasks/summarize-conversation.task.js';
 import { AI_TASKS, TaskRegistryService, type TaskDefinition } from './tasks/task-registry.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RagModule],
   controllers: [AiGatewayController],
   providers: [
     PrincipalGuard,
