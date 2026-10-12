@@ -2,31 +2,52 @@ import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import type { ChatCompletionMessage } from 'openai/resources/chat/completions';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
-import { OpenAiService } from '../src/assistant/openai.service.js';
+import type {
+  ConverseRequest,
+  StreamResult,
+  StreamToken,
+} from '../src/ai-gateway/llm/llm-client.js';
+import { LLM_CLIENT } from '../src/ai-gateway/llm/llm-client.js';
+import { StubLlmClient } from '../src/ai-gateway/llm/stub-llm.client.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
-/** Scripted stand-in for OpenAI: returns canned messages in order, no network. */
-class ScriptedOpenAi {
-  script: ChatCompletionMessage[] = [];
-  configured = true;
-  isConfigured(): boolean {
-    return this.configured;
-  }
-  chat(): Promise<ChatCompletionMessage> {
-    const next = this.script.shift();
-    if (!next) throw new Error('ScriptedOpenAi ran out of responses');
-    return Promise.resolve(next);
+type ScriptedTurn =
+  | { text: string }
+  | { toolUse: { id: string; name: string; input: Record<string, unknown> } };
+
+/**
+ * Scripted stand-in for Bedrock: extends the real `StubLlmClient` (no network)
+ * but replays a queue of canned turns instead of its generic placeholder text,
+ * so a test can drive the tool loop deterministically.
+ */
+class ScriptedLlmClient extends StubLlmClient {
+  script: ScriptedTurn[][] = [];
+
+  override async *converseStream(_req: ConverseRequest): AsyncGenerator<StreamToken, StreamResult> {
+    await Promise.resolve();
+    const turn = this.script.shift();
+    if (turn === undefined) {
+      throw new Error('ScriptedLlmClient ran out of responses');
+    }
+    for (const part of turn) {
+      if ('text' in part) {
+        yield { kind: 'text', text: part.text };
+      } else {
+        yield { kind: 'tool_use', ...part.toolUse };
+      }
+    }
+    const stopReason = turn.some((part) => 'toolUse' in part) ? 'tool_use' : 'end_turn';
+    return { inputTokens: 10, outputTokens: 10, stopReason };
   }
 }
 
 describe('Assistant (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  const openai = new ScriptedOpenAi();
+  const llm = new ScriptedLlmClient();
 
   let tutorId = '';
   let subjectId = '';
@@ -41,8 +62,8 @@ describe('Assistant (e2e)', () => {
     const email = `assistant+${Date.now().toString()}@example.com`;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(OpenAiService)
-      .useValue(openai)
+      .overrideProvider(LLM_CLIENT)
+      .useValue(llm)
       .compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(
@@ -87,28 +108,18 @@ describe('Assistant (e2e)', () => {
   const http = (): request.Agent => request(app.getHttpServer() as Server);
 
   it('books a lesson by executing the model-chosen tool server-side', async () => {
-    // Turn 1: the model decides to call bookLesson. Turn 2: it replies in prose.
-    openai.script = [
-      {
-        role: 'assistant',
-        content: null,
-        refusal: null,
-        tool_calls: [
-          {
+    // Turn 1: the model asks for bookLesson. Turn 2: it replies in prose.
+    llm.script = [
+      [
+        {
+          toolUse: {
             id: 'call_book',
-            type: 'function',
-            function: {
-              name: 'bookLesson',
-              arguments: JSON.stringify({ tutorId, subjectId, startTime }),
-            },
+            name: 'bookLesson',
+            input: { tutorId, subjectId, startTime },
           },
-        ],
-      },
-      {
-        role: 'assistant',
-        content: 'Done — your lesson is booked!',
-        refusal: null,
-      },
+        },
+      ],
+      [{ text: 'Done — your lesson is booked!' }],
     ];
 
     const res = await http()
@@ -133,23 +144,17 @@ describe('Assistant (e2e)', () => {
 
   it('offers a search link derived from the tutors it found', async () => {
     // Turn 1: the model searches. Turn 2: it replies in prose.
-    openai.script = [
-      {
-        role: 'assistant',
-        content: null,
-        refusal: null,
-        tool_calls: [
-          {
+    llm.script = [
+      [
+        {
+          toolUse: {
             id: 'call_search',
-            type: 'function',
-            function: {
-              name: 'searchTutors',
-              arguments: JSON.stringify({ subject: 'Assistant Math' }),
-            },
+            name: 'searchTutors',
+            input: { subject: 'Assistant Math' },
           },
-        ],
-      },
-      { role: 'assistant', content: 'Here are some maths tutors.', refusal: null },
+        },
+      ],
+      [{ text: 'Here are some maths tutors.' }],
     ];
 
     const res = await http()
@@ -163,17 +168,13 @@ describe('Assistant (e2e)', () => {
     expect(body.actions).toContainEqual({ kind: 'search', subject: 'Assistant Math' });
   });
 
-  it('returns 503 when the assistant is not configured', async () => {
-    openai.script = [];
-    openai.configured = false;
-    try {
-      await http()
-        .post('/assistant/chat')
-        .set('authorization', `Bearer ${authToken}`)
-        .send({ messages: [{ role: 'user', content: 'hi' }] })
-        .expect(503);
-    } finally {
-      openai.configured = true;
-    }
+  it('returns 503 when Bedrock is unavailable', async () => {
+    llm.script = []; // every call throws "ran out of responses" — not retryable, but
+    // withRetry/runWithFallback still exhaust the chain and the router maps that to 503.
+    await http()
+      .post('/assistant/chat')
+      .set('authorization', `Bearer ${authToken}`)
+      .send({ messages: [{ role: 'user', content: 'hi' }] })
+      .expect(503);
   });
 });

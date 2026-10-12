@@ -1,56 +1,47 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ChatCompletionTool } from 'openai/resources/chat/completions';
 import { Level } from '@ermulaku/types';
 import { AvailabilityService } from '../availability/availability.service.js';
 import { BookingService } from '../bookings/booking.service.js';
 import { TutorsService } from '../tutors/tutors.service.js';
+import type { ToolSpec } from '../ai-gateway/llm/llm-client.js';
 
-/** OpenAI function/tool schemas the model may call. */
-export const TOOLS: ChatCompletionTool[] = [
+/** Bedrock Converse tool specs the model may call. */
+export const TOOLS: ToolSpec[] = [
   {
-    type: 'function',
-    function: {
-      name: 'searchTutors',
-      description: 'Find tutors, optionally filtered by subject (substring) and/or level.',
-      parameters: {
-        type: 'object',
-        properties: {
-          subject: { type: 'string', description: 'Subject name or fragment, e.g. "math".' },
-          level: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
-          limit: { type: 'integer', minimum: 1, maximum: 10 },
-        },
+    name: 'searchTutors',
+    description: 'Find tutors, optionally filtered by subject (substring) and/or level.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string', description: 'Subject name or fragment, e.g. "math".' },
+        level: { type: 'string', enum: ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'] },
+        limit: { type: 'integer', minimum: 1, maximum: 10 },
       },
     },
   },
   {
-    type: 'function',
-    function: {
-      name: 'getAvailability',
-      description: "List a tutor's bookable 1-hour slots on a date (their timezone).",
-      parameters: {
-        type: 'object',
-        properties: {
-          tutorId: { type: 'string', description: 'Tutor id from searchTutors.' },
-          date: { type: 'string', description: 'Day as YYYY-MM-DD.' },
-        },
-        required: ['tutorId', 'date'],
+    name: 'getAvailability',
+    description: "List a tutor's bookable 1-hour slots on a date (their timezone).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tutorId: { type: 'string', description: 'Tutor id from searchTutors.' },
+        date: { type: 'string', description: 'Day as YYYY-MM-DD.' },
       },
+      required: ['tutorId', 'date'],
     },
   },
   {
-    type: 'function',
-    function: {
-      name: 'bookLesson',
-      description: 'Book a lesson in an available slot for the current student.',
-      parameters: {
-        type: 'object',
-        properties: {
-          tutorId: { type: 'string' },
-          subjectId: { type: 'string', description: 'A subject id offered by the tutor.' },
-          startTime: { type: 'string', description: 'Slot start as an ISO-8601 UTC instant.' },
-        },
-        required: ['tutorId', 'subjectId', 'startTime'],
+    name: 'bookLesson',
+    description: 'Book a lesson in an available slot for the current student.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tutorId: { type: 'string' },
+        subjectId: { type: 'string', description: 'A subject id offered by the tutor.' },
+        startTime: { type: 'string', description: 'Slot start as an ISO-8601 UTC instant.' },
       },
+      required: ['tutorId', 'subjectId', 'startTime'],
     },
   },
 ];
