@@ -9,6 +9,8 @@ import type { RateLimitService } from '../limits/rate-limit.service.js';
 import type { MetricsService } from '../../monitoring/metrics.service.js';
 import type { TaskDefinition } from '../tasks/task-registry.js';
 import { TaskRegistryService } from '../tasks/task-registry.js';
+import type { ToolRegistryService } from '../tools/tool-registry.js';
+import type { ConfirmationService } from '../confirmation/confirmation.service.js';
 import type { UsageLogService } from '../usage/usage-log.service.js';
 
 class EchoInputDto {
@@ -43,6 +45,16 @@ const fakeCache = {
 } as unknown as AiCacheService;
 const fakeUsageLog = { record: () => undefined } as unknown as UsageLogService;
 const fakeMetrics = { observeAiRequest: () => undefined } as unknown as MetricsService;
+const fakeTools = {
+  get: () => undefined,
+  list: () => [],
+  listFor: () => [],
+} as unknown as ToolRegistryService;
+const fakeConfirmations = {
+  create: () => Promise.resolve(''),
+  get: () => Promise.resolve(null),
+  invalidate: () => Promise.resolve(),
+} as unknown as ConfirmationService;
 
 function makeController(limits: RateLimitService = fakeLimits()): AiGatewayController {
   const helpQuestion: TaskDefinition = {
@@ -83,6 +95,8 @@ function makeController(limits: RateLimitService = fakeLimits()): AiGatewayContr
     fakeCache,
     fakeUsageLog,
     fakeMetrics,
+    fakeTools,
+    fakeConfirmations,
   );
 }
 

@@ -20,16 +20,21 @@ import { AiCacheService } from './cache/ai-cache.service.js';
 import { CurrentPrincipal } from './auth/current-principal.decorator.js';
 import { PrincipalGuard } from './auth/principal.guard.js';
 import type { Principal } from './auth/principal.js';
-import { AiChatRequestDto } from './dto/ai-chat.dto.js';
+import { AiChatRequestDto, ConfirmActionDto } from './dto/ai-chat.dto.js';
 import { RateLimitService } from './limits/rate-limit.service.js';
 import {
   TaskRegistryService,
   type TaskDefinition,
   type TaskName,
   type TaskResult,
+  type TaskStreamEvent,
 } from './tasks/task-registry.js';
+import { ToolRegistryService } from './tools/tool-registry.js';
+import { ConfirmationService } from './confirmation/confirmation.service.js';
 import { UsageLogService, type UsageStatus } from './usage/usage-log.service.js';
 import { validateTaskInput } from './validate-task-input.js';
+
+const CONFIRM_TASK_NAME = 'chat_confirm';
 
 export interface AiChatResponseBody extends TaskResult {
   task: TaskName;
@@ -53,6 +58,8 @@ export class AiGatewayController {
     @Inject(AiCacheService) private readonly cache: AiCacheService,
     @Inject(UsageLogService) private readonly usageLog: UsageLogService,
     @Inject(MetricsService) private readonly metrics: MetricsService,
+    @Inject(ToolRegistryService) private readonly tools: ToolRegistryService,
+    @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
   ) {}
 
   @Get('tasks')
@@ -141,7 +148,10 @@ export class AiGatewayController {
       principal,
       result.usage.inputTokens + result.usage.outputTokens,
     );
-    if (cacheKey !== null && cacheTtl !== null) {
+    // `cacheable === false` opts a task out (e.g. a tool wrote user-specific
+    // data, or a write action is pending confirmation) — absent means
+    // cacheable, so help_question/summarize_conversation are unaffected.
+    if (cacheKey !== null && cacheTtl !== null && result.cacheable !== false) {
       await this.cache.set(cacheKey, result, cacheTtl);
     }
     this.recordOutcome({
@@ -241,12 +251,7 @@ export class AiGatewayController {
       const stream = runStream(ctx, abortController.signal);
       let next = await stream.next();
       while (!next.done) {
-        // Neither registered task passes `tools` yet, so this is always a
-        // text token — the SSE contract here stays `{token}` until the
-        // unified tool-calling endpoint (Phase 2) needs a richer event.
-        if (next.value.kind === 'text') {
-          res.write(`data: ${JSON.stringify({ token: next.value.text })}\n\n`);
-        }
+        this.writeStreamEvent(res, next.value);
         next = await stream.next();
       }
       const result = next.value;
@@ -260,7 +265,7 @@ export class AiGatewayController {
         principal,
         result.usage.inputTokens + result.usage.outputTokens,
       );
-      if (cacheKey !== null && cacheTtl !== null) {
+      if (cacheKey !== null && cacheTtl !== null && result.cacheable !== false) {
         await this.cache.set(cacheKey, result, cacheTtl);
       }
       this.recordOutcome({
@@ -284,6 +289,108 @@ export class AiGatewayController {
         );
         res.end();
       }
+    }
+  }
+
+  /**
+   * Executes a write tool the `chat` task previously asked the user to
+   * confirm. The token is short-lived and single-use — but only once
+   * ownership is verified: a wrong-owner attempt is rejected without
+   * invalidating it, so it can't be used to lock the real owner out of
+   * their own pending action. Ownership is re-checked against the caller's
+   * own JWT principal, never trusted from the token's payload alone, and
+   * RBAC is re-checked against the tool's `allowedKinds` — the same two
+   * checks a normal tool call gets, done again here because execution
+   * happens in a separate request from the one that proposed it.
+   *
+   * No model call here, so no rate limit / token budget / usage-log tokens —
+   * only a pass/fail audit row. A tool execution failure (e.g. the booking
+   * isn't the caller's) is a normal `{ok: false}` response, not an HTTP error
+   * — same convention as every other tool result in this subsystem.
+   */
+  @Post('chat/confirm')
+  @ApiOkResponse({ description: 'Executes a previously-proposed write action.' })
+  async confirm(
+    @CurrentPrincipal() principal: Principal,
+    @Body() dto: ConfirmActionDto,
+  ): Promise<{ ok: boolean; toolName: string; result: unknown }> {
+    const requestId = randomUUID();
+    const startedAt = Date.now();
+
+    const pending = await this.confirmations.get(dto.token);
+    if (pending === null) {
+      throw new BadRequestException('This confirmation has expired or was already used.');
+    }
+    // Ownership/RBAC are checked before invalidating — a wrong-owner probe
+    // must not burn the real owner's only chance to confirm their action.
+    if (pending.principalKind !== principal.kind || pending.principalId !== principal.id) {
+      throw new ForbiddenException('This confirmation does not belong to you.');
+    }
+    const tool = this.tools.get(pending.toolName);
+    if (tool === undefined || !tool.allowedKinds.includes(principal.kind)) {
+      throw new ForbiddenException(`${principal.kind} may not run tool: ${pending.toolName}`);
+    }
+    await this.confirmations.invalidate(dto.token);
+
+    let result: unknown;
+    try {
+      result = await tool.execute(principal, pending.args);
+    } catch (err) {
+      result = { error: err instanceof Error ? err.message : 'Tool execution failed' };
+    }
+    const ok = !(typeof result === 'object' && result !== null && 'error' in result);
+
+    this.usageLog.record({
+      requestId,
+      principalKind: principal.kind,
+      principalId: principal.id,
+      task: CONFIRM_TASK_NAME,
+      model: null,
+      promptVersion: 1,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      latencyMs: Date.now() - startedAt,
+      cacheHit: false,
+      status: ok ? 'ok' : 'error',
+    });
+
+    return { ok, toolName: pending.toolName, result };
+  }
+
+  /** Translates one gateway-level stream event into its documented SSE line. */
+  private writeStreamEvent(res: Response, event: TaskStreamEvent): void {
+    switch (event.kind) {
+      case 'text':
+        res.write(`data: ${JSON.stringify({ token: event.text })}\n\n`);
+        return;
+      case 'tool_call':
+        res.write(`data: ${JSON.stringify({ tool_call: { name: event.name } })}\n\n`);
+        return;
+      case 'tool_result':
+        res.write(
+          `data: ${JSON.stringify({ tool_result: { name: event.name, ok: event.ok } })}\n\n`,
+        );
+        return;
+      case 'confirmation_required':
+        res.write(
+          `data: ${JSON.stringify({
+            confirmation_required: {
+              token: event.token,
+              toolName: event.toolName,
+              summary: event.summary,
+            },
+          })}\n\n`,
+        );
+        return;
+      case 'citations':
+        res.write(`data: ${JSON.stringify({ citations: event.sources })}\n\n`);
+        return;
+      case 'tool_use':
+        // Model-level primitive — a task's runStream translates this into
+        // `tool_call`/`tool_result`/`confirmation_required` itself before
+        // yielding, so the controller should never see it directly.
+        return;
     }
   }
 

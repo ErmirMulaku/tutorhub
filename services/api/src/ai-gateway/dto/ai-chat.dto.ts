@@ -12,3 +12,11 @@ export class AiChatRequestDto {
   @IsObject()
   input!: Record<string, unknown>;
 }
+
+/** The single-use token a `confirmation_required` event handed back to the client. */
+export class ConfirmActionDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  token!: string;
+}

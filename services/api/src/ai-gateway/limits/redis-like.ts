@@ -5,4 +5,5 @@ export interface RedisLike {
   expire(key: string, seconds: number): Promise<number>;
   ttl(key: string): Promise<number>;
   get(key: string): Promise<string | null>;
+  del(key: string): Promise<number>;
 }
