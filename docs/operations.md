@@ -38,5 +38,5 @@ This repo wires the signals; here's how I'd operate them.
   propagation and OpenTelemetry traces across REST/GraphQL/gRPC and the booking path.
 - **Runbook.** `/ready` red → check DB connectivity/credentials and connection-pool saturation;
   latency alert → inspect the slowest routes on the dashboard and recent deploys; roll back on
-  regression. The mocked-in-CI, live-when-keyed AI assistant degrades to `503` if `OPENAI_API_KEY`
-  is missing, so an LLM outage never takes down core booking.
+  regression. The mocked-in-CI AI assistant and help chat both degrade to `503` if every model in
+  the Bedrock chain fails, so an LLM outage never takes down core booking.

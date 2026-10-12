@@ -27,21 +27,21 @@ Send it as `Authorization: Bearer <token>`.
 
 ## REST
 
-| Method & path                                                  | Purpose                          | Errors       |
-| -------------------------------------------------------------- | -------------------------------- | ------------ |
-| `GET /health`                                                  | Liveness probe                   | —            |
-| `GET /ready`                                                   | Readiness probe (checks DB)      | `503`        |
-| `GET /metrics`                                                 | Prometheus metrics               | —            |
-| `GET /status`                                                  | HTML status page                 | —            |
-| `POST /assistant/chat`                                         | OpenAI booking assistant (§12B)  | `400`, `503` |
-| `POST /tutors` · `GET /tutors`                                 | Create / list tutors             | `400`        |
-| `GET·PATCH·DELETE /tutors/:id`                                 | Read / update / delete a tutor   | `404`        |
-| `POST /subjects` · `GET /subjects?tutorId=`                    | Create / list subjects           | `400`, `404` |
-| `GET·PATCH·DELETE /subjects/:id`                               | Read / update / delete a subject | `404`        |
-| `POST /bookings` · `GET /bookings?status=&tutorId=&studentId=` | Create / list bookings           | `400`, `404` |
-| `GET /bookings/:id`                                            | Read a booking                   | `404`        |
-| `PATCH /bookings/:id/status`                                   | Change status (state machine)    | `404`, `409` |
-| `POST /auth/dev-login`                                         | Mint a dev JWT                   | `404`        |
+| Method & path                                                  | Purpose                              | Errors              |
+| -------------------------------------------------------------- | ------------------------------------ | ------------------- |
+| `GET /health`                                                  | Liveness probe                       | —                   |
+| `GET /ready`                                                   | Readiness probe (checks DB)          | `503`               |
+| `GET /metrics`                                                 | Prometheus metrics                   | —                   |
+| `GET /status`                                                  | HTML status page                     | —                   |
+| `POST /assistant/chat`                                         | Booking assistant (§12B, deprecated) | `400`, `429`, `503` |
+| `POST /tutors` · `GET /tutors`                                 | Create / list tutors                 | `400`               |
+| `GET·PATCH·DELETE /tutors/:id`                                 | Read / update / delete a tutor       | `404`               |
+| `POST /subjects` · `GET /subjects?tutorId=`                    | Create / list subjects               | `400`, `404`        |
+| `GET·PATCH·DELETE /subjects/:id`                               | Read / update / delete a subject     | `404`               |
+| `POST /bookings` · `GET /bookings?status=&tutorId=&studentId=` | Create / list bookings               | `400`, `404`        |
+| `GET /bookings/:id`                                            | Read a booking                       | `404`               |
+| `PATCH /bookings/:id/status`                                   | Change status (state machine)        | `404`, `409`        |
+| `POST /auth/dev-login`                                         | Mint a dev JWT                       | `404`               |
 
 Example — create a booking:
 
@@ -56,11 +56,13 @@ curl -X POST localhost:4000/bookings -H 'content-type: application/json' -d '{
 All input is validated (`class-validator`). Errors: **400** validation,
 **404** not found, **409** illegal status transition.
 
-### AI booking assistant
+### AI booking assistant (deprecated)
 
-`POST /assistant/chat` runs an OpenAI function-calling loop. The model may call `searchTutors`,
-`getAvailability`, and `bookLesson`; the **server** executes each against the service layer. Requires
-`OPENAI_API_KEY` server-side (else `503`).
+`POST /assistant/chat` runs a Bedrock Converse tool-calling loop. The model may call `searchTutors`,
+`getAvailability`, and `bookLesson`; the **server** executes each against the service layer. Shares
+its rate limit, daily token budget, and usage log with `/ai/chat` (see below) rather than its own
+throttle. Superseded by the unified `/ai/chat` tool-calling endpoint once it ships
+(docs/UNIFIED_AI_CHAT_PLAN.md Phase 2) — kept working, unchanged in contract, until then.
 
 ```bash
 curl -X POST localhost:4000/assistant/chat -H 'content-type: application/json' -d '{
