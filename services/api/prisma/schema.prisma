@@ -381,6 +381,13 @@ model Booking {
   review    Review?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  @@index([tutorId, startTime])
+  @@index([studentId, startTime])
+  // Tutor dashboard: bookings for one tutor with one status, newest first.
+  // Equality columns (tutorId, status) lead; the sort column (createdAt)
+  // trails, so the index supplies the ORDER BY and no Sort node is needed.
+  @@index([tutorId, status, createdAt])
 }
 
 model Review {
@@ -411,4 +418,28 @@ model Payment {
   stripePaymentIntentId String? @unique
 
   @@index([tutorId, status])
+}
+
+// AI gateway audit log (docs/AI_GATEWAY_RAG_SPEC.md, Block 8). principalId is
+// a student or tutor id depending on principalKind, never a Prisma relation,
+// since a single principal column can't point at two different tables.
+// Never store prompt or answer text here — tokens/cost only, no PII.
+model AiUsageLog {
+  id            String   @id @default(uuid())
+  requestId     String
+  principalKind String
+  principalId   String
+  task          String
+  model         String?
+  promptVersion Int
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  costUsd       Decimal  @default(0) @db.Decimal(10, 6)
+  latencyMs     Int
+  cacheHit      Boolean  @default(false)
+  status        String // ok | denied | rate_limited | error
+  createdAt     DateTime @default(now())
+
+  @@index([principalKind, principalId, createdAt])
+  @@index([task, createdAt])
 }

@@ -76,6 +76,105 @@ PENDING ─▶ CONFIRMED ─▶ COMPLETED
 [`booking-status.ts`](src/bookings/booking-status.ts) — the single source of
 truth reused by every transport.
 
+## AI Gateway + RAG
+
+A small, central AI gateway (`src/ai-gateway/`) with auth/RBAC, rate limits,
+cost tracking, caching, model fallback, and audit logging — fronting a RAG
+help-center assistant and a tutor-only conversation summarizer. Modeled on a
+production AWS Bedrock gateway (see the mapping table below).
+
+### Request flow
+
+```
+PrincipalGuard (401)
+  → per-task allowedKinds check (403)
+    → RateLimitService.checkRequestRate (429 + Retry-After)
+      → validate task input (400)
+        → AiCacheService lookup (cached: true → skip everything below)
+          → RateLimitService.checkTokenBudget (429)
+            → ModelRouterService.run/runStream → BedrockLlmClient
+              → RateLimitService.addTokenUsage + AiCacheService.set
+                → UsageLogService.record + MetricsService.observeAiRequest
+```
+
+`help_question` additionally retrieves help-article chunks before the model
+call (`RetrieverService` → S3 Vectors); a too-distant match answers _"I
+couldn't find this in the help center"_ without calling the LLM at all.
+
+### Production mapping
+
+| TutorHub (built)                       | Production equivalent            |
+| -------------------------------------- | -------------------------------- |
+| App Runner (built-in LB + autoscaling) | ALB + ECS Fargate                |
+| `PrincipalGuard` on the existing JWT   | SSO / Cognito JWT verification   |
+| Task registry in code                  | RBAC tables in RDS Postgres      |
+| Redis in Docker                        | ElastiCache Redis                |
+| Prisma `AiUsageLog` (Postgres)         | DynamoDB / S3 usage + audit logs |
+| Prometheus metrics                     | CloudWatch metrics + alarms      |
+| Bedrock + S3 Vectors                   | same                             |
+
+### Endpoints
+
+| Method & path          | Purpose                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `GET /ai/tasks`        | Tasks the caller's principal kind (student/tutor) may use                              |
+| `POST /ai/chat`        | Run a task; returns `{task, answer, model, usage, cached, sources?}`                   |
+| `POST /ai/chat/stream` | Same, as SSE: `data:{"token":...}` then `data:{"done":true,"usage":...,"sources":...}` |
+
+Both `/ai/chat*` require a Bearer JWT (student or tutor — `POST
+/auth/dev-login` / `POST /auth/tutor/dev-login`) and return an `x-request-id`
+header tying the call to its `AiUsageLog` row.
+
+### Env vars
+
+See [`.env.example`](.env.example) for the full list with comments:
+`REDIS_URL`, `AWS_REGION`, `BEDROCK_PRIMARY_MODEL_ID`,
+`BEDROCK_FALLBACK_MODEL_ID`, `BEDROCK_EMBED_MODEL_ID`, `S3_VECTOR_BUCKET`,
+`S3_VECTOR_INDEX`, `RAG_MAX_DISTANCE`, `AI_RATE_LIMIT_PER_MIN`,
+`AI_DAILY_TOKEN_BUDGET`, `AI_MODEL_PRICES_JSON`.
+
+### RAG: ingest + eval
+
+```bash
+npm run rag:ingest   # chunk + embed + write the 12 help articles to S3 Vectors
+npm run rag:eval     # 10 questions (expected article) + 2 out-of-scope — hit@4, calibrates RAG_MAX_DISTANCE
+```
+
+Both boot a minimal Nest context (no Redis/Postgres needed) and are safe to
+re-run — `rag:ingest` overwrites by key (`articleId#chunkIndex`) rather than
+duplicating.
+
+### Try it
+
+```bash
+TOKEN=$(curl -s -X POST localhost:4000/auth/dev-login -H 'Content-Type: application/json' \
+  -d '{"email":"sara@example.com"}' | jq -r .accessToken)
+
+curl -s localhost:4000/ai/tasks -H "Authorization: Bearer $TOKEN"
+
+curl -s -X POST localhost:4000/ai/chat -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"task":"help_question","input":{"question":"Can I cancel 2 hours before my lesson?"}}'
+
+curl -N -X POST localhost:4000/ai/chat/stream -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"task":"help_question","input":{"question":"How do gift cards work?"}}'
+```
+
+### Known limitations
+
+- `help_question`'s RAG only covers the 12 seeded help articles — anything
+  else correctly falls back to "I couldn't find this in the help center."
+- No streaming retry: once a model has sent a token, a mid-stream failure
+  ends the response rather than failing over (non-streaming `/ai/chat` does
+  retry + fall back).
+- Token-budget check-before/add-after can slightly overshoot the daily cap
+  under concurrent requests (documented as acceptable in `token-budget.ts`).
+- Cost tracking (`AI_MODEL_PRICES_JSON`) is as accurate as the prices you
+  configure; an unlisted model id prices at `$0` with a logged warning.
+- `GET /metrics` and `AiUsageLog` are unauthenticated/un-aggregated — fine for
+  a single-instance dev deployment, not a multi-tenant one.
+
 ## Scripts
 
 ```bash
@@ -87,6 +186,8 @@ npm run test:e2e    # e2e tests (supertest; needs Postgres)
 npm run db:migrate  # prisma migrate dev (create + apply a migration)
 npm run db:deploy   # prisma migrate deploy (apply committed migrations)
 npm run db:seed     # seed sample data
+npm run rag:ingest  # AI gateway: embed + index the help-center articles
+npm run rag:eval    # AI gateway: retrieval quality eval (hit@4)
 ```
 
 ## Notes on Prisma 7

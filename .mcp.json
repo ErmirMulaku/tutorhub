@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "docs": {
+      "type": "http",
+      "url": "https://code.claude.com/docs/mcp"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {}
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import './graphql/register-enums.js';
 import { AccountModule } from './account/account.module.js';
+import { AiGatewayModule } from './ai-gateway/ai-gateway.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AssistantModule } from './assistant/assistant.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -70,6 +71,7 @@ const schemaFile = isProd
     MonitoringModule,
     AssistantModule,
     TutorDashboardModule,
+    AiGatewayModule,
   ],
   controllers: [HealthController],
 })

@@ -358,7 +358,12 @@
     "browseTutors": "Browse all tutors",
     "viewTutor": "View {name}'s profile",
     "viewProfile": "View tutor profile",
-    "viewLessons": "View my lessons"
+    "viewLessons": "View my lessons",
+    "modeBooking": "Book a lesson",
+    "modeHelp": "Help center",
+    "helpPlaceholder": "Ask about bookings, cancellations, payments…",
+    "helpGreeting": "Ask me anything about how TutorHub works — bookings, cancellations, payments, and more.",
+    "helpSources": "Sources"
   },
   "common": {
     "back": "Back",

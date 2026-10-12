@@ -405,6 +405,47 @@ the dashboard **setup banner** (dismissible → onboarding) and **Latest review*
 green across 8 projects, `npm audit` **0**. (Cosmetic-only controls left as placeholders by intent:
 topbar search, "New lesson", the notifications bell, and the calendar Day/Month view toggle.)
 
+### Phase 9 — AI Gateway + RAG ✅
+
+**Built (in ten reviewed commits, from `docs/AI_GATEWAY_RAG_SPEC.md`, block by block):** a central
+**AI gateway** in `services/api/src/ai-gateway/` — `PrincipalGuard` (student-or-tutor JWT, REST),
+a task registry (`help_question` for both kinds, `summarize_conversation` tutor-only with
+data-scoped 404s), `RateLimitService` (Redis fixed-window rate limit + check-before/add-after daily
+token budget), `ModelRouterService` (Bedrock Converse + ConverseStream, retry/backoff/jitter per
+model, fallback across the model chain, 503 if all fail), a **RAG help center** (12 seeded
+articles, Titan V2 embeddings, S3 Vectors, an "I don't know" distance guard), `AiCacheService`
+(Redis-backed, skips the model and the budget check on a hit), `AiUsageLog` (fire-and-forget,
+never stores prompt/answer text) + Prometheus metrics, and SSE streaming
+(`POST /ai/chat/stream`, abort-on-disconnect). Eight of the interview-practice functions
+(`checkRateLimit`, the token-budget pair, `withRetry`, `runWithFallback`, `chunkText`,
+`promisePool`, `cosineSimilarity`/`topK`, `LruCache`) were implemented directly rather than left
+for hand-written practice, at Ermir's explicit request mid-build. A later addition
+(`helpQuestionAction` in `apps/marketplace`) added a "Help center" mode toggle to the existing
+booking-assistant widget, reusing its token-stays-server-side pattern.
+
+**Verified (not just generated):**
+
+- `npm run typecheck && npm run lint && npm test` green in `services/api` (**65** unit tests, no
+  DB/Redis needed — Redis is covered by a hand-rolled in-memory fake per the spec's own rule
+  against mocking libraries); `apps/marketplace` typecheck + lint green for the widget change.
+- **Caught and fixed a real bug by actually running the thing, not trusting green checks:**
+  `npm run rag:ingest` first failed completely silently. Cause — `tsx` (esbuild) doesn't implement
+  `emitDecoratorMetadata`, so every NestJS constructor relying on bare `(x: SomeService)` for
+  dependency injection silently received `undefined` at runtime, even though it typechecks, lints,
+  and passes Jest (which exercises hand-built fakes, never Nest's real injector). Added explicit
+  `@Inject(ClassName)` across every AI-gateway constructor; re-verified by actually booting the app
+  (`tsx --import ./src/tracing.ts src/main.ts`) and confirming `AiGatewayModule`'s routes mapped.
+  The same bug class turned out to be latent in the pre-existing GraphQL module too (a
+  `@nestjs/graphql` schema-builder crash) — left unfixed as out of scope, but flagged; it only
+  affects `tsx`-run dev/scripts, not a `tsc` production build.
+- `npm run rag:ingest` run for real against live AWS (Bedrock Titan V2 + S3 Vectors): 12 articles →
+  24 chunks → 24 vectors written.
+- **Not yet verified:** an actual Bedrock _chat_ completion (`help_question`'s Haiku/Sonnet call,
+  as opposed to the Titan embedding calls `rag:ingest` exercises) and the full browser/curl
+  acceptance table in the spec (§3) — both need a session with live model access, which this one
+  didn't have the full way through. `npm run rag:eval` (hit@4 + `RAG_MAX_DISTANCE` calibration) is
+  built but hasn't been run live either.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

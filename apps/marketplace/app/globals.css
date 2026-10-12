@@ -2580,6 +2580,67 @@ button.site-header__nav-link {
   background: linear-gradient(140deg, var(--th-primary), var(--th-primary-hover));
 }
 
+/* Booking / help-center mode toggle */
+.aw-modes {
+  display: flex;
+  gap: 2px;
+  padding: var(--th-space-2) var(--th-space-3);
+  border-block-end: 1px solid var(--th-border);
+  background: var(--th-surface);
+}
+.aw-mode-btn {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--th-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.aw-mode-btn[data-active='true'] {
+  background: var(--th-primary-50);
+  color: var(--th-primary);
+}
+.aw-mode-btn:hover:not([data-active='true']) {
+  color: var(--th-text);
+}
+.aw-mode-btn:focus-visible {
+  outline: 2px solid var(--th-primary);
+  outline-offset: 1px;
+}
+
+/* Help-center answer citations */
+.aw-sources {
+  margin: var(--th-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.aw-sources__label {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+}
+.aw-source {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--th-text-muted);
+}
+.aw-source__n {
+  flex: none;
+  color: var(--th-primary);
+  font-weight: 600;
+}
+
 /* Near-fullscreen on small screens */
 @media (max-width: 30rem) {
   .aw-panel {

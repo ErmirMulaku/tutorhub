@@ -19,5 +19,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Rate limiting + response caching for the AI gateway (AI_GATEWAY_RAG_SPEC
+  # Block 0). Not used in production (managed Redis, e.g. ElastiCache).
+  #   docker compose up -d redis
+  redis:
+    image: redis:7-alpine
+    container_name: tutorhub-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   tutorhub-db-data:

@@ -930,6 +930,18 @@ export interface AssistantReply {
 }
 
 /**
+ * A help-article citation the AI gateway's `help_question` task returned.
+ * The question itself streams via `app/api/help-question/route.ts` (SSE,
+ * proxied so the session JWT never reaches the browser) rather than a
+ * plain REST call here — see `AssistantWidget`'s help mode.
+ */
+export interface HelpSource {
+  n: number;
+  articleId: string;
+  title: string;
+}
+
+/**
  * One assistant turn. REST rather than GraphQL — this is the only endpoint that
  * isn't, and it predates the GraphQL surface.
  *

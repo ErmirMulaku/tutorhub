@@ -358,7 +358,12 @@
     "browseTutors": "تصفّح جميع المعلّمين",
     "viewTutor": "عرض ملف {name}",
     "viewProfile": "عرض ملف المعلّم",
-    "viewLessons": "عرض دروسي"
+    "viewLessons": "عرض دروسي",
+    "modeBooking": "حجز درس",
+    "modeHelp": "مركز المساعدة",
+    "helpPlaceholder": "اسأل عن الحجوزات، الإلغاء، الدفع…",
+    "helpGreeting": "اسألني عن أي شيء يخص طريقة عمل TutorHub — الحجوزات، الإلغاء، الدفع، والمزيد.",
+    "helpSources": "المصادر"
   },
   "common": {
     "back": "رجوع",
