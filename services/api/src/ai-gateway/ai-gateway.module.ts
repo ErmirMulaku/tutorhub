@@ -6,9 +6,7 @@ import { PrincipalGuard } from './auth/principal.guard.js';
 import { AiCacheService } from './cache/ai-cache.service.js';
 import { RateLimitService } from './limits/rate-limit.service.js';
 import { RedisService } from './limits/redis.service.js';
-import { BedrockLlmClient } from './llm/bedrock-llm.client.js';
-import { LLM_CLIENT } from './llm/llm-client.js';
-import { ModelRouterService } from './llm/model-router.service.js';
+import { LlmModule } from './llm/llm.module.js';
 import { RagModule } from './rag/rag.module.js';
 import { HelpQuestionTask } from './tasks/help-question.task.js';
 import { SummarizeConversationTask } from './tasks/summarize-conversation.task.js';
@@ -16,7 +14,7 @@ import { AI_TASKS, TaskRegistryService, type TaskDefinition } from './tasks/task
 import { UsageLogService } from './usage/usage-log.service.js';
 
 @Module({
-  imports: [AuthModule, RagModule, MonitoringModule],
+  imports: [AuthModule, RagModule, MonitoringModule, LlmModule],
   controllers: [AiGatewayController],
   providers: [
     PrincipalGuard,
@@ -35,8 +33,10 @@ import { UsageLogService } from './usage/usage-log.service.js';
       inject: [HelpQuestionTask, SummarizeConversationTask],
     },
     TaskRegistryService,
-    ModelRouterService,
-    { provide: LLM_CLIENT, useClass: BedrockLlmClient },
   ],
+  // Re-exported so `AssistantModule` can move its booking flow onto the same
+  // Bedrock router, rate limit, token budget and usage log as `/ai/chat`,
+  // without duplicating any of this wiring.
+  exports: [LlmModule, RateLimitService, UsageLogService],
 })
 export class AiGatewayModule {}

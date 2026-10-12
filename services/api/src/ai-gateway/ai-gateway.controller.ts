@@ -241,7 +241,12 @@ export class AiGatewayController {
       const stream = runStream(ctx, abortController.signal);
       let next = await stream.next();
       while (!next.done) {
-        res.write(`data: ${JSON.stringify({ token: next.value.text })}\n\n`);
+        // Neither registered task passes `tools` yet, so this is always a
+        // text token — the SSE contract here stays `{token}` until the
+        // unified tool-calling endpoint (Phase 2) needs a richer event.
+        if (next.value.kind === 'text') {
+          res.write(`data: ${JSON.stringify({ token: next.value.text })}\n\n`);
+        }
         next = await stream.next();
       }
       const result = next.value;

@@ -86,7 +86,7 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
   ): AsyncGenerator<StreamToken, TaskResult> {
     const prompt = await this.buildPrompt(ctx.input.question);
     if (prompt === null) {
-      yield { text: NO_MATCH_ANSWER };
+      yield { kind: 'text', text: NO_MATCH_ANSWER };
       return noMatchResult();
     }
 
@@ -104,8 +104,12 @@ export class HelpQuestionTask implements TaskDefinition<HelpQuestionInputDto> {
     let answer = '';
     let next = await stream.next();
     while (!next.done) {
-      answer += next.value.text;
-      yield next.value;
+      // This task never passes `tools`, so Bedrock never returns a
+      // `tool_use` block — every token here is text.
+      if (next.value.kind === 'text') {
+        answer += next.value.text;
+        yield next.value;
+      }
       next = await stream.next();
     }
     const routed = next.value;

@@ -28,6 +28,14 @@ export interface RouterStreamResult {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  stopReason: string;
+}
+
+export interface RouterEmbedResult {
+  embedding: number[];
+  modelId: string;
+  inputTokens: number;
+  costUsd: number;
 }
 
 /** Everything a model needs except which model — the router fills that in per attempt. */
@@ -96,8 +104,6 @@ export class ModelRouterService {
     request: RouterRequest,
     externalSignal?: AbortSignal,
   ): AsyncGenerator<StreamToken, RouterStreamResult> {
-    let lastError: unknown;
-
     for (const modelId of modelChain) {
       let sentFirstToken = false;
       const controller = new AbortController();
@@ -113,15 +119,15 @@ export class ModelRouterService {
           yield next.value;
           next = await stream.next();
         }
-        const { inputTokens, outputTokens } = next.value;
+        const { inputTokens, outputTokens, stopReason } = next.value;
         return {
           modelId,
           inputTokens,
           outputTokens,
+          stopReason,
           costUsd: costUsd(this.prices, modelId, inputTokens, outputTokens),
         };
       } catch (err) {
-        lastError = err;
         if (sentFirstToken) {
           throw err;
         }
@@ -131,7 +137,39 @@ export class ModelRouterService {
       }
     }
 
-    throw lastError;
+    // Every model failed before yielding a single token — same graceful
+    // degradation as `run()`. (A failure *after* the first token always
+    // rethrows immediately above, since the caller may already have
+    // forwarded tokens to a client.)
+    throw new ServiceUnavailableException('AI temporarily unavailable');
+  }
+
+  /**
+   * Embeddings counterpart to {@link run}: same retry/backoff + model-chain
+   * fallback, via the same `LlmClient` seam. Today's embed model chain is a
+   * single id (no fallback embedding model is configured), so this mostly
+   * buys retry-with-backoff on transient failures.
+   */
+  async embed(modelChain: string[], text: string): Promise<RouterEmbedResult> {
+    let result;
+    try {
+      result = await runWithFallback(modelChain, (modelId) =>
+        withRetry(() => this.llm.embed({ modelId, text }), {
+          attempts: ATTEMPTS_PER_MODEL,
+          baseMs: BASE_BACKOFF_MS,
+          isRetryable: isRetryableBedrockError,
+        }).then((embedResult) => ({ ...embedResult, modelId })),
+      );
+    } catch {
+      throw new ServiceUnavailableException('AI temporarily unavailable');
+    }
+
+    return {
+      embedding: result.embedding,
+      modelId: result.modelId,
+      inputTokens: result.inputTokens,
+      costUsd: costUsd(this.prices, result.modelId, result.inputTokens, 0),
+    };
   }
 }
 
