@@ -5,15 +5,97 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '@/i18n/config';
 import { interpolate, type Dictionary } from '@/i18n/dictionaries';
-import { assistantChatAction, helpQuestionAction } from '@/lib/actions';
+import { assistantChatAction } from '@/lib/actions';
 import type { AssistantAction, AssistantTurn, HelpSource } from '@/lib/queries';
 
 type Mode = 'booking' | 'help';
+type HelpFailureReason = 'UNAVAILABLE' | 'RATE_LIMITED' | 'NOT_AUTHENTICATED' | 'FAILED';
 
 interface HelpAnswer {
   question: string;
   answer: string;
   sources: HelpSource[];
+}
+
+type HelpStreamEvent =
+  | { token: string }
+  | { done: true; sources?: HelpSource[]; error?: string };
+
+/**
+ * Streams a help-center answer from `app/api/help-question/route.ts` (which
+ * itself proxies the AI gateway's `POST /ai/chat/stream` SSE response) and
+ * reports progress via callbacks: `onToken` fires with the answer-so-far on
+ * every token, `onFailure` fires once if the request never streams at all
+ * (pre-stream 401/429/503) or fails partway through.
+ */
+async function streamHelpAnswer(
+  question: string,
+  signal: AbortSignal,
+  handlers: {
+    onToken: (answer: string, sources: HelpSource[]) => void;
+    onFailure: (reason: HelpFailureReason) => void;
+  },
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch('/api/help-question', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ question }),
+      signal,
+    });
+  } catch {
+    if (!signal.aborted) handlers.onFailure('FAILED');
+    return;
+  }
+
+  if (!response.ok) {
+    const reason = await response
+      .json()
+      .then((b: { reason?: HelpFailureReason }) => b.reason ?? 'FAILED')
+      .catch((): HelpFailureReason => 'FAILED');
+    handlers.onFailure(reason);
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  if (reader === undefined) {
+    handlers.onFailure('FAILED');
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let answer = '';
+  let sources: HelpSource[] = [];
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+
+    let separatorIndex = buffer.indexOf('\n\n');
+    while (separatorIndex !== -1) {
+      const rawEvent = buffer.slice(0, separatorIndex);
+      buffer = buffer.slice(separatorIndex + 2);
+      separatorIndex = buffer.indexOf('\n\n');
+
+      const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data: '));
+      if (dataLine === undefined) continue;
+      const event = JSON.parse(dataLine.slice('data: '.length)) as HelpStreamEvent;
+
+      if ('token' in event) {
+        answer += event.token;
+        handlers.onToken(answer, sources);
+        continue;
+      }
+      sources = event.sources ?? [];
+      handlers.onToken(answer, sources);
+      if (event.error !== undefined) {
+        handlers.onFailure('UNAVAILABLE');
+      }
+    }
+  }
 }
 
 /** Other components (e.g. the header link) open the widget by firing this. */
@@ -100,6 +182,14 @@ export function AssistantWidget({
   const [pending, startTransition] = useTransition();
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const helpAbortRef = useRef<AbortController | null>(null);
+
+  // A closed panel shouldn't keep paying for tokens no one will see —
+  // mirrors the gateway's own res.on('close') abort.
+  useEffect(() => {
+    if (!open) helpAbortRef.current?.abort();
+  }, [open]);
+  useEffect(() => () => helpAbortRef.current?.abort(), []);
 
   // Keep the panel mounted through its close animation, then unmount.
   useEffect(() => {
@@ -181,7 +271,8 @@ export function AssistantWidget({
     [pending, turns, t, router],
   );
 
-  // One question → one answer. No history: each submit replaces the last Q&A.
+  // One question → one answer streamed token-by-token. No history: each
+  // submit replaces the last Q&A.
   const submitHelp = useCallback(
     (content: string): void => {
       const text = content.trim();
@@ -191,21 +282,24 @@ export function AssistantWidget({
       setNotice(null);
       setHelpAnswer(null);
 
+      helpAbortRef.current?.abort();
+      const controller = new AbortController();
+      helpAbortRef.current = controller;
+
       startTransition(() => {
-        void helpQuestionAction(text).then((res) => {
-          if (!res.ok) {
+        void streamHelpAnswer(text, controller.signal, {
+          onToken: (answer, sources) => setHelpAnswer({ question: text, answer, sources }),
+          onFailure: (reason) => {
             setNotice(
-              res.reason === 'UNAVAILABLE'
+              reason === 'UNAVAILABLE'
                 ? t.unavailable
-                : res.reason === 'RATE_LIMITED'
+                : reason === 'RATE_LIMITED'
                   ? t.rateLimited
-                  : res.reason === 'NOT_AUTHENTICATED'
+                  : reason === 'NOT_AUTHENTICATED'
                     ? t.signInRequired
                     : t.failed,
             );
-            return;
-          }
-          setHelpAnswer({ question: text, answer: res.answer, sources: res.sources });
+          },
         });
       });
     },
@@ -446,7 +540,7 @@ export function AssistantWidget({
               </>
             )}
 
-            {pending && (
+            {pending && (mode === 'booking' || helpAnswer === null) && (
               <div className="aw-msg aw-msg--assistant">
                 <span className="aw-msg__avatar" aria-hidden="true">
                   <AssistantMark size={16} />

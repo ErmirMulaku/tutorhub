@@ -929,44 +929,16 @@ export interface AssistantReply {
   actions?: AssistantAction[];
 }
 
-/** A help-article citation the AI gateway's `help_question` task returned. */
+/**
+ * A help-article citation the AI gateway's `help_question` task returned.
+ * The question itself streams via `app/api/help-question/route.ts` (SSE,
+ * proxied so the session JWT never reaches the browser) rather than a
+ * plain REST call here — see `AssistantWidget`'s help mode.
+ */
 export interface HelpSource {
   n: number;
   articleId: string;
   title: string;
-}
-
-export interface HelpQuestionReply {
-  answer: string;
-  sources: HelpSource[];
-}
-
-/**
- * One help-center question, against the AI gateway's `help_question` task
- * (REST, same as the booking assistant — `services/api`'s `/ai/chat`, not
- * `/assistant/chat`). One question, one answer — no conversation history.
- *
- * 503 means every configured model failed; 429 means the per-caller rate
- * limit or daily token budget was hit. Both are expected states the UI
- * explains rather than errors. A question outside the help center's 12
- * articles isn't an error either — the gateway answers "I couldn't find
- * this" itself rather than returning a distinct status.
- */
-export async function helpQuestion(
-  question: string,
-  token: string,
-): Promise<HelpQuestionReply | { unavailable: true } | { rateLimited: true }> {
-  const res = await fetch(`${API_URL}/ai/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ task: 'help_question', input: { question } }),
-    cache: 'no-store',
-  });
-  if (res.status === 503) return { unavailable: true };
-  if (res.status === 429) return { rateLimited: true };
-  if (!res.ok) throw new Error(`Help question request failed: ${res.status}`);
-  const body = (await res.json()) as { answer: string; sources?: HelpSource[] };
-  return { answer: body.answer, sources: body.sources ?? [] };
 }
 
 /**
