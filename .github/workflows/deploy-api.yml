@@ -39,6 +39,9 @@ permissions:
 
 env:
   AWS_REGION: eu-central-1
+  ECS_CLUSTER: tutorhub-gateway
+  ECS_SERVICE: tutorhub-gateway-svc
+  ECS_TASK_FAMILY: tutorhub-gateway
 
 jobs:
   deploy:
@@ -74,48 +77,35 @@ jobs:
           push: true
           tags: |
             ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Start App Runner deployment
-        id: rollout
+      - name: Roll out to ECS
         run: |
-          OP_ID=$(aws apprunner start-deployment \
-            --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
-            --query 'OperationId' --output text)
-          echo "Started operation $OP_ID"
-          echo "operation-id=$OP_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for the rollout to finish
-        run: |
-          # App Runner has no CLI waiter for deployments, so poll the operation.
-          for i in $(seq 1 60); do
-            STATUS=$(aws apprunner list-operations \
-              --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
-              --query "OperationSummaryList[?Id=='${{ steps.rollout.outputs.operation-id }}'].Status | [0]" \
-              --output text)
-            echo "[$i/60] $STATUS"
-            case "$STATUS" in
-              SUCCEEDED) echo "Rollout succeeded"; exit 0 ;;
-              FAILED|ROLLBACK_SUCCEEDED|ROLLBACK_FAILED)
-                echo "::error::Rollout finished as $STATUS"; exit 1 ;;
-            esac
-            sleep 10
-          done
-          echo "::error::Timed out after 10m waiting for the rollout"; exit 1
+          IMAGE="${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
+          TD=$(aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_FAMILY" \
+            --query taskDefinition --output json)
+          NEW=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+            del(.taskDefinitionArn,.revision,.status,.requiresAttributes,
+                .compatibilities,.registeredAt,.registeredBy)
+            | .containerDefinitions[0].image = $IMG')
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Registered $ARN"
+          aws ecs update-service --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" --task-definition "$ARN" > /dev/null
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
 
       - name: Smoke check
         run: |
-          URL=$(aws apprunner describe-service \
-            --service-arn "${{ secrets.APPRUNNER_SERVICE_ARN }}" \
-            --query 'Service.ServiceUrl' --output text)
-          # A green rollout only means the container passed its health check;
-          # confirm the app actually answers GraphQL before calling this a deploy.
-          curl -sf -o /dev/null -X POST "https://$URL/graphql" \
+          curl -sf https://api.tutorhub.ermir-mulaku.com/health
+          curl -sf -o /dev/null -X POST https://api.tutorhub.ermir-mulaku.com/graphql \
             -H 'content-type: application/json' \
             -d '{"query":"{__typename}"}'
-          echo "https://$URL answered GraphQL"
+          echo "API answered /health and GraphQL"
 
 # ── Migrations ───────────────────────────────────────────────────────────────
 # `prisma migrate deploy` is deliberately not run here. It needs to reach the
