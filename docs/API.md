@@ -27,21 +27,25 @@ Send it as `Authorization: Bearer <token>`.
 
 ## REST
 
-| Method & path                                                  | Purpose                              | Errors              |
-| -------------------------------------------------------------- | ------------------------------------ | ------------------- |
-| `GET /health`                                                  | Liveness probe                       | —                   |
-| `GET /ready`                                                   | Readiness probe (checks DB)          | `503`               |
-| `GET /metrics`                                                 | Prometheus metrics                   | —                   |
-| `GET /status`                                                  | HTML status page                     | —                   |
-| `POST /assistant/chat`                                         | Booking assistant (§12B, deprecated) | `400`, `429`, `503` |
-| `POST /tutors` · `GET /tutors`                                 | Create / list tutors                 | `400`               |
-| `GET·PATCH·DELETE /tutors/:id`                                 | Read / update / delete a tutor       | `404`               |
-| `POST /subjects` · `GET /subjects?tutorId=`                    | Create / list subjects               | `400`, `404`        |
-| `GET·PATCH·DELETE /subjects/:id`                               | Read / update / delete a subject     | `404`               |
-| `POST /bookings` · `GET /bookings?status=&tutorId=&studentId=` | Create / list bookings               | `400`, `404`        |
-| `GET /bookings/:id`                                            | Read a booking                       | `404`               |
-| `PATCH /bookings/:id/status`                                   | Change status (state machine)        | `404`, `409`        |
-| `POST /auth/dev-login`                                         | Mint a dev JWT                       | `404`               |
+| Method & path                                                  | Purpose                                                              | Errors                     |
+| -------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------- |
+| `GET /health`                                                  | Liveness probe                                                       | —                          |
+| `GET /ready`                                                   | Readiness probe (checks DB)                                          | `503`                      |
+| `GET /metrics`                                                 | Prometheus metrics                                                   | —                          |
+| `GET /status`                                                  | HTML status page                                                     | —                          |
+| `GET /ai/tasks`                                                | Tasks the caller may use                                             | —                          |
+| `POST /ai/chat` · `POST /ai/chat/stream`                       | Unified chat (`task: "chat"`), help_question, summarize_conversation | `400`, `403`, `429`, `503` |
+| `POST /ai/chat/confirm`                                        | Executes a write action the chat proposed                            | `400`, `403`               |
+| `GET /help/articles/:id`                                       | One help-center article (public)                                     | `404`                      |
+| `POST /assistant/chat`                                         | Booking assistant (§12B, deprecated)                                 | `400`, `429`, `503`        |
+| `POST /tutors` · `GET /tutors`                                 | Create / list tutors                                                 | `400`                      |
+| `GET·PATCH·DELETE /tutors/:id`                                 | Read / update / delete a tutor                                       | `404`                      |
+| `POST /subjects` · `GET /subjects?tutorId=`                    | Create / list subjects                                               | `400`, `404`               |
+| `GET·PATCH·DELETE /subjects/:id`                               | Read / update / delete a subject                                     | `404`                      |
+| `POST /bookings` · `GET /bookings?status=&tutorId=&studentId=` | Create / list bookings                                               | `400`, `404`               |
+| `GET /bookings/:id`                                            | Read a booking                                                       | `404`                      |
+| `PATCH /bookings/:id/status`                                   | Change status (state machine)                                        | `404`, `409`               |
+| `POST /auth/dev-login`                                         | Mint a dev JWT                                                       | `404`                      |
 
 Example — create a booking:
 
@@ -55,6 +59,35 @@ curl -X POST localhost:4000/bookings -H 'content-type: application/json' -d '{
 
 All input is validated (`class-validator`). Errors: **400** validation,
 **404** not found, **409** illegal status transition.
+
+### Unified AI chat
+
+One conversation for both help questions and booking actions, backed entirely by
+Bedrock Converse. Full architecture, the tool registry, and how to add a tool:
+[`UNIFIED_CHAT_ARCHITECTURE.md`](./UNIFIED_CHAT_ARCHITECTURE.md).
+
+`POST /ai/chat` and `POST /ai/chat/stream` (SSE) take `{ "task": "chat", "input": { "messages": [...] } }`
+— full history each call, like the other tasks on this endpoint (`help_question`, `summarize_conversation`).
+The model picks from a registry of read and write tools; **write tools (`bookLesson`, `cancelLesson`)
+never execute directly** — the response carries a `confirmation` (`{token, toolName, summary}`) instead,
+and the caller must `POST /ai/chat/confirm` with that token to actually run it. Citations (`sources`)
+link to `GET /help/articles/:id`.
+
+SSE events: `token` (text), `tool_call`/`tool_result` (status only), `citations`, `confirmation_required`,
+`done`, `error` — same framing as the other streamed tasks.
+
+```bash
+curl -X POST localhost:4000/ai/chat -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{
+  "task": "chat",
+  "input": { "messages": [{ "role": "user", "content": "Book me a maths lesson with Ana tomorrow at 10am UTC" }] }
+}'
+# → 201 { "answer": "... Please confirm below ...", "toolsUsed": ["searchTutors","getAvailability","bookLesson"],
+#          "confirmation": { "token": "…", "toolName": "bookLesson", "summary": "Book this lesson: …" } }
+
+curl -X POST localhost:4000/ai/chat/confirm -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"token":"…"}'
+# → 201 { "ok": true, "toolName": "bookLesson", "result": { "id": "…", "status": "PENDING" } }
+```
 
 ### AI booking assistant (deprecated)
 
