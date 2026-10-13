@@ -21,7 +21,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "rag:ingest": "tsx scripts/rag-ingest.ts",
-    "rag:eval": "tsx scripts/rag-eval.ts"
+    "rag:eval": "tsx scripts/rag-eval.ts",
+    "chat:eval": "tsx scripts/chat-eval.ts"
   },
   "dependencies": {
     "@apollo/server": "5.5.1",

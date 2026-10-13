@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsIn, IsString, MaxLength, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ChatMessageDto {
@@ -9,6 +17,7 @@ export class ChatMessageDto {
 
   @ApiProperty({ maxLength: 4000 })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(4000)
   content!: string;
 }
