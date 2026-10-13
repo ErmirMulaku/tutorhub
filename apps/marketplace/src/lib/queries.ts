@@ -905,62 +905,20 @@ export async function deleteAccount(token: string): Promise<void> {
   await graphqlRequest(DELETE_ACCOUNT_MUTATION, { token, cache: 'no-store' });
 }
 
-/* ---- Booking assistant ---------------------------------------------------- */
+/* ---- Help center ----------------------------------------------------------- */
 
-export interface AssistantTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-/**
- * A follow-up destination the reply suggests, derived from the tools the model
- * ran. The API names *what* to open; the client turns it into a localized URL.
- */
-export type AssistantAction =
-  | { kind: 'search'; subject?: string; level?: string }
-  | { kind: 'tutor'; tutorId: string; tutorName?: string }
-  | { kind: 'lessons' };
-
-export interface AssistantReply {
-  reply: string;
-  /** Tools the model invoked this turn, surfaced so the UI can show its working. */
-  toolsUsed: string[];
-  /** In-app links to offer beneath the reply (may be absent on older servers). */
-  actions?: AssistantAction[];
-}
-
-/**
- * A help-article citation the AI gateway's `help_question` task returned.
- * The question itself streams via `app/api/help-question/route.ts` (SSE,
- * proxied so the session JWT never reaches the browser) rather than a
- * plain REST call here — see `AssistantWidget`'s help mode.
- */
-export interface HelpSource {
-  n: number;
-  articleId: string;
+/** One help-center article — what a chat citation links to. Public, no auth. */
+export interface HelpArticle {
+  id: string;
   title: string;
+  body: string;
 }
 
-/**
- * One assistant turn. REST rather than GraphQL — this is the only endpoint that
- * isn't, and it predates the GraphQL surface.
- *
- * The API books as the token's owner, so the caller must be a signed-in student.
- * 503 means the deployment has no OPENAI_API_KEY; 429 means the per-caller turn
- * limit was hit. Both are expected states the UI explains rather than errors.
- */
-export async function assistantChat(
-  messages: AssistantTurn[],
-  token: string,
-): Promise<AssistantReply | { unavailable: true } | { rateLimited: true }> {
-  const res = await fetch(`${API_URL}/assistant/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ messages }),
+export async function getHelpArticle(id: string): Promise<HelpArticle | null> {
+  const res = await fetch(`${API_URL}/help/articles/${encodeURIComponent(id)}`, {
     cache: 'no-store',
   });
-  if (res.status === 503) return { unavailable: true };
-  if (res.status === 429) return { rateLimited: true };
-  if (!res.ok) throw new Error(`Assistant request failed: ${res.status}`);
-  return (await res.json()) as AssistantReply;
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Help article request failed: ${res.status}`);
+  return (await res.json()) as HelpArticle;
 }

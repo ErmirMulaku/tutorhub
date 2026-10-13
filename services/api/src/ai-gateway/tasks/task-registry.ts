@@ -3,7 +3,7 @@ import type { PrincipalKind } from '../../auth/auth-user.js';
 import type { Principal } from '../auth/principal.js';
 import type { StreamToken } from '../llm/llm-client.js';
 
-export type TaskName = 'help_question' | 'summarize_conversation';
+export type TaskName = 'help_question' | 'summarize_conversation' | 'chat';
 
 export interface TaskUsage {
   inputTokens: number;
@@ -17,12 +17,45 @@ export interface TaskSource {
   title: string;
 }
 
+export interface PendingConfirmation {
+  token: string;
+  toolName: string;
+  summary: string;
+}
+
 export interface TaskResult {
   answer: string;
   model: string;
   usage: TaskUsage;
   sources?: TaskSource[];
+  /**
+   * Tasks that call tools set this. `false` means "don't cache this result"
+   * (e.g. a tool wrote user-specific data, or a write action is pending
+   * confirmation) — absent is treated as cacheable, so `help_question` and
+   * `summarize_conversation` keep their exact existing caching behavior.
+   */
+  cacheable?: boolean;
+  /** Tool names invoked this turn, for transparency and tests. */
+  toolsUsed?: string[];
+  /** Set when a write tool is awaiting the caller's confirmation. */
+  confirmation?: PendingConfirmation;
 }
+
+/**
+ * Gateway-level events a task's `runStream` may yield, layered on top of the
+ * model-level {@link StreamToken} (`text` / `tool_use`) — a task that calls
+ * tools (like the unified `chat` task) also reports tool-execution status so
+ * the SSE controller can forward the documented `tool_call` / `tool_result` /
+ * `confirmation_required` / `citations` events. Purely additive: a task that
+ * never yields these (help_question, summarize_conversation) is unaffected.
+ */
+export type ToolStatusEvent =
+  | { kind: 'tool_call'; name: string }
+  | { kind: 'tool_result'; name: string; ok: boolean }
+  | { kind: 'confirmation_required'; token: string; toolName: string; summary: string }
+  | { kind: 'citations'; sources: TaskSource[] };
+
+export type TaskStreamEvent = StreamToken | ToolStatusEvent;
 
 export interface TaskContext<TInput extends object = object> {
   input: TInput;
@@ -58,7 +91,7 @@ export interface TaskDefinition<TInput extends object = object> {
   runStream?(
     ctx: TaskContext<TInput>,
     signal?: AbortSignal,
-  ): AsyncGenerator<StreamToken, TaskResult>;
+  ): AsyncGenerator<TaskStreamEvent, TaskResult>;
 }
 
 /** DI token for the array of registered task definitions (see {@link AiGatewayModule}). */

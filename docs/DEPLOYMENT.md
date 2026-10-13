@@ -104,33 +104,16 @@ change triggers an App Runner redeployment.
 > The App Runner **instance role** must be allowed to read the referenced secrets
 > (`secretsmanager:GetSecretValue`, or `ssm:GetParameters` for SSM).
 
-| Key                     | Kind   | Value / notes                                                                                                                               |
-| ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | secret | Postgres connection string.                                                                                                                 |
-| `JWT_SECRET`            | secret | Long random value — not the `dev-only-change-me` default.                                                                                   |
-| `STRIPE_SECRET_KEY`     | secret | `sk_…` (test or live). Omit to disable payments.                                                                                            |
-| `STRIPE_WEBHOOK_SECRET` | secret | `whsec_…` from the production webhook endpoint (§5).                                                                                        |
-| `OPENAI_API_KEY`        | secret | Powers the booking assistant (`/assistant/chat`). **Omit → the endpoint returns 503.** Only the API calls OpenAI; never put this on Vercel. |
-| `OPENAI_MODEL`          | env    | Optional; defaults to `gpt-4o-mini`.                                                                                                        |
-| `NODE_ENV`              | env    | `production`.                                                                                                                               |
-| `GRPC_ENABLED`          | env    | `false` — App Runner exposes exactly one port; the gRPC microservice binds `:50051`.                                                        |
-| `CORS_ORIGINS`          | env    | `https://<marketplace>,https://<dashboard>` (the API otherwise reflects any origin).                                                        |
-| `DASHBOARD_URL`         | env    | `https://<dashboard>` — where Stripe Connect returns tutors after payout onboarding.                                                        |
-
-**Adding the OpenAI key** (the API, not Vercel):
-
-```bash
-# 1. Store the key in Secrets Manager (run this yourself; the value never leaves AWS).
-aws secretsmanager create-secret --name tutorhub/openai-api-key \
-  --secret-string 'sk-REPLACE_ME' --region eu-central-1
-# (already exists? use: aws secretsmanager put-secret-value --secret-id tutorhub/openai-api-key --secret-string 'sk-…')
-
-# 2. Reference it as a runtime secret on the service:
-#    Console → App Runner → your service → Configuration → Edit → Environment
-#      → Add environment secret:
-#        OPENAI_API_KEY = arn:aws:secretsmanager:eu-central-1:<acct-id>:secret:tutorhub/openai-api-key
-#    Saving redeploys the service. Once live, /assistant/chat stops returning 503.
-```
+| Key                     | Kind   | Value / notes                                                                        |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`          | secret | Postgres connection string.                                                          |
+| `JWT_SECRET`            | secret | Long random value — not the `dev-only-change-me` default.                            |
+| `STRIPE_SECRET_KEY`     | secret | `sk_…` (test or live). Omit to disable payments.                                     |
+| `STRIPE_WEBHOOK_SECRET` | secret | `whsec_…` from the production webhook endpoint (§5).                                 |
+| `NODE_ENV`              | env    | `production`.                                                                        |
+| `GRPC_ENABLED`          | env    | `false` — App Runner exposes exactly one port; the gRPC microservice binds `:50051`. |
+| `CORS_ORIGINS`          | env    | `https://<marketplace>,https://<dashboard>` (the API otherwise reflects any origin). |
+| `DASHBOARD_URL`         | env    | `https://<dashboard>` — where Stripe Connect returns tutors after payout onboarding. |
 
 ---
 

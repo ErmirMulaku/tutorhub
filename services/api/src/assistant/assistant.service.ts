@@ -1,10 +1,14 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import { OpenAiService } from './openai.service.js';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { ContentBlock, ConverseMessage } from '../ai-gateway/llm/llm-client.js';
+import { modelChainFrom } from '../ai-gateway/tasks/model-chain.js';
+import { ModelRouterService } from '../ai-gateway/llm/model-router.service.js';
 import { ToolDispatcher, TOOLS } from './assistant.tools.js';
 
 /** Cap on tool-call round-trips per turn, to bound cost and stop loops. */
 const MAX_STEPS = 6;
+const MAX_OUTPUT_TOKENS = 600;
+const TEMPERATURE = 0.2;
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
@@ -22,6 +26,12 @@ export type AssistantAction =
   | { kind: 'tutor'; tutorId: string; tutorName?: string }
   | { kind: 'lessons' };
 
+export interface AssistantUsage {
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
 export interface AssistantReply {
   reply: string;
   /** Tools the model invoked this turn, for transparency and tests. */
@@ -30,13 +40,10 @@ export interface AssistantReply {
   actions: AssistantAction[];
 }
 
-function parseArgs(raw: string): Record<string, unknown> {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
+/** Internal result — same public shape, plus usage for the gateway's budget/log. */
+export interface AssistantOutcome extends AssistantReply {
+  model: string;
+  usage: AssistantUsage;
 }
 
 function argString(args: Record<string, unknown>, key: string): string | undefined {
@@ -63,16 +70,27 @@ function systemPrompt(today: string): string {
 }
 
 /**
- * Orchestrates an OpenAI function-calling turn: the model decides which tools to
- * call, this service executes them server-side via {@link ToolDispatcher}, feeds
- * results back, and loops until the model produces a final reply.
+ * Orchestrates a Bedrock Converse tool-calling turn: the model decides which
+ * tools to call, this service executes them server-side via
+ * {@link ToolDispatcher}, feeds results back, and loops until the model
+ * produces a final reply.
+ *
+ * @deprecated Kept for the live marketplace while the unified `/ai/chat`
+ * tool-calling endpoint is built (see docs/UNIFIED_AI_CHAT_PLAN.md Phase 2).
+ * Same request/response contract as before; the model call moved from
+ * OpenAI to Bedrock.
  */
 @Injectable()
 export class AssistantService {
+  private readonly modelChain: [string, ...string[]];
+
   constructor(
-    private readonly openai: OpenAiService,
-    private readonly dispatcher: ToolDispatcher,
-  ) {}
+    @Inject(ConfigService) config: ConfigService,
+    @Inject(ModelRouterService) private readonly router: ModelRouterService,
+    @Inject(ToolDispatcher) private readonly dispatcher: ToolDispatcher,
+  ) {
+    this.modelChain = modelChainFrom(config);
+  }
 
   /**
    * One assistant turn on behalf of `studentId`.
@@ -82,58 +100,92 @@ export class AssistantService {
    * fixed DEMO_STUDENT_EMAIL, which meant every booking it made — from anyone —
    * landed on the same demo account.
    */
-  async chat(history: ChatTurn[], studentId: string): Promise<AssistantReply> {
-    if (!this.openai.isConfigured()) {
-      throw new ServiceUnavailableException('The booking assistant is not configured.');
-    }
+  async chat(history: ChatTurn[], studentId: string): Promise<AssistantOutcome> {
     const today = new Date().toISOString().slice(0, 10);
-
-    const messages: ChatCompletionMessageParam[] = [
-      { role: 'system', content: systemPrompt(today) },
-      ...history.map((turn) => ({ role: turn.role, content: turn.content }) as const),
-    ];
+    const messages: ConverseMessage[] = history.map((turn) => ({
+      role: turn.role,
+      content: turn.content,
+    }));
     const toolsUsed: string[] = [];
     const actions: AssistantAction[] = [];
     // Tutor names seen via searchTutors, so a later profile link can be labelled.
     const tutorNames = new Map<string, string>();
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let costUsd = 0;
+    let model = this.modelChain[0];
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      const message = await this.openai.chat(messages, TOOLS);
-      const toolCalls = message.tool_calls ?? [];
+      const stream = this.router.runStream(this.modelChain, {
+        system: systemPrompt(today),
+        messages,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        temperature: TEMPERATURE,
+        tools: TOOLS,
+      });
 
-      if (toolCalls.length === 0) {
-        return { reply: message.content ?? '', toolsUsed, actions: dedupeActions(actions) };
+      let text = '';
+      const toolUses: { id: string; name: string; input: Record<string, unknown> }[] = [];
+      let next = await stream.next();
+      while (!next.done) {
+        if (next.value.kind === 'text') {
+          text += next.value.text;
+        } else {
+          toolUses.push(next.value);
+        }
+        next = await stream.next();
+      }
+      const routed = next.value;
+      model = routed.modelId;
+      inputTokens += routed.inputTokens;
+      outputTokens += routed.outputTokens;
+      costUsd += routed.costUsd;
+
+      if (toolUses.length === 0) {
+        return {
+          reply: text,
+          toolsUsed,
+          actions: dedupeActions(actions),
+          model,
+          usage: { inputTokens, outputTokens, costUsd },
+        };
       }
 
-      messages.push({ role: 'assistant', content: message.content, tool_calls: toolCalls });
+      const assistantBlocks: ContentBlock[] = [];
+      if (text !== '') {
+        assistantBlocks.push({ type: 'text', text });
+      }
+      for (const toolUse of toolUses) {
+        assistantBlocks.push({ type: 'toolUse', ...toolUse });
+      }
+      messages.push({ role: 'assistant', content: assistantBlocks });
 
-      for (const call of toolCalls) {
-        if (call.type !== 'function') continue;
-        toolsUsed.push(call.function.name);
+      const resultBlocks: ContentBlock[] = [];
+      for (const toolUse of toolUses) {
+        toolsUsed.push(toolUse.name);
         const result = await this.dispatcher.execute(
-          call.function.name,
-          call.function.arguments,
+          toolUse.name,
+          JSON.stringify(toolUse.input),
           studentId,
         );
-        messages.push({
-          role: 'tool',
-          tool_call_id: call.id,
+        const isError = typeof result === 'object' && result !== null && 'error' in result;
+        resultBlocks.push({
+          type: 'toolResult',
+          toolUseId: toolUse.id,
           content: JSON.stringify(result),
+          isError,
         });
-        this.recordActions(
-          call.function.name,
-          call.function.arguments,
-          result,
-          actions,
-          tutorNames,
-        );
+        this.recordActions(toolUse.name, toolUse.input, result, actions, tutorNames);
       }
+      messages.push({ role: 'user', content: resultBlocks });
     }
 
     return {
       reply: "Sorry — I couldn't complete that. Please try rephrasing.",
       toolsUsed,
       actions: dedupeActions(actions),
+      model,
+      usage: { inputTokens, outputTokens, costUsd },
     };
   }
 
@@ -145,12 +197,11 @@ export class AssistantService {
    */
   private recordActions(
     name: string,
-    rawArgs: string,
+    args: Record<string, unknown>,
     result: unknown,
     actions: AssistantAction[],
     tutorNames: Map<string, string>,
   ): void {
-    const args = parseArgs(rawArgs);
     const res =
       typeof result === 'object' && result !== null ? (result as Record<string, unknown>) : {};
     const failed = typeof res['error'] === 'string';

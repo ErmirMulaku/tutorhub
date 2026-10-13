@@ -91,8 +91,12 @@ export class SummarizeConversationTask implements TaskDefinition<SummarizeConver
     let answer = '';
     let next = await stream.next();
     while (!next.done) {
-      answer += next.value.text;
-      yield next.value;
+      // This task never passes `tools`, so Bedrock never returns a
+      // `tool_use` block — every token here is text.
+      if (next.value.kind === 'text') {
+        answer += next.value.text;
+        yield next.value;
+      }
       next = await stream.next();
     }
     const routed = next.value;

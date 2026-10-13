@@ -1,4 +1,4 @@
-import { type OnModuleInit } from '@nestjs/common';
+import { Inject, type OnModuleInit } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -43,7 +43,11 @@ const room = (tutorId: string): string => `tutor:${tutorId}`;
 export class BookingsGateway implements OnModuleInit {
   @WebSocketServer() private readonly server!: Server;
 
-  constructor(private readonly events: BookingEvents) {}
+  // Explicit @Inject: tsx/esbuild doesn't emit emitDecoratorMetadata, so a
+  // bare `events: BookingEvents` param resolves to undefined under tsx
+  // (scripts/chat-eval.ts boots a Nest context that transitively includes
+  // this gateway) even though it works fine in a tsc build.
+  constructor(@Inject(BookingEvents) private readonly events: BookingEvents) {}
 
   onModuleInit(): void {
     this.events.all().subscribe((booking) => {

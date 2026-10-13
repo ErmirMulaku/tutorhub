@@ -5,43 +5,71 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '@/i18n/config';
 import { interpolate, type Dictionary } from '@/i18n/dictionaries';
-import { assistantChatAction } from '@/lib/actions';
-import type { AssistantAction, AssistantTurn, HelpSource } from '@/lib/queries';
 
-type Mode = 'booking' | 'help';
-type HelpFailureReason = 'UNAVAILABLE' | 'RATE_LIMITED' | 'NOT_AUTHENTICATED' | 'FAILED';
+type FailureReason = 'UNAVAILABLE' | 'RATE_LIMITED' | 'BUDGET_EXCEEDED' | 'NOT_AUTHENTICATED' | 'FAILED';
 
-interface HelpAnswer {
-  question: string;
-  answer: string;
-  sources: HelpSource[];
+interface Citation {
+  n: number;
+  articleId: string;
+  title: string;
 }
 
-type HelpStreamEvent =
+interface Confirmation {
+  token: string;
+  toolName: string;
+  summary: string;
+  status: 'pending' | 'confirming' | 'confirmed' | 'dismissed' | 'error';
+}
+
+interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: Citation[];
+  confirmation?: Confirmation;
+}
+
+type ChatStreamEvent =
   | { token: string }
-  | { done: true; sources?: HelpSource[]; error?: string };
+  | { tool_call: { name: string } }
+  | { tool_result: { name: string; ok: boolean } }
+  | { confirmation_required: { token: string; toolName: string; summary: string } }
+  | { citations: Citation[] }
+  | { done: true; sources?: Citation[]; error?: string };
+
+function replaceAt<T>(items: T[], index: number, update: (item: T) => T): T[] {
+  return items.map((item, i) => (i === index ? update(item) : item));
+}
+
+function toolErrorMessage(result: unknown): string | undefined {
+  if (typeof result !== 'object' || result === null || !('error' in result)) return undefined;
+  return typeof result.error === 'string' ? result.error : undefined;
+}
 
 /**
- * Streams a help-center answer from `app/api/help-question/route.ts` (which
- * itself proxies the AI gateway's `POST /ai/chat/stream` SSE response) and
- * reports progress via callbacks: `onToken` fires with the answer-so-far on
- * every token, `onFailure` fires once if the request never streams at all
- * (pre-stream 401/429/503) or fails partway through.
+ * Streams one unified-chat turn from `app/api/chat/route.ts` (which proxies
+ * the AI gateway's `POST /ai/chat/stream` SSE response) and reports progress
+ * via callbacks. `onFailure` fires once if the request never streams at all
+ * (pre-stream 401/429/503/400) or fails partway through.
  */
-async function streamHelpAnswer(
-  question: string,
+async function streamChat(
+  messages: { role: 'user' | 'assistant'; content: string }[],
   signal: AbortSignal,
   handlers: {
-    onToken: (answer: string, sources: HelpSource[]) => void;
-    onFailure: (reason: HelpFailureReason) => void;
+    onToken: (answerSoFar: string) => void;
+    onToolCall: (name: string) => void;
+    onToolResult: () => void;
+    onConfirmation: (c: { token: string; toolName: string; summary: string }) => void;
+    onCitations: (sources: Citation[]) => void;
+    onDone: (sources: Citation[]) => void;
+    onFailure: (reason: FailureReason, retryAfterSec?: number) => void;
   },
 ): Promise<void> {
   let response: Response;
   try {
-    response = await fetch('/api/help-question', {
+    response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ messages }),
       signal,
     });
   } catch {
@@ -50,11 +78,11 @@ async function streamHelpAnswer(
   }
 
   if (!response.ok) {
-    const reason = await response
+    const body = await response
       .json()
-      .then((b: { reason?: HelpFailureReason }) => b.reason ?? 'FAILED')
-      .catch((): HelpFailureReason => 'FAILED');
-    handlers.onFailure(reason);
+      .then((b: { reason?: FailureReason; retryAfterSec?: number }) => b)
+      .catch((): { reason?: FailureReason; retryAfterSec?: number } => ({}));
+    handlers.onFailure(body.reason ?? 'FAILED', body.retryAfterSec);
     return;
   }
 
@@ -67,7 +95,6 @@ async function streamHelpAnswer(
   const decoder = new TextDecoder();
   let buffer = '';
   let answer = '';
-  let sources: HelpSource[] = [];
 
   for (;;) {
     const { done, value } = await reader.read();
@@ -82,17 +109,22 @@ async function streamHelpAnswer(
 
       const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data: '));
       if (dataLine === undefined) continue;
-      const event = JSON.parse(dataLine.slice('data: '.length)) as HelpStreamEvent;
+      const event = JSON.parse(dataLine.slice('data: '.length)) as ChatStreamEvent;
 
       if ('token' in event) {
         answer += event.token;
-        handlers.onToken(answer, sources);
-        continue;
-      }
-      sources = event.sources ?? [];
-      handlers.onToken(answer, sources);
-      if (event.error !== undefined) {
-        handlers.onFailure('UNAVAILABLE');
+        handlers.onToken(answer);
+      } else if ('tool_call' in event) {
+        handlers.onToolCall(event.tool_call.name);
+      } else if ('tool_result' in event) {
+        handlers.onToolResult();
+      } else if ('confirmation_required' in event) {
+        handlers.onConfirmation(event.confirmation_required);
+      } else if ('citations' in event) {
+        handlers.onCitations(event.citations);
+      } else {
+        handlers.onDone(event.sources ?? []);
+        if (event.error !== undefined) handlers.onFailure('UNAVAILABLE');
       }
     }
   }
@@ -100,46 +132,6 @@ async function streamHelpAnswer(
 
 /** Other components (e.g. the header link) open the widget by firing this. */
 export const ASSISTANT_OPEN_EVENT = 'tutorhub:assistant-open';
-
-interface Shown extends AssistantTurn {
-  /** Tools the model ran for this reply, shown so its actions aren't invisible. */
-  toolsUsed?: string[];
-  /** In-app destinations to offer as follow-up links beneath this reply. */
-  actions?: AssistantAction[];
-}
-
-/** Map a semantic action to a localized in-app link. */
-function actionLink(
-  action: AssistantAction,
-  locale: Locale,
-  t: Dictionary['assistant'],
-): { href: string; label: string } {
-  switch (action.kind) {
-    case 'search': {
-      const params = new URLSearchParams();
-      if (action.subject !== undefined) params.set('query', action.subject);
-      if (action.level !== undefined) params.set('level', action.level);
-      const qs = params.toString();
-      return {
-        href: `/${locale}/tutors${qs === '' ? '' : `?${qs}`}`,
-        label:
-          action.subject !== undefined
-            ? interpolate(t.viewResults, { subject: action.subject })
-            : t.browseTutors,
-      };
-    }
-    case 'tutor':
-      return {
-        href: `/${locale}/tutor/${action.tutorId}`,
-        label:
-          action.tutorName !== undefined && action.tutorName !== ''
-            ? interpolate(t.viewTutor, { name: action.tutorName })
-            : t.viewProfile,
-      };
-    case 'lessons':
-      return { href: `/${locale}/lessons`, label: t.viewLessons };
-  }
-}
 
 /** The orbit mark used across the brand, reused as the assistant's avatar. */
 function AssistantMark({ size = 20 }: { size?: number }): React.JSX.Element {
@@ -153,13 +145,13 @@ function AssistantMark({ size = 20 }: { size?: number }): React.JSX.Element {
 }
 
 /**
- * Floating booking-assistant widget.
- *
- * A launcher pinned to the bottom of the reading edge opens a chat panel on
- * every page. The model can book a real lesson on the signed-in student's
- * account, so the tools it ran are shown beneath each reply and a signed-out
- * visitor is prompted to sign in rather than sending a turn. Turns go through a
- * server action, keeping the session token out of the browser.
+ * Floating assistant widget — one chat for help questions and booking
+ * actions. Help answers carry citations linking to `/help/[articleId]`;
+ * write actions (book/cancel a lesson) never happen directly — a
+ * confirmation card appears and the user must press Confirm, which calls
+ * `POST /ai/chat/confirm` (via `app/api/chat/confirm/route.ts`). Turns go
+ * through same-origin route handlers, keeping the session token out of the
+ * browser.
  */
 export function AssistantWidget({
   dict,
@@ -172,24 +164,23 @@ export function AssistantWidget({
 }): React.JSX.Element {
   const t = dict.assistant;
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>('booking');
   const [open, setOpen] = useState(false);
   const [render, setRender] = useState(false);
-  const [turns, setTurns] = useState<Shown[]>([]);
-  const [helpAnswer, setHelpAnswer] = useState<HelpAnswer | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const logEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const helpAbortRef = useRef<AbortController | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // A closed panel shouldn't keep paying for tokens no one will see —
   // mirrors the gateway's own res.on('close') abort.
   useEffect(() => {
-    if (!open) helpAbortRef.current?.abort();
+    if (!open) abortRef.current?.abort();
   }, [open]);
-  useEffect(() => () => helpAbortRef.current?.abort(), []);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Keep the panel mounted through its close animation, then unmount.
   useEffect(() => {
@@ -225,89 +216,144 @@ export function AssistantWidget({
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [turns, helpAnswer, pending, render]);
+  }, [turns, toolStatus, pending, render]);
 
-  const submitBooking = useCallback(
+  const submit = useCallback(
     (content: string): void => {
       const text = content.trim();
       if (text === '' || pending) return;
 
       // The API takes the whole history each turn; it holds no conversation state.
-      const history: Shown[] = [...turns, { role: 'user', content: text }];
-      setTurns(history);
+      const history: ChatTurn[] = [...turns, { role: 'user', content: text }];
+      const assistantIndex = history.length;
+      setTurns([...history, { role: 'assistant', content: '' }]);
       setInput('');
       setNotice(null);
+      setToolStatus(null);
 
-      startTransition(() => {
-        void assistantChatAction(
-          history.map(({ role, content: c }) => ({ role, content: c })),
-        ).then((res) => {
-          if (!res.ok) {
-            setNotice(
-              res.reason === 'UNAVAILABLE'
-                ? t.unavailable
-                : res.reason === 'RATE_LIMITED'
-                  ? t.rateLimited
-                  : res.reason === 'NOT_AUTHENTICATED'
-                    ? t.signInRequired
-                    : t.failed,
-            );
-            return;
-          }
-          setTurns([
-            ...history,
-            {
-              role: 'assistant',
-              content: res.reply,
-              toolsUsed: res.toolsUsed,
-              actions: res.actions,
-            },
-          ]);
-          // A turn may have booked a lesson; refresh so /lessons isn't stale.
-          if (res.toolsUsed.includes('bookLesson')) router.refresh();
-        });
-      });
-    },
-    [pending, turns, t, router],
-  );
-
-  // One question → one answer streamed token-by-token. No history: each
-  // submit replaces the last Q&A.
-  const submitHelp = useCallback(
-    (content: string): void => {
-      const text = content.trim();
-      if (text === '' || pending) return;
-
-      setInput('');
-      setNotice(null);
-      setHelpAnswer(null);
-
-      helpAbortRef.current?.abort();
+      abortRef.current?.abort();
       const controller = new AbortController();
-      helpAbortRef.current = controller;
+      abortRef.current = controller;
 
       startTransition(() => {
-        void streamHelpAnswer(text, controller.signal, {
-          onToken: (answer, sources) => setHelpAnswer({ question: text, answer, sources }),
-          onFailure: (reason) => {
-            setNotice(
-              reason === 'UNAVAILABLE'
-                ? t.unavailable
-                : reason === 'RATE_LIMITED'
-                  ? t.rateLimited
-                  : reason === 'NOT_AUTHENTICATED'
-                    ? t.signInRequired
-                    : t.failed,
-            );
+        void streamChat(
+          history.map(({ role, content: c }) => ({ role, content: c })),
+          controller.signal,
+          {
+            onToken: (answer) =>
+              setTurns((prev) => replaceAt(prev, assistantIndex, (turn) => ({ ...turn, content: answer }))),
+            onToolCall: (name) =>
+              setToolStatus(name === 'search_help_articles' ? t.toolStatusHelp : t.toolStatusBooking),
+            onToolResult: () => setToolStatus(null),
+            onConfirmation: (c) => {
+              setToolStatus(null);
+              setTurns((prev) =>
+                replaceAt(prev, assistantIndex, (turn) => ({
+                  ...turn,
+                  confirmation: { ...c, status: 'pending' },
+                })),
+              );
+            },
+            onCitations: (sources) =>
+              setTurns((prev) => replaceAt(prev, assistantIndex, (turn) => ({ ...turn, sources }))),
+            onDone: (sources) => {
+              setToolStatus(null);
+              if (sources.length > 0) {
+                setTurns((prev) => replaceAt(prev, assistantIndex, (turn) => ({ ...turn, sources })));
+              }
+            },
+            onFailure: (reason, retryAfterSec) => {
+              setToolStatus(null);
+              setNotice(
+                reason === 'UNAVAILABLE'
+                  ? t.unavailable
+                  : reason === 'RATE_LIMITED'
+                    ? interpolate(t.rateLimited, { seconds: retryAfterSec ?? 60 })
+                    : reason === 'BUDGET_EXCEEDED'
+                      ? t.budgetExceeded
+                      : reason === 'NOT_AUTHENTICATED'
+                        ? t.signInRequired
+                        : t.failed,
+              );
+            },
           },
-        });
+        );
       });
     },
-    [pending, t],
+    [pending, turns, t],
   );
 
-  const submit = mode === 'booking' ? submitBooking : submitHelp;
+  const confirmAction = useCallback(
+    (turnIndex: number, token: string): void => {
+      setTurns((prev) =>
+        replaceAt(prev, turnIndex, (turn) =>
+          turn.confirmation === undefined
+            ? turn
+            : { ...turn, confirmation: { ...turn.confirmation, status: 'confirming' } },
+        ),
+      );
+      void fetch('/api/chat/confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+        .then((res) => res.json())
+        .then((body: { ok?: boolean; toolName?: string; result?: unknown }) => {
+          const ok = body.ok === true;
+          const note = ok
+            ? t.confirmSuccess
+            : interpolate(t.confirmFailure, { error: toolErrorMessage(body.result) ?? t.failed });
+          setTurns((prev) =>
+            replaceAt(prev, turnIndex, (turn) =>
+              turn.confirmation === undefined
+                ? turn
+                : {
+                    ...turn,
+                    content: `${turn.content}\n\n${note}`,
+                    confirmation: { ...turn.confirmation, status: ok ? 'confirmed' : 'error' },
+                  },
+            ),
+          );
+          if (ok) router.refresh();
+        })
+        .catch(() => {
+          setTurns((prev) =>
+            replaceAt(prev, turnIndex, (turn) =>
+              turn.confirmation === undefined
+                ? turn
+                : {
+                    ...turn,
+                    content: `${turn.content}\n\n${interpolate(t.confirmFailure, { error: t.failed })}`,
+                    confirmation: { ...turn.confirmation, status: 'error' },
+                  },
+            ),
+          );
+        });
+    },
+    [t, router],
+  );
+
+  const dismissConfirmation = useCallback(
+    (turnIndex: number): void => {
+      setTurns((prev) =>
+        replaceAt(prev, turnIndex, (turn) =>
+          turn.confirmation === undefined
+            ? turn
+            : {
+                ...turn,
+                content: `${turn.content}\n\n${t.confirmDismissed}`,
+                confirmation: { ...turn.confirmation, status: 'dismissed' },
+              },
+        ),
+      );
+    },
+    [t],
+  );
+
   const suggestions = [t.suggest1, t.suggest2, t.suggest3];
+  const lastTurn = turns.at(-1);
+  const showTyping = pending && lastTurn?.role === 'assistant' && lastTurn.content === '' && toolStatus === null;
+  const showToolStatus = pending && toolStatus !== null;
 
   return (
     <>
@@ -358,15 +404,17 @@ export function AssistantWidget({
                 {t.status}
               </p>
             </div>
-            {mode === 'booking' && turns.length > 0 && (
+            {turns.length > 0 && (
               <button
                 type="button"
                 className="aw-head__btn"
                 aria-label={t.newChat}
                 title={t.newChat}
                 onClick={() => {
+                  abortRef.current?.abort();
                   setTurns([]);
                   setNotice(null);
+                  setToolStatus(null);
                   inputRef.current?.focus();
                 }}
               >
@@ -393,43 +441,13 @@ export function AssistantWidget({
             </button>
           </header>
 
-          <div className="aw-modes" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'booking'}
-              data-active={mode === 'booking'}
-              className="aw-mode-btn"
-              onClick={() => {
-                setMode('booking');
-                setNotice(null);
-              }}
-            >
-              {t.modeBooking}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'help'}
-              data-active={mode === 'help'}
-              className="aw-mode-btn"
-              onClick={() => {
-                setMode('help');
-                setNotice(null);
-              }}
-            >
-              {t.modeHelp}
-            </button>
-          </div>
-
           <div className="aw-log" role="log" aria-live="polite">
-            {mode === 'booking' && turns.length === 0 && !pending && (
+            {turns.length === 0 && !pending && (
               <div className="aw-empty">
                 <span className="aw-empty__avatar" aria-hidden="true">
                   <AssistantMark size={26} />
                 </span>
                 <p className="aw-empty__greeting">{t.greeting}</p>
-                <p className="aw-empty__hint">{t.subtitle}</p>
                 <div className="aw-suggests">
                   {suggestions.map((s) => (
                     <button
@@ -446,8 +464,7 @@ export function AssistantWidget({
               </div>
             )}
 
-            {mode === 'booking' &&
-              turns.map((turn, i) => (
+            {turns.map((turn, i) => (
               <div key={i} className={`aw-msg aw-msg--${turn.role}`}>
                 {turn.role === 'assistant' && (
                   <span className="aw-msg__avatar" aria-hidden="true">
@@ -455,92 +472,66 @@ export function AssistantWidget({
                   </span>
                 )}
                 <div className="aw-msg__body">
-                  <div className="aw-bubble">{turn.content}</div>
-                  {turn.toolsUsed !== undefined && turn.toolsUsed.length > 0 && (
-                    <p className="aw-tools">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M9 12l2 2 4-4"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {interpolate(t.toolsUsed, { tools: turn.toolsUsed.join(', ') })}
-                    </p>
+                  {turn.content !== '' && <div className="aw-bubble">{turn.content}</div>}
+
+                  {turn.sources !== undefined && turn.sources.length > 0 && (
+                    <ul className="aw-sources">
+                      <li className="aw-sources__label">{t.sourcesLabel}</li>
+                      {turn.sources.map((source) => (
+                        <Link
+                          key={source.n}
+                          href={`/${locale}/help/${source.articleId}`}
+                          target="_blank"
+                          className="aw-source"
+                        >
+                          <span className="aw-source__n">[{source.n}]</span>
+                          {source.title}
+                        </Link>
+                      ))}
+                    </ul>
                   )}
-                  {turn.role === 'assistant' &&
-                    turn.actions !== undefined &&
-                    turn.actions.length > 0 && (
-                      <div className="aw-actions">
-                        {turn.actions.map((action, ai) => {
-                          const { href, label } = actionLink(action, locale, t);
-                          return (
-                            <Link
-                              key={ai}
-                              href={href}
-                              className="aw-action"
-                              onClick={() => setOpen(false)}
-                            >
-                              {label}
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path
-                                  d="M5 12h14M13 6l6 6-6 6"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </Link>
-                          );
-                        })}
+
+                  {turn.confirmation !== undefined &&
+                    (turn.confirmation.status === 'pending' || turn.confirmation.status === 'confirming') && (
+                      <div className="aw-confirm">
+                        <p className="aw-confirm__summary">{turn.confirmation.summary}</p>
+                        <div className="aw-confirm__actions">
+                          <button
+                            type="button"
+                            className="aw-confirm-btn aw-confirm-btn--cancel"
+                            disabled={turn.confirmation.status === 'confirming'}
+                            onClick={() => dismissConfirmation(i)}
+                          >
+                            {dict.common.cancel}
+                          </button>
+                          <button
+                            type="button"
+                            className="aw-confirm-btn aw-confirm-btn--confirm"
+                            disabled={turn.confirmation.status === 'confirming'}
+                            onClick={() => confirmAction(i, turn.confirmation!.token)}
+                          >
+                            {t.confirmButton}
+                          </button>
+                        </div>
                       </div>
                     )}
                 </div>
               </div>
             ))}
 
-            {mode === 'help' && helpAnswer === null && !pending && (
-              <div className="aw-empty">
-                <span className="aw-empty__avatar" aria-hidden="true">
-                  <AssistantMark size={26} />
+            {showToolStatus && (
+              <div className="aw-msg aw-msg--assistant">
+                <span className="aw-msg__avatar" aria-hidden="true">
+                  <AssistantMark size={16} />
                 </span>
-                <p className="aw-empty__greeting">{t.helpGreeting}</p>
+                <p className="aw-tool-status">
+                  <span className="aw-tool-status__dot" aria-hidden="true" />
+                  {toolStatus}
+                </p>
               </div>
             )}
 
-            {mode === 'help' && helpAnswer !== null && (
-              <>
-                <div className="aw-msg aw-msg--user">
-                  <div className="aw-msg__body">
-                    <div className="aw-bubble">{helpAnswer.question}</div>
-                  </div>
-                </div>
-                <div className="aw-msg aw-msg--assistant">
-                  <span className="aw-msg__avatar" aria-hidden="true">
-                    <AssistantMark size={16} />
-                  </span>
-                  <div className="aw-msg__body">
-                    <div className="aw-bubble">{helpAnswer.answer}</div>
-                    {helpAnswer.sources.length > 0 && (
-                      <ul className="aw-sources">
-                        <li className="aw-sources__label">{t.helpSources}</li>
-                        {helpAnswer.sources.map((source) => (
-                          <li key={source.n} className="aw-source">
-                            <span className="aw-source__n">[{source.n}]</span>
-                            {source.title}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {pending && (mode === 'booking' || helpAnswer === null) && (
+            {showTyping && (
               <div className="aw-msg aw-msg--assistant">
                 <span className="aw-msg__avatar" aria-hidden="true">
                   <AssistantMark size={16} />
@@ -579,8 +570,8 @@ export function AssistantWidget({
                     submit(input);
                   }
                 }}
-                placeholder={mode === 'booking' ? t.placeholder : t.helpPlaceholder}
-                aria-label={mode === 'booking' ? t.placeholder : t.helpPlaceholder}
+                placeholder={t.placeholder}
+                aria-label={t.placeholder}
                 maxLength={2000}
                 disabled={pending}
               />

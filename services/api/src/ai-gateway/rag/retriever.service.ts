@@ -35,7 +35,7 @@ export class RetrieverService {
     @Inject(EmbeddingsService) private readonly embeddings: EmbeddingsService,
   ) {
     this.client = new S3VectorsClient({
-      region: config.get<string>('AWS_REGION', 'us-east-1'),
+      region: config.getOrThrow<string>('AWS_REGION'),
     });
     this.bucket = config.getOrThrow<string>('S3_VECTOR_BUCKET');
     this.index = config.getOrThrow<string>('S3_VECTOR_INDEX');

@@ -46,4 +46,8 @@ export class FakeRedis implements RedisLike {
     const entry = this.store.get(key);
     return Promise.resolve(entry === undefined ? null : String(entry.value));
   }
+
+  del(key: string): Promise<number> {
+    return Promise.resolve(this.store.delete(key) ? 1 : 0);
+  }
 }

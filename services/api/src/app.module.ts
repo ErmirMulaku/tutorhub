@@ -17,6 +17,7 @@ import { EmailModule } from './email/email.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { MarketingModule } from './marketing/marketing.module.js';
 import { HealthController } from './health/health.controller.js';
+import { HelpModule } from './help/help.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -72,6 +73,7 @@ const schemaFile = isProd
     AssistantModule,
     TutorDashboardModule,
     AiGatewayModule,
+    HelpModule,
   ],
   controllers: [HealthController],
 })
