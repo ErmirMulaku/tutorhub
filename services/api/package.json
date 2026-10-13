@@ -8,6 +8,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "build": "tsc -p tsconfig.build.json",
+    "postbuild": "cp -r src/ai-gateway/rag/help-articles dist/ai-gateway/rag/help-articles",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src test",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
