@@ -530,6 +530,26 @@ the modal backdrop — kept as a mouse-only shortcut (Escape and the × button a
 path), documented inline. Recorded one honest difference: screens refetch on mount where RTK
 served a fresh cache.
 
+**10.4 Real-time ✅** — **Built:** `LiveSocketService` — socket.io-client wrapped in cold RxJS
+Observables (connect + room join on every `connect`, so reconnects rejoin; teardown closes the
+socket; `io()` behind an `InjectionToken` for testing); live `bookingChanged` → an NgRx
+`liveChanged` action (entity patched immediately) + an effect invalidating the same tags as the
+React hook; the notifications feed in the NgRx `dashboard` feature and the `NotificationsBell`
+(outside-click via a document host listener); and the **Messages** screen (thread list,
+conversation, composer, mark-read, `afterRenderEffect` auto-scroll, its own live subscription).
+
+**Verified (not just generated):** **an external `curl` (same tutor, "another device") accepted a
+booking while the Angular dashboard sat untouched** — a DOM watcher recorded the pill flip to
+Confirmed and "Up next" appear first (straight from the socket payload via `updateOne`), then the
+Pending KPI and sidebar badge drop 2 → 1 about 70 ms later (the tag-driven refetch). A message sent
+by `curl` into the open thread appeared live, scrolled into view, with the thread preview updated;
+opening an unread thread cleared the sidebar badge; the composer sends. The bell showed the 7-item
+feed with type dots and relative times, and closes on outside click. Two Socket.IO handshakes on
+/messages (shell + screen), as in React. **Not yet proven:** that leaving /messages closes its
+socket (it upgrades to a WebSocket, invisible to request timing) — covered by the Phase 7
+mock-socket test. TypeScript caught a real typing gap (socket.io's `any[]` listeners vs. a
+`never[]` placeholder), fixed with generic listener signatures.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

@@ -170,6 +170,19 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
 | Mutate             | `const [accept] = useAcceptBookingMutation(); accept(id).unwrap().then(toast)` | `dispatch(changeStatus({ booking, transition: 'accept' }))` → effect → `changeStatusSuccess` → `updateOne` + toast effect |
 | Refresh after      | `invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications']`            | `CacheTags.invalidate('Booking', 'DashboardSummary', 'Notifications')` in the service                                     |
 
+**Implementation notes (Phase 4):**
+
+- **`LiveSocketService`** returns _cold_ Observables: subscribing opens a socket.io connection
+  (same `['polling', 'websocket']` transports), joins the room on every `connect` — which
+  socket.io also fires after each automatic reconnect, so rooms are rejoined by themselves — and
+  unsubscribing closes it. Components subscribe with `takeUntilDestroyed()`, the counterpart of the
+  React hooks' cleanup. The `io()` call sits behind an `InjectionToken` so tests can pass a fake.
+- **Same two connections as React:** bookings in the shell, messages only on the Messages screen.
+- **`bookingChanged` → NgRx:** a `liveChanged` action patches the booking already in the entity
+  state at once (status + times), and an effect invalidates `Booking` / `DashboardSummary` /
+  `Notifications` exactly like the React hook, so lists and KPIs refetch a moment later.
+- **Notifications** live in the NgRx `dashboard` feature (the bell is on every page).
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
