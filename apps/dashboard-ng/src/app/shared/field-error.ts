@@ -6,6 +6,8 @@ import { startWith, switchMap } from 'rxjs';
 /** Human messages for the validators this app uses. */
 function describe(errors: ValidationErrors): string {
   if (errors['required']) return 'This field is required.';
+  const minLength = errors['minlength'] as { requiredLength: number } | undefined;
+  if (minLength) return `Use at least ${String(minLength.requiredLength)} characters.`;
   const min = errors['min'] as { min: number } | undefined;
   if (min) return `Must be at least ${String(min.min)}.`;
   const max = errors['max'] as { max: number } | undefined;

@@ -1,0 +1,33 @@
+<th-modal [open]="open()" title="New promotion" (closed)="closed.emit()">
+  <form class="svc-form" [formGroup]="form" (ngSubmit)="submit()">
+    <label class="login__field">
+      <span>Name</span>
+      <input formControlName="name" />
+      <th-field-error [control]="form.controls.name" />
+    </label>
+    <label class="login__field">
+      <span>Code</span>
+      <input formControlName="code" autocomplete="off" />
+      <th-field-error [control]="form.controls.code" />
+    </label>
+    <div class="svc-form__row">
+      <label class="login__field">
+        <span>Type</span>
+        <select formControlName="discountType">
+          <option value="PERCENT">Percent</option>
+          <option value="FIXED">Fixed (USD)</option>
+        </select>
+      </label>
+      <label class="login__field">
+        <span>{{ discountType() === 'PERCENT' ? 'Percent off' : 'Amount off (USD)' }}</span>
+        <input type="number" min="1" formControlName="amount" />
+        <th-field-error [control]="form.controls.amount" />
+        <!-- Group-level rule (depends on the type): only "at most 100 %". -->
+        <th-field-error [control]="form" />
+      </label>
+    </div>
+    <button th-button type="submit" block [disabled]="creating()">
+      {{ creating() ? 'Creating…' : 'Create promotion' }}
+    </button>
+  </form>
+</th-modal>
