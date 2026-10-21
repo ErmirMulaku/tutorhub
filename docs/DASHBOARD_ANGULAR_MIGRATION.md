@@ -142,6 +142,34 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
 - **Reactive Forms add `novalidate`**; the auth forms set `ngNativeValidate` to keep React's
   browser-native `required` / `type=email` / `minlength` checks.
 
+**Implementation notes (Phase 3):**
+
+- **Where data lives.** NgRx holds what several parts of the screen share or what effects
+  change: `bookings` (entity adapter: lessons + today's schedule) and `dashboard` (`meTutor`, the
+  KPI summary that also drives the sidebar badges, the published flag). The sidebar — present on
+  every shell page — keeps `dashboard` loaded, so the dashboard screen reads it instead of fetching
+  again. Everything else is a component-scoped `cachedQuery` (Angular's `rxResource` + tags).
+- **Tags, same names as `api.ts`.** Each service mutation calls `CacheTags.invalidate(...)` with
+  exactly the tags its React endpoint listed in `invalidatesTags`; `loadOnTags` (NgRx) and
+  `cachedQuery` (resources) reload while their component is alive — RTK's "active subscriptions
+  refetch on invalidation".
+- **One honest difference:** RTK Query serves a still-fresh cache entry when a screen re-mounts;
+  here a screen fetches again on mount. Simpler, never stale, one extra request per visit.
+- **Account switch** is handled by a meta-reducer that drops every data slice on
+  `setCredentials` / `clearCredentials` (port of the `store.ts` listener).
+
+**RTK Query hook → NgRx effect + selector (the Lessons list):**
+
+| Step               | React (RTK Query)                                                              | Angular (NgRx)                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Define the request | `getTutorBookings: build.query({ query: () => ({ graphql: … }) })`             | `BookingsApi.tutorBookings()` — `HttpClient` via `GraphqlClient`                                                          |
+| Trigger it         | calling `useGetTutorBookingsQuery()` in the component                          | `loadOnTags(['Booking'], () => BookingsActions.loadLessons())`                                                            |
+| Run it             | RTK Query middleware                                                           | `loadLessons` effect: `ofType(loadLessons) → switchMap(api) → map(success) / catchError(failure)`                         |
+| Store the result   | the `api` slice's cache entry                                                  | `loadLessonsSuccess` → `bookingsAdapter.upsertMany` + `lessonIds`                                                         |
+| Read it            | `const { data, isLoading } = useGetTutorBookingsQuery()`                       | `store.selectSignal(bookingsFeature.selectLessons)` / `selectLessonsStatus`                                               |
+| Mutate             | `const [accept] = useAcceptBookingMutation(); accept(id).unwrap().then(toast)` | `dispatch(changeStatus({ booking, transition: 'accept' }))` → effect → `changeStatusSuccess` → `updateOne` + toast effect |
+| Refresh after      | `invalidatesTags: ['Booking', 'DashboardSummary', 'Notifications']`            | `CacheTags.invalidate('Booking', 'DashboardSummary', 'Notifications')` in the service                                     |
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |

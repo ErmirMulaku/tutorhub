@@ -507,6 +507,29 @@ autofocus) → an unpublished tutor reaches `/onboarding`. Unit: 4 Karma specs i
 theme-effect test; external templates proven linted. `follow-redirects` (via Karma) overridden
 1.16.0 → 1.16.1. Deliberately **no `guestGuard`** — React has none (doc corrected).
 
+**10.3 API layer + Dashboard + Lessons ✅** — **Built:** the whole data layer — typed
+`HttpClient` services for every GraphQL operation in `api.ts` (documents copied verbatim; the 4
+REST endpoints served only the unported legacy screens), a `CacheTags` service carrying RTK
+Query's tag names, `cachedQuery()` (an `rxResource` that reloads on invalidation) and
+`loadOnTags()`; NgRx **`bookings`** (`@ngrx/entity` adapter, request/success/failure actions,
+`switchMap` loads, `mergeMap` mutations, toasts in effects) and **`dashboard`** (me, KPI summary,
+published flag — one request shared by the sidebar badges and the dashboard); a meta-reducer that
+resets data on account switch; Skeleton, StarRating, StatusPill, KpiStat, a generic
+SegmentedTabs and a hand-written Modal; and the **Dashboard**, **Lessons** (query params bound to
+inputs) and **New-lesson** screens.
+
+**Verified (not just generated):** ran **both apps side by side** against the same API + seed and
+extracted the dashboard field by field — KPIs, today's schedule, Up next, latest review,
+greeting, badges — **identical**, screenshots match. Accepting a request showed React's exact
+toast, dropped the tab and sidebar badges 3 → 2, and the network showed exactly the expected
+refetches (lessons + summary). Search "Sofia" → 13 rows in both apps. New lesson: pickers only
+fetched on open (React's `skip`), booking **persisted as CONFIRMED** (10:00 CET → 09:00Z),
+modal closed, scroll lock released; Escape closes and returns focus. **Signing out and in as
+another tutor never showed the previous tutor's name or KPIs.** Lint caught a real a11y point on
+the modal backdrop — kept as a mouse-only shortcut (Escape and the × button are the keyboard
+path), documented inline. Recorded one honest difference: screens refetch on mount where RTK
+served a fresh cache.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
