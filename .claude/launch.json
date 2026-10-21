@@ -8,9 +8,12 @@
       "port": 4000
     },
     {
-      "name": "dashboard",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--workspace", "@ermulaku/dashboard"],
+      "name": "dashboard-ng",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "PATH=/Users/ermir/.nvm/versions/node/v22.23.4/bin:$PATH npm run dev --workspace @ermulaku/dashboard-ng"
+      ],
       "port": 3100
     },
     {

@@ -1,9 +1,10 @@
 # @ermulaku/dashboard-ng
 
-The TutorHub **tutor dashboard, rebuilt in Angular** — a feature-by-feature port of
-[`apps/dashboard`](../dashboard/README.md) (React + Redux Toolkit). Same screens, same API calls,
-same look; the React app stays live until cutover. Plan and progress:
-[`docs/DASHBOARD_ANGULAR_MIGRATION.md`](../../docs/DASHBOARD_ANGULAR_MIGRATION.md).
+The TutorHub **tutor dashboard**, in Angular — a feature-by-feature rewrite of the original React +
+Redux Toolkit app, which it replaced in production (the cutover). Same screens, same API calls,
+same look. The React app was removed afterwards; its last version is the git tag
+**`dashboard-react-final`**, and comments here that say "Port of apps/dashboard/…" refer to files
+at that tag. How the migration went: [`docs/DASHBOARD_ANGULAR_MIGRATION.md`](../../docs/DASHBOARD_ANGULAR_MIGRATION.md).
 
 **Stack:** Angular 22 (standalone components, signals, **zoneless**), Angular CLI with the
 esbuild `application` builder, RxJS, NgRx, SCSS, **Jasmine + Karma** for unit
@@ -14,15 +15,16 @@ tests, **Cypress** for E2E against a fixture API.
 The API must be running (see [`services/api`](../../services/api/README.md)), then:
 
 ```bash
-npm run dev -w @ermulaku/dashboard-ng       # ng serve on :3300
+npm run dev -w @ermulaku/dashboard-ng       # ng serve on :3100
 ```
 
-The React app uses :3100 and the marketplace :3200, so all three can run side by side.
+The marketplace uses :3200. :3100 is the port the marketplace's "Become a tutor" link and the API's
+Stripe Connect return URL default to locally.
 
 ## Scripts
 
 ```bash
-npm run dev         # dev server (Vite, HMR) on :3300
+npm run dev         # dev server (Vite, HMR) on :3100
 npm run build       # production build → dist/dashboard-ng/browser (fails over a size budget)
 npm run typecheck   # ngc (templates too, strictTemplates) + tsc for the specs and Cypress
 npm run lint        # eslint + angular-eslint (TS and template rules)

@@ -162,7 +162,7 @@ jobs:
           working-directory: apps/dashboard-ng
           install: false
           start: npm run dev
-          wait-on: 'http://localhost:3300'
+          wait-on: 'http://localhost:3100'
           wait-on-timeout: 120
 
       - name: Upload failure screenshots

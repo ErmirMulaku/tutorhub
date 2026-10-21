@@ -3,11 +3,11 @@ import { defineConfig } from 'cypress';
 /**
  * E2E tests for the Angular dashboard. The API is faked with `cy.intercept`
  * fixtures (cypress/support/e2e.ts), so only the dev server has to run:
- * `npm run dev` (port 3300), then `npm run e2e`.
+ * `npm run dev` (port 3100), then `npm run e2e`.
  */
 export default defineConfig({
   e2e: {
-    baseUrl: 'http://localhost:3300',
+    baseUrl: 'http://localhost:3100',
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: 'cypress/support/e2e.ts',
     fixturesFolder: 'cypress/fixtures',
