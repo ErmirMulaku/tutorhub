@@ -2,7 +2,9 @@
 
 Migrating the tutor dashboard (`apps/dashboard`: React 19 + Redux Toolkit + RTK Query + a
 hand-written Webpack 5 build) to **Angular** as a new app at `apps/dashboard-ng`, **one feature at a
-time**. The React app stays live and untouched until the cutover phase (Phase 9).
+time**. The React app stayed live and untouched until the cutover (Phase 9); it has since been
+removed from the branch — its last version is the tag `dashboard-react-final`, and the
+`apps/dashboard/…` paths below refer to files at that tag.
 
 - **Branch:** `feat/dashboard-angular-migration`, one commit (or a few) per phase, no push/deploy
   until asked.
@@ -376,6 +378,36 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   new dashboard spec's override leaked into a later real-store spec; every spec that overrides now
   calls `store.resetSelectors()` (the NgRx-documented teardown).
 
+**Implementation notes (Phase 9 — cutover, prepared on the branch):**
+
+- **The branch could not have deployed as it was.** Preparing the cutover meant testing the
+  install the way CI, the API image and Vercel run it — on Linux — and it failed everywhere:
+  `@angular-devkit/core` has an optional peer `chokidar@^5`, but the lockfile (written on macOS)
+  hoisted `chokidar@4.0.3` (pinned by `@nestjs/graphql`). macOS `npm ci` passed; Linux `npm ci`
+  refused the lockfile. Re-resolved on Linux: chokidar/readdirp 5 at the root, 4 nested under
+  `@nestjs/graphql`, nothing else changed version. `npm ci --dry-run` reproduces the failure
+  cheaply (it validates the lockfile without installing), which made it the regression check.
+- **The API image never knew about `dashboard-ng`:** `npm ci` needs every workspace manifest, and
+  `services/api/Dockerfile` did not copy the new one (fixed before the removal, then the React line
+  removed).
+- **Nx could deploy a stale `API_URL`.** The build inlines it, but the cache key only covered
+  files — `API_URL=A` then `API_URL=B` replayed A's bundle. `API_URL` is now a build input.
+- **Deploy config:** `apps/dashboard-ng/vercel.json` mirrors the React one (install/build from the
+  repo root) with Angular's output directory, `CYPRESS_INSTALL_BINARY=0` (no 200 MB binary in the
+  Vercel install), immutable caching only for hashed files, `node -v` in the log, and a build that
+  **fails when `API_URL` is unset** instead of shipping `localhost`. The whole install + build was
+  run from that file inside a Linux container: green on Node 22.23.4, and refused on Node 22.22.1
+  (Angular 22 needs ≥ 22.22.3). Vercel exposes only the major version ("latest 22.x"), so the
+  runbook below has a preview-build step that proves the exact patch before production.
+- **Removing `apps/dashboard` flushed out a phantom dependency:** `packages/ui`'s tests used
+  `@testing-library/dom` (a peer of `@testing-library/react`) that only the React app declared;
+  it is now declared in `packages/ui`. Nothing else imported the removed packages. The
+  `http-proxy-middleware` override (React dev server only) went too; `uuid`'s stays (`@lhci/cli`).
+- **The dashboard keeps port 3100 locally**, which the marketplace's "Become a tutor" link and
+  the API's Connect return URL already default to — so neither needed a change.
+- **Tag `dashboard-react-final`** = `master` at the cutover (`4460d72`), i.e. exactly what
+  production served. Local only until pushed.
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
@@ -389,7 +421,7 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
 | 6     | `AreaChart` / `BarChart` as SVG/flex components, Earnings, Marketing, Reviews, Analytics                                                                                                                              | Every React route has an Angular equivalent                                     |
 | 7     | Jasmine/Karma ports + new tests (reducers, selectors, effect, service, interceptor, guards, socket, `fakeAsync` component), Cypress E2E with fixtures, CI job                                                         | All green locally and in CI                                                     |
 | 8     | Budgets, OnPush everywhere, `@for … track`, `@defer` for charts; bundle size + Lighthouse vs React; parity checklist                                                                                                  | Numbers recorded below; gaps listed                                             |
-| 9     | **Only on request:** tag `dashboard-react-final`, point deploy at `dashboard-ng`, remove `apps/dashboard` in its own commit, docs, CV bullets + interview Q&A                                                         | Production serves the Angular app                                               |
+| 9     | Cutover: tag `dashboard-react-final`, point the deploy at `dashboard-ng`, remove `apps/dashboard` in its own commit, docs, CV bullets + interview Q&A — **done on the branch**; going live is the runbook in §9       | Production serves the Angular app                                               |
 
 ---
 
@@ -552,3 +584,43 @@ mobile dashboard scores 93.
    locally.
 8. Outside this migration: ~60 pre-existing `npm audit` findings, the 6 pre-existing API e2e
    failures (10.5b), and Karma's deprecation (Vitest is Angular's default runner).
+
+## 9. Cutover runbook (Phase 9)
+
+Everything in git is done on `feat/dashboard-angular-migration`. Going live needs these steps, in
+this order — the Vercel ones are project settings that only you can change.
+
+**What merging deploys.** The lockfile and root `package.json` changed, so the merge triggers
+**all four** deploy workflows: dashboard (Angular now), **API** (App Runner — it also ships the
+`addTimeOff` validation fix from 10.5b; no migrations on this branch), marketplace and Storybook
+(lockfile only, no code change).
+
+1. **Push and open the PR.** `git push -u origin feat/dashboard-angular-migration` and
+   `git push origin dashboard-react-final`. This is the branch's **first CI run** — `verify`
+   (incl. Karma), `marketplace-e2e`, `dashboard-ng-e2e` and `notifications` must be green.
+2. **Vercel → the dashboard project → Settings → Build and Deployment:**
+   - **Root Directory:** `apps/dashboard-ng` (was `apps/dashboard`). Keep "Include files outside
+     the root directory" on — install and build `cd ../..`.
+   - **Node.js Version:** 22.x. (If step 3 shows a version below 22.22.3, switch to 24.x.)
+   - **Environment Variables:** `API_URL` must exist for Production _and_ Preview — the build
+     now fails without it.
+     Changing settings does not deploy anything; production keeps serving React.
+3. **Preview build (no production impact):** from the repo root, with the same env as the
+   workflow, `VERCEL_ORG_ID=… VERCEL_PROJECT_ID=… npx vercel deploy` (no `--prod`). In the build
+   log check `v22.…` (≥ 22.22.3) and "Application bundle generation complete". Opening the
+   preview shows the login page; its API calls may hit CORS (a preview origin isn't in
+   `CORS_ORIGINS`) — that's expected, this step only proves the build.
+4. **Merge the PR** (you merge — Claude never does). Watch **Deploy Dashboard** and **Deploy API**.
+5. **Smoke test production:** sign in; the dashboard shows the tutor's KPIs and today's lessons;
+   accept or open a lesson; a second tab sees a live change; Calendar / Messages / Earnings open.
+   No CORS change is needed — same domain.
+
+**Rollback**
+
+- **Fast (no rebuild):** Vercel → Deployments → the last React production deployment →
+  **Instant Rollback**. Then set Root Directory back to `apps/dashboard` before anything else
+  deploys, or the next merge ships Angular again.
+- **Full:** set Root Directory to `apps/dashboard`, then GitHub → Actions → **Deploy Dashboard** →
+  Run workflow → ref **`dashboard-react-final`**.
+
+CV bullets and interview Q&A drawn from this migration: [`DASHBOARD_ANGULAR_INTERVIEW.md`](./DASHBOARD_ANGULAR_INTERVIEW.md).

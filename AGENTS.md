@@ -446,7 +446,7 @@ booking-assistant widget, reusing its token-stays-server-side pattern.
   didn't have the full way through. `npm run rag:eval` (hit@4 + `RAG_MAX_DISTANCE` calibration) is
   built but hasn't been run live either.
 
-### Phase 10 — Dashboard → Angular migration (in progress)
+### Phase 10 — Dashboard → Angular migration (done on the branch; going live is a runbook)
 
 Migrating `apps/dashboard` (React + Redux Toolkit + RTK Query + custom Webpack) to Angular at
 `apps/dashboard-ng`, one feature per sub-phase, with the React app untouched until cutover. Plan,
@@ -682,6 +682,29 @@ skeleton each fail exactly one spec); found and fixed a `MockStore.overrideSelec
 specs (`resetSelectors()`). New light-theme runs surfaced **brand-colour** findings in both apps
 (teal 3.95:1, success-green pill 2.82:1, 16 px accent swatches) — listed as a design decision, not
 changed.
+
+**10.9 Cutover prepared ✅** — **Built:** `apps/dashboard-ng/vercel.json` and the deploy workflow
+pointed at the Angular app; tag `dashboard-react-final` on `master` (what production runs);
+`apps/dashboard` removed in its own commit (86 files, its toolchain pruned from the lockfile);
+the dashboard keeps port 3100 locally so no other app's defaults change; a step-by-step cutover
+and rollback runbook (migration doc §9) and CV bullets + interview Q&A
+(`docs/DASHBOARD_ANGULAR_INTERVIEW.md`).
+
+**Verified (not just generated):** preparing the deploy surfaced three **release blockers** the
+branch had carried since the Angular dependencies were added, each reproduced before it was
+fixed — (1) `npm ci` failed on **Linux** (CI, the API image, Vercel) while passing on macOS: an
+optional peer wanted `chokidar@5` where the macOS-written lockfile hoisted 4; re-resolved on Linux,
+nothing else changed version, `npm ci --dry-run` used as the regression check (old lockfile fails,
+new passes); (2) the API Dockerfile lacked the `dashboard-ng` manifest; (3) Nx replayed a cached
+bundle with a stale `API_URL` (`API_URL` is now a build input — A, B, A proved). The Vercel install
+
+- build ran from `vercel.json` in a Linux container (green on Node 22.23.4, refused on 22.22.1 —
+  Angular 22 needs ≥ 22.22.3, hence a preview-build step in the runbook); CI, Vercel and both API
+  image installs pass on the final tree. Removing the React app exposed a phantom dependency
+  (`packages/ui` relied on its `@testing-library/dom`), now declared. Whole-workspace `nx run-many`
+  green on 8 projects, 128 Karma specs. **Not re-run:** Cypress locally (its binary was cleared with
+  the disk cleanup; app code unchanged since the last 10/10) — the PR's CI job runs it. **Not done by
+  me:** pushing, the Vercel Root Directory change, the merge — those are the runbook's steps.
 
 ---
 
