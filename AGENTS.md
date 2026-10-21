@@ -595,6 +595,29 @@ withdraw, publish/isActive, the tutors filter, 3 assistant tests) fail identical
 config — they predate this branch (stale expectations / local Stripe+AWS env) and are left for a
 separate fix. Verified in the browser: time off now adds and removes (React benefits too).
 
+**10.6 Charts + Earnings, Marketing, Reviews, Analytics ✅** — **Built:** an SVG `AreaChart` (an
+attribute component on the `<svg>`, geometry in one `computed`, a unique gradient id per instance)
+and a flex `BarChart`; a `CodeChip`; and the last four screens — **Earnings** (balance, 8-month
+chart, payout method + Stripe Connect card, transactions with CSV export), **Marketing** (stats,
+promotion cards with End, a validated new-promotion modal, gift cards, referrals), **Reviews**
+(rating distribution, All / Needs reply / Replied as query params, inline replies) and
+**Analytics** (KPIs, area chart, top subjects, weekday bars, student mix). All are `cachedQuery`s
+under React's tags (no NgRx — "fetch, show, save" screens). **Every React route now has an Angular
+equivalent.**
+
+**Verified (not just generated):** each screen **side by side with React** against the same API and
+seed — Marketing, Analytics, Reviews and Earnings render identically (1 active / 46 redemptions /
+$145; $374 / $47 / $2,104). Invalid promotions are blocked with inline errors (code upper-cased as
+typed); a $12.50 promotion persisted as **1250 cents**, then ended; Replied/Needs-reply filtered
+correctly; a reply fired exactly the 3 refetches React's tags imply (logged from `fetch`); the CSV
+export produced React's format for all 20 rows; withdraw surfaced the API's "Connect payout
+onboarding is not complete" (React shows nothing); no overflow at 375px; the DB was restored to its
+snapshot afterwards. **Caught in the browser, fixed:** the Reviews summary stacked instead of sitting
+side by side — `Card`'s `:host { display: block }` outranked the screens' classes, which had also
+silently broken the Messages two-pane grid and the Catalog card layout since Phase 2/4; moved to
+element selectors in `styles/_hosts.scss`. 20 Karma specs (was 17, + CSV quoting and formula
+guard); initial bundle unchanged at 100.9 kB.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

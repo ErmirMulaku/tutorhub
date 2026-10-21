@@ -233,6 +233,41 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   end-before-start rule; `main.ts` and all e2e suites now share one `createValidationPipe()`
   (most suites had been running without `forbidNonWhitelisted`, which is how it slipped through).
 
+**Implementation notes (Phase 6):**
+
+- **Charts without a library.** `AreaChart` is an attribute component on the SVG itself
+  (`<svg th-area-chart [points]>`; children use the `svg:` prefix) whose geometry is one
+  `computed()`. Each instance gets its own gradient id — React's fixed `areaFill` id would make
+  two charts on one page share a gradient. `BarChart` is the same flex columns as React. Both
+  expose an `aria-label` summary of the data.
+- **No NgRx here, as planned.** Earnings (3 queries), Marketing (3), Reviews (2) and Analytics (5)
+  are `cachedQuery`s under the tag React used. The Reviews tab is the query's `params`, React's
+  `useGetMyReviewsQuery(filter)`. Mutations invalidate the same tags as `api.ts`. Observed: one
+  `replyToReview` → exactly three refetches (notifications, summary, list).
+- **Deliberate differences (improvements, each verified in the browser):**
+  1. **CSV export quotes fields (RFC 4180) and defuses spreadsheet formulas** — React joined raw
+     values, so a comma in a name shifted the columns. Spec'd in `transactions-csv.spec.ts`.
+  2. **"Copied" only when the copy happened.** React toasted "Copied" even when the Clipboard API
+     was missing or denied; the chip now says it couldn't copy (seen with the pane's denied
+     permission, and the success path with a stubbed clipboard).
+  3. **New-promotion validation** mirrors the API's class-validator rules (name ≥ 2, code ≥ 3,
+     value ≥ 1) plus "at most 100 %" for percent. The form holds the number the tutor typed:
+     React kept cents in the form and divided for display, so switching 15 % to Fixed showed $0.15.
+     $12.50 is stored as **1250 cents**.
+  4. **Failed mutations say why** (withdraw, end promotion, reply, create). Locally, withdraw is
+     refused with "Connect payout onboarding is not complete" for the seed tutor — React gives no
+     feedback at all.
+  5. A review reply also posts on Enter.
+- **Bug found and fixed (Angular-side, present since Phase 2):** `Card`'s `:host { display: block }`
+  compiles to an attribute selector that loads after the global stylesheet and has the same
+  specificity as a class, so it beat the screens' own classes: Messages lost its two-pane grid
+  (`.chat`), and the Catalog cards (`.svc`), stat cards (`.earn__stat`) and review summary
+  (`.rev-summary`) lost their flex/grid layout. Host display now lives in `styles/_hosts.scss` as
+  element selectors, which every class outranks — exactly as on React's `<div>`.
+- **Parity quirks kept (for the Phase 8 list):** `money()` rounds to whole dollars, so a $12.50
+  promotion reads "$13 off" in both apps; the "Withdraw now" label disappears on hover in both
+  apps (shared CSS).
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
