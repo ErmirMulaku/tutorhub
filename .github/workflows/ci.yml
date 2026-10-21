@@ -18,6 +18,9 @@ jobs:
       HUSKY: '0'
       DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
       JWT_SECRET: test-secret
+      # dashboard-ng's Karma run: Angular's built-in launcher with Chrome's
+      # sandbox off — the runner's kernel may refuse the sandbox's namespaces.
+      KARMA_BROWSER: ChromeHeadlessNoSandbox
     services:
       postgres:
         image: postgres:17-alpine
@@ -132,6 +135,43 @@ jobs:
           start: npm run start
           wait-on: 'http://localhost:3200/en'
           wait-on-timeout: 120
+
+  dashboard-ng-e2e:
+    name: Dashboard (Angular) · Cypress
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The API is faked with cy.intercept fixtures, so no database or API
+      # server is started here — only the Angular dev server.
+      - name: Cypress E2E (fixtures)
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: apps/dashboard-ng
+          install: false
+          start: npm run dev
+          wait-on: 'http://localhost:3300'
+          wait-on-timeout: 120
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-ng-cypress-screenshots
+          path: apps/dashboard-ng/cypress/screenshots
+          if-no-files-found: ignore
 
   notifications:
     name: Notifications (Elixir)
