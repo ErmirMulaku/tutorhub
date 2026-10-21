@@ -26,13 +26,16 @@ function isBookingStatus(value: string): value is BookingStatus {
  * (`ids` + `entities`), however many lists it appears in. Two lists reference
  * them, mirroring the two React queries:
  * - `lessonIds` — `tutorBookings` (every booking; the Lessons screen),
- * - `todayIds`  — `todaySchedule` (the API's timezone-aware "today").
+ * - `todayIds`  — `todaySchedule` (the API's timezone-aware "today"),
+ * - `rangeIds`  — `tutorBookings(from, to)` for the calendar's visible window.
  */
 export interface BookingsState extends EntityState<TutorBooking> {
   lessonIds: string[];
   todayIds: string[];
+  rangeIds: string[];
   lessonsStatus: LoadStatus;
   todayStatus: LoadStatus;
+  rangeStatus: LoadStatus;
   error: string | null;
   /** A New-lesson request is in flight (React: the mutation's `isLoading`). */
   creating: boolean;
@@ -43,8 +46,10 @@ export const bookingsAdapter = createEntityAdapter<TutorBooking>();
 const initialState: BookingsState = bookingsAdapter.getInitialState({
   lessonIds: [],
   todayIds: [],
+  rangeIds: [],
   lessonsStatus: 'idle',
   todayStatus: 'idle',
+  rangeStatus: 'idle',
   error: null,
   creating: false,
 });
@@ -63,6 +68,10 @@ export const BookingsActions = createActionGroup({
     'Load Today': emptyProps(),
     'Load Today Success': props<{ bookings: TutorBooking[] }>(),
     'Load Today Failure': props<{ error: string }>(),
+
+    'Load Range': props<{ from: string; to: string }>(),
+    'Load Range Success': props<{ bookings: TutorBooking[] }>(),
+    'Load Range Failure': props<{ error: string }>(),
 
     'Change Status': props<{ booking: TutorBooking; transition: BookingTransition }>(),
     'Change Status Success': props<{
@@ -139,6 +148,28 @@ export const bookingsFeature = createFeature({
       }),
     ),
 
+    on(
+      BookingsActions.loadRange,
+      (state): BookingsState => ({
+        ...state,
+        rangeStatus: state.rangeStatus === 'loaded' ? 'loaded' : 'loading',
+      }),
+    ),
+    on(
+      BookingsActions.loadRangeSuccess,
+      (state, { bookings }): BookingsState =>
+        bookingsAdapter.upsertMany(bookings, {
+          ...state,
+          rangeIds: bookings.map((b) => b.id),
+          rangeStatus: 'loaded',
+          error: null,
+        }),
+    ),
+    on(
+      BookingsActions.loadRangeFailure,
+      (state, { error }): BookingsState => ({ ...state, rangeStatus: 'error', error }),
+    ),
+
     // Apply the server's answer straight away; the tag invalidation refetches anyway.
     on(
       BookingsActions.changeStatusSuccess,
@@ -190,7 +221,13 @@ export const bookingsFeature = createFeature({
       }),
     ),
   ),
-  extraSelectors: ({ selectBookingsState, selectEntities, selectLessonIds, selectTodayIds }) => {
+  extraSelectors: ({
+    selectBookingsState,
+    selectEntities,
+    selectLessonIds,
+    selectTodayIds,
+    selectRangeIds,
+  }) => {
     const { selectAll } = bookingsAdapter.getSelectors(selectBookingsState);
     const resolve = (
       ids: string[],
@@ -201,6 +238,7 @@ export const bookingsFeature = createFeature({
       selectAll,
       selectLessons,
       selectToday: createSelector(selectTodayIds, selectEntities, resolve),
+      selectRange: createSelector(selectRangeIds, selectEntities, resolve),
       selectPendingCount: createSelector(
         selectLessons,
         (bookings) => bookings.filter((b) => b.status === 'PENDING').length,

@@ -8,7 +8,8 @@
       <th-verify-panel [email]="form.controls.email.value" (verified)="onAuthenticated($event)">
         <p class="login__subtitle">
           Your account isn’t verified yet. Enter the code we sent to
-          <strong>{{ form.controls.email.value }}</strong>, or request a new one.
+          <strong>{{ form.controls.email.value }}</strong
+          >, or request a new one.
         </p>
       </th-verify-panel>
     } @else {

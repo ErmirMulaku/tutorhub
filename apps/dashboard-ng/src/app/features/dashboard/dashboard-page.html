@@ -55,7 +55,9 @@
                 <span>{{ timeOf(b.startTime) }}</span>
                 <span class="muted">{{ timeOf(b.endTime) }}</span>
               </div>
-              <span class="sched-row__spine sched-row__spine--{{ b.subject.name.toLowerCase() }}"></span>
+              <span
+                class="sched-row__spine sched-row__spine--{{ b.subject.name.toLowerCase() }}"
+              ></span>
               <th-avatar [name]="b.student.fullName" size="sm" />
               <div class="sched-row__info">
                 <div class="sched-row__title">

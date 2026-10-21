@@ -62,6 +62,9 @@ export default tseslint.config(
         'error',
         { type: 'attribute', prefix: 'th', style: 'camelCase' },
       ],
+      // Angular's `Validators.required` etc. are static methods, safe to pass
+      // by reference; keep the rule for instance methods.
+      '@typescript-eslint/unbound-method': ['error', { ignoreStatic: true }],
     },
   },
   {

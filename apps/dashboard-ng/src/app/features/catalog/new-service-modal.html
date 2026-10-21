@@ -1,0 +1,51 @@
+<th-modal [open]="open()" title="New service" [panelClass]="panelClass()" (closed)="closed.emit()">
+  <form class="svc-form" [formGroup]="form" (ngSubmit)="submit()">
+    <label class="login__field">
+      <span>Name</span>
+      <input formControlName="name" />
+      <th-field-error [control]="form.controls.name" />
+    </label>
+    <div class="svc-form__row">
+      <label class="login__field">
+        <span>Type</span>
+        <select formControlName="type">
+          <option value="ONE_ON_ONE">1:1</option>
+          <option value="GROUP">Group</option>
+          <option value="PACKAGE">Package</option>
+        </select>
+      </label>
+      <label class="login__field">
+        <span>Level</span>
+        <select formControlName="level">
+          <option value="BEGINNER">Beginner</option>
+          <option value="INTERMEDIATE">Intermediate</option>
+          <option value="ADVANCED">Advanced</option>
+        </select>
+      </label>
+    </div>
+    <div class="svc-form__row">
+      <label class="login__field">
+        <span>Price (USD)</span>
+        <input type="number" min="0" formControlName="priceUsd" />
+        <th-field-error [control]="form.controls.priceUsd" />
+      </label>
+      <label class="login__field">
+        <span>Duration (min)</span>
+        <input type="number" min="15" formControlName="durationMin" />
+        <th-field-error [control]="form.controls.durationMin" />
+      </label>
+      <label class="login__field">
+        <span>Lessons</span>
+        <input type="number" min="1" formControlName="lessonsCount" />
+        <th-field-error [control]="form.controls.lessonsCount" />
+      </label>
+    </div>
+    <label class="login__field">
+      <span>Description</span>
+      <input formControlName="description" />
+    </label>
+    <button th-button type="submit" block [disabled]="creating()">
+      {{ creating() ? 'Adding…' : 'Add service' }}
+    </button>
+  </form>
+</th-modal>

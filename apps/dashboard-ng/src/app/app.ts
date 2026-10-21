@@ -3,13 +3,19 @@ import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/cor
 import { RouterOutlet } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { uiFeature } from './core/ui/ui.store';
+import { ToastHost } from './shared/toast';
 
-/** Root component: hosts the router and reflects theme/accent onto <html>. */
+/**
+ * Root component: hosts the router and the toast stack, and reflects
+ * theme/accent onto <html>. The toast host lives here (not in the shell, where
+ * React's ToastProvider sat) so toasts also show on pages outside the shell,
+ * such as onboarding — in React those calls silently did nothing.
+ */
 @Component({
   selector: 'th-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ToastHost],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '<router-outlet />',
+  template: '<router-outlet /><th-toast-host />',
 })
 export class App {
   constructor() {

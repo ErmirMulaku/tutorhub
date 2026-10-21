@@ -45,6 +45,27 @@ export const loadToday = createEffect(
 );
 
 /**
+ * The calendar's window. `switchMap` matters most here: paging quickly through
+ * weeks fires a request per click, and only the last one should land — the
+ * older ones are cancelled (their XHRs aborted) rather than racing.
+ */
+export const loadRange = createEffect(
+  (actions$ = inject(Actions), api = inject(BookingsApi)) =>
+    actions$.pipe(
+      ofType(BookingsActions.loadRange),
+      switchMap(({ from, to }) =>
+        api.tutorBookings({ from, to }).pipe(
+          map((bookings) => BookingsActions.loadRangeSuccess({ bookings })),
+          catchError((err: unknown) =>
+            of(BookingsActions.loadRangeFailure({ error: errorMessage(err) })),
+          ),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
+/**
  * Status changes use `mergeMap`: accepting one booking must not cancel the
  * decline of another, so each request runs independently. (The API call also
  * invalidates Booking / DashboardSummary / Notifications, which reloads the lists.)

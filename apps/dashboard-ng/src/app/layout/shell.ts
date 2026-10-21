@@ -8,7 +8,6 @@ import { BookingsActions } from '../core/bookings/bookings.store';
 import { LiveSocketService } from '../core/live/live-socket.service';
 import { UiActions, uiFeature } from '../core/ui/ui.store';
 import { NewLessonModal } from '../features/lessons/new-lesson-modal';
-import { ToastHost } from '../shared/toast';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
@@ -18,7 +17,7 @@ import { Topbar } from './topbar';
  */
 @Component({
   selector: 'th-shell',
-  imports: [RouterOutlet, Sidebar, Topbar, ToastHost, NewLessonModal],
+  imports: [RouterOutlet, Sidebar, Topbar, NewLessonModal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.shell--drawer-open]="sidebarOpen()">
@@ -37,7 +36,6 @@ import { Topbar } from './topbar';
       </div>
       <th-new-lesson-modal />
     </div>
-    <th-toast-host />
   `,
 })
 export class Shell {

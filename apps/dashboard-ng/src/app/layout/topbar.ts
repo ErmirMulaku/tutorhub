@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { filter, map } from 'rxjs';
+import { debounceTime, distinctUntilChanged, filter, map, skip } from 'rxjs';
 import { PAGE_META } from '../core/nav';
 import { type Accent, UiActions, uiFeature } from '../core/ui/ui.store';
 import { Button } from '../shared/button';
@@ -45,6 +45,28 @@ export class Topbar {
   protected readonly meta = computed(
     () => PAGE_META[this.url().split('?')[0] ?? ''] ?? { title: 'Dashboard', subtitle: '' },
   );
+
+  constructor() {
+    // Live search while already on /lessons: each keystroke goes into a
+    // stream that waits for a 300 ms pause (debounceTime), ignores repeats
+    // (distinctUntilChanged) and then updates ?q= in place. Elsewhere, search
+    // still happens on Enter, exactly as in React.
+    toObservable(this.query)
+      .pipe(
+        skip(1), // the initial '' isn't something the tutor typed
+        map((q) => q.trim()),
+        debounceTime(300),
+        distinctUntilChanged(),
+        filter(() => this.router.url.startsWith('/lessons')),
+        takeUntilDestroyed(),
+      )
+      .subscribe((q) => {
+        void this.router.navigate(['/lessons'], {
+          queryParams: q === '' ? {} : { q },
+          replaceUrl: true,
+        });
+      });
+  }
 
   protected onSearch(event: Event): void {
     event.preventDefault();

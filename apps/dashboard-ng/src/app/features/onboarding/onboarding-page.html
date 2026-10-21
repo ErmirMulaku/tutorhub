@@ -1,0 +1,119 @@
+<div class="ob">
+  <aside class="ob__panel">
+    <div class="ob__brand">Tutor<strong>Hub</strong></div>
+    <h2 class="ob__panel-title">Let's get your profile ready</h2>
+    <ol class="ob__stepper">
+      @for (s of stepState(); track s.n) {
+        <li class="ob__step ob__step--{{ s.state }}">
+          <span class="ob__step-dot">{{ s.state === 'done' ? '✓' : '' }}</span>
+          {{ s.label }}
+        </li>
+      }
+    </ol>
+    <p class="ob__panel-foot">Takes about 5 minutes</p>
+  </aside>
+
+  <section class="ob__content">
+    <button type="button" class="ob__close" aria-label="Close setup" (click)="close()">✕</button>
+    <div class="ob__body">
+      @switch (step()) {
+        @case (1) {
+          <h1>Welcome to TutorHub</h1>
+          <p class="muted">A few quick steps to get your tutoring profile live.</p>
+          <ul class="ob__features">
+            <li>Build your profile</li>
+            <li>Set your hours & rates</li>
+            <li>Get paid securely</li>
+          </ul>
+        }
+        @case (2) {
+          <h1>Your profile</h1>
+          <form [formGroup]="profile" (ngSubmit)="next()">
+            <label class="login__field">
+              <span>Display name</span>
+              <input formControlName="name" />
+              <th-field-error [control]="profile.controls.name" />
+            </label>
+            <label class="login__field">
+              <span>Headline</span>
+              <input formControlName="headline" />
+              <th-field-error [control]="profile.controls.headline" />
+            </label>
+            <label class="login__field">
+              <span>About</span>
+              <textarea rows="4" formControlName="about"></textarea>
+            </label>
+          </form>
+        }
+        @case (3) {
+          <h1>Subjects & pricing</h1>
+          <p class="muted">Add what you teach and set your hourly rate.</p>
+          @if (services.data(); as list) {
+            @if (list.length > 0) {
+              <ul class="ob__subjects">
+                @for (s of list; track s.id; let i = $index) {
+                  <li class="ob__subject">
+                    <span class="ob__subject-avatar ob__subject-avatar--{{ tint(i) }}">
+                      {{ s.name.charAt(0).toUpperCase() }}
+                    </span>
+                    <div class="ob__subject-info">
+                      <span class="ob__subject-name">{{ s.name }}</span>
+                      <span class="ob__subject-meta">
+                        {{ levelLabel[s.level] }} · {{ s.durationMin }} min
+                      </span>
+                    </div>
+                    <span class="ob__subject-price">
+                      {{ money(s.priceCents) }}<span class="ob__subject-per"> /hr</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">No subjects yet — add your first one below.</p>
+            }
+          }
+          <button type="button" class="ob__subject-add" (click)="addSubjectOpen.set(true)">
+            <span aria-hidden="true">+</span> Add another subject
+          </button>
+          <th-new-service-modal
+            [open]="addSubjectOpen()"
+            panelClass="ob-modal"
+            (closed)="addSubjectOpen.set(false)"
+          />
+        }
+        @case (4) {
+          <h1>Availability</h1>
+          <p class="muted">
+            Set the days and hours students can book — you can fine-tune this in Availability.
+          </p>
+          <th-weekly-hours-editor />
+        }
+        @case (5) {
+          <h1>Get paid</h1>
+          <p class="muted">Link a payout method so your earnings reach you automatically.</p>
+          <th-payout-editor />
+        }
+        @case (6) {
+          <div class="ob__check">✓</div>
+          <h1>You're all set, {{ firstName() }}!</h1>
+          <p class="muted">Publish your profile to start receiving bookings.</p>
+          @if (publishError(); as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+        }
+      }
+    </div>
+    <div class="ob__footer">
+      @if (step() > 1) {
+        <button th-button variant="ghost" (click)="back()">Back</button>
+      }
+      @if (step() < steps.length) {
+        <button th-button (click)="next()">{{ step() === 1 ? 'Get started' : 'Continue' }}</button>
+      } @else {
+        <button th-button [disabled]="publishing()" (click)="finish()">
+          {{ publishing() ? 'Publishing…' : 'Publish profile' }}
+        </button>
+      }
+    </div>
+  </section>
+</div>

@@ -24,10 +24,12 @@ export class ToastService {
   }
 }
 
-/** Renders the toast stack (bottom-centre, fade-up). Mounted once in the shell. */
+/** Renders the toast stack (bottom-centre, fade-up). Mounted once, in the app root. */
 @Component({
   selector: 'th-toast-host',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Above the onboarding overlay (z-index 2000) and its modal (2100).
+  styles: '.toast-stack { z-index: 2200; }',
   template: `
     <div class="toast-stack" aria-live="polite">
       @for (t of toasts(); track t.id) {

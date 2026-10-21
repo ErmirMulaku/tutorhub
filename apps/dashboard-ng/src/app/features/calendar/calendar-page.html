@@ -1,0 +1,70 @@
+<th-card class="cal">
+  <div class="cal__toolbar">
+    <div class="cal__nav">
+      <button th-button size="sm" variant="secondary" (click)="today()">Today</button>
+      <button type="button" class="cal__chevron" aria-label="Previous" (click)="step(-1)">‹</button>
+      <button type="button" class="cal__chevron" aria-label="Next" (click)="step(1)">›</button>
+      <h3>{{ label() }}</h3>
+    </div>
+    <div class="cal__toolbar-right">
+      <div class="cal__legend">
+        <span class="cal__legend-item cal__legend-item--mathematics">Mathematics</span>
+        <span class="cal__legend-item cal__legend-item--physics">Physics</span>
+      </div>
+      <th-segmented-tabs [segments]="views" [value]="view()" (changed)="view.set($event)" />
+    </div>
+  </div>
+
+  @if (loadFailed()) {
+    <th-error-state message="Could not load your calendar." (retry)="retry()" />
+  } @else if (view() === 'month') {
+    <th-month-grid
+      [gridStart]="range().gridStart"
+      [month]="anchor().getMonth()"
+      [eventsByDay]="eventsByDay()"
+      (picked)="openDay($event)"
+    />
+  } @else {
+    <div
+      class="cal__grid"
+      [style.--row-h]="rowHeightPx"
+      [style.grid-template-columns]="gridColumns()"
+    >
+      <div class="cal__corner"></div>
+      @for (col of columns(); track col.key) {
+        <div class="cal__head" [class.cal__head--today]="col.today">
+          <span>{{ col.weekday }}</span>
+          <strong>{{ col.dayOfMonth }}</strong>
+        </div>
+      }
+
+      <div class="cal__gutter">
+        @for (hour of hours; track hour) {
+          <div class="cal__hour" [style.height.px]="rowHeight">{{ hour }}</div>
+        }
+      </div>
+
+      @for (col of columns(); track col.key) {
+        <div
+          class="cal__col"
+          [class.cal__col--today]="col.today"
+          [style.height.px]="hours.length * rowHeight"
+        >
+          @for (b of col.events; track b.id) {
+            @let box = eventBox(b.startTime, b.endTime);
+            <div
+              class="cal__event cal__event--{{ b.subject.name.toLowerCase() }}"
+              [class.cal__event--pending]="b.status === 'PENDING'"
+              [style.top.px]="box.top"
+              [style.height.px]="box.height"
+            >
+              <div class="cal__event-subject">{{ b.subject.name }}</div>
+              <div class="cal__event-meta">{{ b.student.fullName }}</div>
+              <div class="cal__event-time">{{ timeOf(b.startTime) }}</div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</th-card>
