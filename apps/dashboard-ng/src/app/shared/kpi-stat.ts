@@ -7,6 +7,14 @@ export interface KpiDelta {
 }
 
 /**
+ * A KPI card's height in px: 2 × (1 border + 24 padding) + 38 (icon row)
+ * + 14 + 34 (value) + 17 (label). The line boxes are fixed in
+ * styles/_overrides.scss, so this holds in any font; the dashboard's loading
+ * skeletons use it, and kpi-stat.spec.ts fails if the card's CSS drifts.
+ */
+export const KPI_CARD_HEIGHT = 153;
+
+/**
  * Port of components/KPIStat.tsx. React passed the icon as a ReactNode; here
  * it's an icon *name* — Angular can't pass rendered markup through an input
  * (it would use content projection for that), and a name is all we need.

@@ -1,6 +1,8 @@
 <div class="dash">
-  <!-- Setup is a one-time flow — once published there is nothing to go back to. -->
-  @if (!published() && !bannerDismissed()) {
+  <!-- Setup is a one-time flow — once published there is nothing to go back to.
+       `=== false`: while the flag is still loading (null) nothing is shown, so
+       the banner can't flash in and out for a published tutor. -->
+  @if (published() === false && !bannerDismissed()) {
     <div class="setup-banner">
       <div class="setup-banner__text">
         <strong>Finish setting up your tutor profile</strong>
@@ -34,7 +36,7 @@
       <th-error-state [message]="'Could not load your stats: ' + error" (retry)="retrySummary()" />
     } @else {
       @for (i of skeletons; track i) {
-        <th-skeleton [height]="120" />
+        <th-skeleton [height]="kpiCardHeight" />
       }
     }
   </div>

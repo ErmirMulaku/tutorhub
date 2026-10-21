@@ -11,7 +11,7 @@ import { Button } from '../../shared/button';
 import { Card } from '../../shared/card';
 import { ErrorState } from '../../shared/error-state';
 import type { IconName } from '../../shared/icon';
-import { type KpiDelta, KpiStat } from '../../shared/kpi-stat';
+import { KPI_CARD_HEIGHT, type KpiDelta, KpiStat } from '../../shared/kpi-stat';
 import { Skeleton } from '../../shared/skeleton';
 import { StarRating } from '../../shared/star-rating';
 import { StatusPill } from '../../shared/status-pill';
@@ -88,6 +88,8 @@ export class DashboardPage {
   protected readonly latestReview = computed(() => this.reviews.data()?.[0]);
   protected readonly bannerDismissed = signal(readBannerDismissed());
   protected readonly skeletons = [0, 1, 2, 3];
+  /** As tall as a loaded KPI card, so nothing moves when the numbers arrive. */
+  protected readonly kpiCardHeight = KPI_CARD_HEIGHT;
 
   /** The four KPI cards, or null while the summary hasn't arrived. */
   protected readonly kpis = computed<KpiCard[] | null>(() => {

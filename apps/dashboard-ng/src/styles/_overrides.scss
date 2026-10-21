@@ -1,0 +1,20 @@
+/*
+ * Deliberate deviations from the ported React styles (_app.scss stays verbatim,
+ * so `diff` against apps/dashboard/src/styles.css still shows only real
+ * differences). Each one fixes a gap Lighthouse found in *both* apps; see
+ * docs/DASHBOARD_ANGULAR_MIGRATION.md §8.
+ */
+
+/*
+ * 1. KPI cards are exactly 153 px tall in any font. With `line-height: normal`
+ *    the height depended on the font, so the card grew when Hanken Grotesk
+ *    replaced the fallback. These are the line boxes the web font already
+ *    produces, so nothing changes visually. The loading skeletons use the same
+ *    height (KPI_CARD_HEIGHT in shared/kpi-stat.ts, guarded by its spec).
+ */
+.kpi__value {
+  line-height: 34px;
+}
+.kpi__label {
+  line-height: 17px;
+}

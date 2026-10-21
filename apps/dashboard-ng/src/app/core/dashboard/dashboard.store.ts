@@ -18,8 +18,12 @@ import type { DashboardSummary, MeTutor, TutorNotification } from '../api/models
 export interface DashboardState {
   me: MeTutor | null;
   summary: DashboardSummary | null;
-  /** `tutorSettings.isActive` — onboarding is done. False until known (as in React). */
-  published: boolean;
+  /**
+   * `tutorSettings.isActive` — onboarding is done; `null` until it has loaded.
+   * React used `false` until known, so a published tutor saw the "finish
+   * setting up" banner flash and vanish — a layout shift of everything below.
+   */
+  published: boolean | null;
   /** Set when the KPI summary failed to load; cleared by the next attempt. */
   summaryError: string | null;
   /** The bell's feed (pending requests, unread threads, recent reviews), newest first. */
@@ -29,7 +33,7 @@ export interface DashboardState {
 const initialState: DashboardState = {
   me: null,
   summary: null,
-  published: false,
+  published: null,
   summaryError: null,
   notifications: [],
 };
