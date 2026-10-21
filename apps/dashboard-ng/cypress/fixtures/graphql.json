@@ -1,0 +1,189 @@
+{
+  "tutorSignin": { "accessToken": "e2e-token", "tutorId": "t-lena" },
+  "meTutor": { "id": "t-lena", "name": "Lena Hartmann", "headline": "Maths & physics tutor" },
+  "tutorSettings": {
+    "name": "Lena Hartmann",
+    "headline": "Maths & physics tutor",
+    "about": "Ten years of A-level maths.",
+    "timezone": "Europe/Berlin",
+    "languages": ["English", "German"],
+    "isActive": true,
+    "notifyBookings": true,
+    "notifyReminders": true,
+    "notifyMessages": true,
+    "notifyPayouts": false,
+    "notifyTips": false
+  },
+  "dashboardSummary": {
+    "lessonsToday": 3,
+    "earningsWeekCents": 16500,
+    "avgRating": 4.7,
+    "reviewCount": 3,
+    "pendingCount": 2,
+    "unreadMessages": 3
+  },
+  "tutorNotifications": [
+    {
+      "id": "n1",
+      "type": "booking",
+      "title": "Mia Chen requested a lesson",
+      "detail": "Mathematics",
+      "createdAt": "2026-10-20T08:00:00.000Z"
+    }
+  ],
+  "todaySchedule": [
+    {
+      "id": "b-sofia",
+      "startTime": "2026-10-21T13:00:00.000Z",
+      "endTime": "2026-10-21T14:00:00.000Z",
+      "status": "CONFIRMED",
+      "student": { "id": "s-sofia", "fullName": "Sofia Ricci", "avatarColor": null },
+      "subject": { "id": "sub-math", "name": "Mathematics", "level": "ADVANCED" }
+    }
+  ],
+  "tutorBookings": [
+    {
+      "id": "b-mia",
+      "startTime": "2026-10-23T09:00:00.000Z",
+      "endTime": "2026-10-23T10:00:00.000Z",
+      "status": "PENDING",
+      "student": { "id": "s-mia", "fullName": "Mia Chen", "avatarColor": null },
+      "subject": { "id": "sub-math", "name": "Mathematics", "level": "ADVANCED" }
+    },
+    {
+      "id": "b-tom",
+      "startTime": "2026-10-24T10:00:00.000Z",
+      "endTime": "2026-10-24T11:00:00.000Z",
+      "status": "PENDING",
+      "student": { "id": "s-tom", "fullName": "Tom Becker", "avatarColor": null },
+      "subject": { "id": "sub-phys", "name": "Physics", "level": "INTERMEDIATE" }
+    },
+    {
+      "id": "b-sofia",
+      "startTime": "2026-10-21T13:00:00.000Z",
+      "endTime": "2026-10-21T14:00:00.000Z",
+      "status": "CONFIRMED",
+      "student": { "id": "s-sofia", "fullName": "Sofia Ricci", "avatarColor": null },
+      "subject": { "id": "sub-math", "name": "Mathematics", "level": "ADVANCED" }
+    },
+    {
+      "id": "b-sofia-old",
+      "startTime": "2026-10-14T13:00:00.000Z",
+      "endTime": "2026-10-14T14:00:00.000Z",
+      "status": "COMPLETED",
+      "student": { "id": "s-sofia", "fullName": "Sofia Ricci", "avatarColor": null },
+      "subject": { "id": "sub-math", "name": "Mathematics", "level": "ADVANCED" }
+    }
+  ],
+  "myReviews": [
+    {
+      "id": "r1",
+      "studentName": "Mia Chen",
+      "studentAvatarColor": null,
+      "subjectName": "Mathematics",
+      "rating": 4,
+      "comment": "Great session, would have liked a few more practice sums.",
+      "reply": null,
+      "createdAt": "2026-10-16T10:00:00.000Z"
+    }
+  ],
+  "reviewSummary": { "average": 4.7, "count": 3, "distribution": [2, 1, 0, 0, 0] },
+  "conversations": [
+    {
+      "id": "c-tom",
+      "studentName": "Tom Becker",
+      "studentAvatarColor": null,
+      "subjectName": "Physics",
+      "lastMessageAt": "2026-10-21T09:00:00.000Z",
+      "preview": "Thank you! That really helped.",
+      "unread": 0
+    }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "senderKind": "STUDENT",
+      "body": "Thank you! That really helped.",
+      "createdAt": "2026-10-21T09:00:00.000Z"
+    }
+  ],
+  "myServices": [
+    {
+      "id": "svc-1",
+      "name": "A-level Mathematics",
+      "type": "ONE_ON_ONE",
+      "level": "ADVANCED",
+      "description": "Exam-focused one-to-one lessons.",
+      "priceCents": 5500,
+      "durationMin": 60,
+      "lessonsCount": 1,
+      "isActive": true
+    }
+  ],
+  "myAvailability": {
+    "bufferMinutes": 15,
+    "minNoticeHours": 12,
+    "maxLessonsPerDay": 6,
+    "workingHours": [
+      { "day": 1, "start": "09:00", "end": "17:00" },
+      { "day": 2, "start": "09:00", "end": "17:00" }
+    ],
+    "timeOff": []
+  },
+  "earningsSummary": {
+    "availableCents": 37400,
+    "pendingCents": 4700,
+    "lifetimeCents": 210400,
+    "payoutMethod": "Visa •••• 4242",
+    "payoutSchedule": "WEEKLY"
+  },
+  "earningsByMonth": [
+    { "month": "Sep", "netCents": 23400 },
+    { "month": "Oct", "netCents": 28100 }
+  ],
+  "transactions": [
+    {
+      "id": "tx1",
+      "date": "2026-10-14T13:00:00.000Z",
+      "studentName": "Sofia Ricci",
+      "subjectName": "Mathematics",
+      "netCents": 4675,
+      "feeCents": 825,
+      "status": "PAID"
+    }
+  ],
+  "connectStatus": { "onboarded": false, "payoutsEnabled": false },
+  "marketingSummary": { "activePromotions": 1, "redemptions": 46, "giftCardsSoldCents": 14500 },
+  "promotions": [
+    {
+      "id": "p-school",
+      "name": "Back to school",
+      "code": "SCHOOL15",
+      "discountType": "PERCENT",
+      "discountValue": 15,
+      "state": "ACTIVE",
+      "expiresAt": null,
+      "redemptions": 24
+    }
+  ],
+  "referralProgram": { "creditCents": 1500, "referredCount": 8, "issuedCents": 12000 },
+  "analyticsSummary": {
+    "lessonsThisMonth": 8,
+    "newStudents": 1,
+    "repeatRatePct": 100,
+    "utilizationPct": 22
+  },
+  "lessonsOverTime": [
+    { "month": "Sep", "count": 9 },
+    { "month": "Oct", "count": 8 }
+  ],
+  "topSubjects": [
+    { "name": "Mathematics", "pct": 52 },
+    { "name": "Physics", "pct": 48 }
+  ],
+  "lessonsByDayOfWeek": [
+    { "day": "Mon", "count": 4 },
+    { "day": "Tue", "count": 3 }
+  ],
+  "studentMix": { "returningPct": 100, "newPct": 0 }
+}

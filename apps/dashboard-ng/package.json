@@ -7,10 +7,12 @@
     "ng": "ng",
     "dev": "ng serve --port 3300",
     "build": "ng build --define \"API_URL='${API_URL:-http://localhost:4000}'\"",
-    "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit && tsc -p cypress/tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "ng test --no-watch --no-progress --browsers=${KARMA_BROWSER:-ChromeHeadless}",
-    "test:watch": "ng test"
+    "test:watch": "ng test",
+    "e2e": "cypress run",
+    "e2e:open": "cypress open"
   },
   "dependencies": {
     "@angular/common": "22.2.3",
@@ -33,6 +35,7 @@
     "@angular/cli": "22.2.3",
     "@angular/compiler-cli": "22.2.3",
     "@types/jasmine": "6.0.0",
+    "cypress": "15.17.0",
     "istanbul-lib-instrument": "6.0.3",
     "jasmine-core": "6.3.0",
     "karma": "6.4.4",
