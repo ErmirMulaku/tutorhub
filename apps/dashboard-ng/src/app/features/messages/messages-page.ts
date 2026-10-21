@@ -5,20 +5,24 @@ import {
   type ElementRef,
   afterRenderEffect,
   computed,
-  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
+import { EMPTY, catchError, exhaustMap, filter } from 'rxjs';
 import { CacheTags, cachedQuery } from '../../core/api/cache-tags';
+import { errorMessage } from '../../core/api/errors';
 import { MessagingApi } from '../../core/api/messaging-api';
+import type { Conversation } from '../../core/api/models';
 import { authFeature } from '../../core/auth/auth.store';
 import { timeOf } from '../../core/format';
 import { LiveSocketService } from '../../core/live/live-socket.service';
 import { Avatar } from '../../shared/avatar';
 import { Card } from '../../shared/card';
+import { ErrorState } from '../../shared/error-state';
+import { ToastService } from '../../shared/toast';
 
 /**
  * Port of features/messages/MessagesScreen.tsx — thread list + conversation +
@@ -27,13 +31,14 @@ import { Card } from '../../shared/card';
  */
 @Component({
   selector: 'th-messages-page',
-  imports: [Avatar, Card],
+  imports: [Avatar, Card, ErrorState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './messages-page.html',
 })
 export class MessagesPage {
   private readonly api = inject(MessagingApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
 
   protected readonly conversations = cachedQuery({
     tags: ['Conversation'],
@@ -73,16 +78,20 @@ export class MessagesPage {
         );
     }
 
-    // Mark the open conversation read when it has unread messages.
-    effect(() => {
-      const active = this.active();
-      if (active && active.unread > 0) {
-        this.api
-          .markConversationRead(active.id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe();
-      }
-    });
+    // Mark the open conversation read when it has unread messages. A stream,
+    // not an effect(): `exhaustMap` ignores new triggers while a request is in
+    // flight, so a live refetch that re-emits the same unread thread can't fire
+    // a second mark-read. Errors are swallowed per request so one failure
+    // doesn't end the stream (the badge simply stays until the next attempt).
+    toObservable(this.active)
+      .pipe(
+        filter((active): active is Conversation => active !== null && active.unread > 0),
+        exhaustMap((active) =>
+          this.api.markConversationRead(active.id).pipe(catchError(() => EMPTY)),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe();
 
     // Keep the newest message in view. `afterRenderEffect` runs after Angular
     // has written the DOM, so scrollHeight already includes the new bubbles.
@@ -103,6 +112,15 @@ export class MessagesPage {
     const body = this.draft().trim();
     if (!active || body === '') return;
     this.draft.set('');
-    this.api.sendMessage(active.id, body).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    this.api
+      .sendMessage(active.id, body)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        // Don't lose what the tutor typed: put it back and say why.
+        error: (err: unknown) => {
+          this.draft.set(body);
+          this.toast.show(`Message not sent: ${errorMessage(err)}`);
+        },
+      });
   }
 }

@@ -3,13 +3,10 @@ import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, map, mergeMap, of, switchMap, tap } from 'rxjs';
 import { BookingsApi, type BookingTransition } from '../api/bookings-api';
 import { CacheTags } from '../api/cache-tags';
+import { errorMessage } from '../api/errors';
 import { UiActions } from '../ui/ui.store';
 import { ToastService } from '../../shared/toast';
 import { BookingsActions } from './bookings.store';
-
-function message(err: unknown): string {
-  return err instanceof Error ? err.message : 'Request failed';
-}
 
 /**
  * Loads use `switchMap`: if a refetch starts while one is in flight, the older
@@ -23,7 +20,7 @@ export const loadLessons = createEffect(
         api.tutorBookings().pipe(
           map((bookings) => BookingsActions.loadLessonsSuccess({ bookings })),
           catchError((err: unknown) =>
-            of(BookingsActions.loadLessonsFailure({ error: message(err) })),
+            of(BookingsActions.loadLessonsFailure({ error: errorMessage(err) })),
           ),
         ),
       ),
@@ -39,7 +36,7 @@ export const loadToday = createEffect(
         api.todaySchedule().pipe(
           map((bookings) => BookingsActions.loadTodaySuccess({ bookings })),
           catchError((err: unknown) =>
-            of(BookingsActions.loadTodayFailure({ error: message(err) })),
+            of(BookingsActions.loadTodayFailure({ error: errorMessage(err) })),
           ),
         ),
       ),
@@ -67,7 +64,7 @@ export const changeStatus = createEffect(
             }),
           ),
           catchError((err: unknown) =>
-            of(BookingsActions.changeStatusFailure({ id: booking.id, error: message(err) })),
+            of(BookingsActions.changeStatusFailure({ id: booking.id, error: errorMessage(err) })),
           ),
         ),
       ),
@@ -91,7 +88,17 @@ export const changeStatusToast = createEffect(
   { functional: true, dispatch: false },
 );
 
-/** `exhaustMap`-like guarding isn't needed: the button is disabled while `creating`. */
+/** A failed accept/decline/complete used to fail silently; now the tutor is told. */
+export const changeStatusFailedToast = createEffect(
+  (actions$ = inject(Actions), toast = inject(ToastService)) =>
+    actions$.pipe(
+      ofType(BookingsActions.changeStatusFailure),
+      tap(({ error }) => toast.show(`Could not update the lesson: ${error}`)),
+    ),
+  { functional: true, dispatch: false },
+);
+
+/** No double-submit guard needed in the stream: the button is disabled while `creating`. */
 export const createLesson = createEffect(
   (actions$ = inject(Actions), api = inject(BookingsApi)) =>
     actions$.pipe(
@@ -100,7 +107,7 @@ export const createLesson = createEffect(
         api.createLesson(input).pipe(
           map(({ id }) => BookingsActions.createLessonSuccess({ id })),
           catchError((err: unknown) =>
-            of(BookingsActions.createLessonFailure({ error: message(err) })),
+            of(BookingsActions.createLessonFailure({ error: errorMessage(err) })),
           ),
         ),
       ),

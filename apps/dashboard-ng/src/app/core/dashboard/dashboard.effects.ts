@@ -2,12 +2,9 @@ import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, map, of, switchMap } from 'rxjs';
 import { DashboardApi } from '../api/dashboard-api';
+import { errorMessage } from '../api/errors';
 import { ProfileService } from '../api/profile.service';
 import { DashboardActions } from './dashboard.store';
-
-function message(err: unknown): string {
-  return err instanceof Error ? err.message : 'Request failed';
-}
 
 export const loadMe = createEffect(
   (actions$ = inject(Actions), profile = inject(ProfileService)) =>
@@ -16,7 +13,9 @@ export const loadMe = createEffect(
       switchMap(() =>
         profile.meTutor().pipe(
           map((me) => DashboardActions.loadMeSuccess({ me })),
-          catchError((err: unknown) => of(DashboardActions.loadMeFailure({ error: message(err) }))),
+          catchError((err: unknown) =>
+            of(DashboardActions.loadMeFailure({ error: errorMessage(err) })),
+          ),
         ),
       ),
     ),
@@ -31,7 +30,7 @@ export const loadSummary = createEffect(
         api.summary().pipe(
           map((summary) => DashboardActions.loadSummarySuccess({ summary })),
           catchError((err: unknown) =>
-            of(DashboardActions.loadSummaryFailure({ error: message(err) })),
+            of(DashboardActions.loadSummaryFailure({ error: errorMessage(err) })),
           ),
         ),
       ),
@@ -47,7 +46,7 @@ export const loadPublished = createEffect(
         profile.isPublished().pipe(
           map((published) => DashboardActions.loadPublishedSuccess({ published })),
           catchError((err: unknown) =>
-            of(DashboardActions.loadPublishedFailure({ error: message(err) })),
+            of(DashboardActions.loadPublishedFailure({ error: errorMessage(err) })),
           ),
         ),
       ),
@@ -63,7 +62,7 @@ export const loadNotifications = createEffect(
         api.notifications().pipe(
           map((notifications) => DashboardActions.loadNotificationsSuccess({ notifications })),
           catchError((err: unknown) =>
-            of(DashboardActions.loadNotificationsFailure({ error: message(err) })),
+            of(DashboardActions.loadNotificationsFailure({ error: errorMessage(err) })),
           ),
         ),
       ),

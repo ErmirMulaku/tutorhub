@@ -16,6 +16,7 @@ import { dayOf, timeOf } from '../../core/format';
 import { Avatar } from '../../shared/avatar';
 import { Button } from '../../shared/button';
 import { Card } from '../../shared/card';
+import { ErrorState } from '../../shared/error-state';
 import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
 import { Skeleton } from '../../shared/skeleton';
 import { StatusPill } from '../../shared/status-pill';
@@ -33,7 +34,7 @@ function inTab(b: TutorBooking, tab: Tab): boolean {
 /** Port of features/lessons/LessonsScreen.tsx. */
 @Component({
   selector: 'th-lessons-page',
-  imports: [Avatar, Button, Card, SegmentedTabs, Skeleton, StatusPill],
+  imports: [Avatar, Button, Card, ErrorState, SegmentedTabs, Skeleton, StatusPill],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './lessons-page.html',
 })
@@ -56,6 +57,7 @@ export class LessonsPage {
   private readonly bookings = this.store.selectSignal(bookingsFeature.selectLessons);
   private readonly lessonsStatus = this.store.selectSignal(bookingsFeature.selectLessonsStatus);
   protected readonly isLoading = computed(() => this.lessonsStatus() === 'loading');
+  protected readonly loadFailed = computed(() => this.lessonsStatus() === 'error');
   protected readonly pendingCount = this.store.selectSignal(bookingsFeature.selectPendingCount);
 
   protected readonly query = computed(() => (this.q() ?? '').trim());
@@ -68,6 +70,9 @@ export class LessonsPage {
         : inTab(b, this.tab()),
     );
   });
+  protected readonly emptyText = computed(() =>
+    this.query() !== '' ? `No lessons match “${this.query()}”.` : `No ${this.tab()} lessons.`,
+  );
   protected readonly segments = computed<Segment<Tab>[]>(() => [
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'pending', label: 'Pending', badge: this.pendingCount() },
@@ -79,6 +84,10 @@ export class LessonsPage {
 
   constructor() {
     loadOnTags(['Booking'], () => BookingsActions.loadLessons());
+  }
+
+  protected retry(): void {
+    this.store.dispatch(BookingsActions.loadLessons());
   }
 
   protected changeTab(next: Tab): void {

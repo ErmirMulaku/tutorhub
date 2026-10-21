@@ -13,10 +13,10 @@
   <th-card>
     @if (isLoading()) {
       <th-skeleton [height]="160" />
+    } @else if (loadFailed()) {
+      <th-error-state message="Could not load your lessons." (retry)="retry()" />
     } @else if (rows().length === 0) {
-      <p class="muted">
-        {{ query() !== '' ? 'No lessons match “' + query() + '”.' : 'No ' + tab() + ' lessons.' }}
-      </p>
+      <p class="muted">{{ emptyText() }}</p>
     } @else {
       <div class="lesson-list">
         @for (b of rows(); track b.id) {

@@ -1,31 +1,36 @@
 <th-modal [open]="open()" title="New lesson" (closed)="close()">
-  <form class="svc-form" ngNativeValidate [formGroup]="form" (ngSubmit)="submit()">
+  <form class="svc-form" (submit)="submit($event)">
     <label class="login__field">
       <span>Student</span>
-      <select formControlName="studentId" required>
+      <!-- [selected] per option, not [value] on the <select>: the options
+           render after the select's own bindings, so a select-level value
+           could be applied before the matching option exists. -->
+      <select required (change)="studentId.set(value($event))">
         @for (s of students.data() ?? []; track s.id) {
-          <option [value]="s.id">{{ s.fullName }}</option>
+          <option [value]="s.id" [selected]="s.id === studentId()">{{ s.fullName }}</option>
         }
       </select>
     </label>
     <label class="login__field">
       <span>Subject</span>
-      <select formControlName="subjectId" required>
+      <select required (change)="subjectId.set(value($event))">
         @for (s of subjects.data() ?? []; track s.id) {
-          <option [value]="s.id">{{ s.name }} · {{ s.level.toLowerCase() }}</option>
+          <option [value]="s.id" [selected]="s.id === subjectId()">
+            {{ s.name }} · {{ s.level.toLowerCase() }}
+          </option>
         }
       </select>
     </label>
     <label class="login__field">
       <span>Date & time</span>
-      <input type="datetime-local" formControlName="startTime" required />
+      <input
+        type="datetime-local"
+        required
+        [value]="startTime()"
+        (input)="startTime.set(value($event))"
+      />
     </label>
-    <button
-      th-button
-      type="submit"
-      block
-      [disabled]="creating() || !form.controls.studentId.value || !form.controls.subjectId.value"
-    >
+    <button th-button type="submit" block [disabled]="creating() || !studentId() || !subjectId()">
       {{ creating() ? 'Booking…' : 'Book lesson' }}
     </button>
   </form>

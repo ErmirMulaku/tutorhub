@@ -1,5 +1,8 @@
 <th-card class="chat">
   <div class="chat__list">
+    @if (conversations.error()) {
+      <th-error-state message="Could not load conversations." (retry)="conversations.reload()" />
+    }
     @for (c of conversations.data() ?? []; track c.id) {
       <button
         type="button"

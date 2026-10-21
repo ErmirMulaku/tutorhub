@@ -13,10 +13,6 @@ import * as authEffects from './core/auth/auth.effects';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { authFeature } from './core/auth/auth.store';
 import { resetOnAuthChange } from './core/auth/reset-on-auth-change';
-import * as bookingsEffects from './core/bookings/bookings.effects';
-import { bookingsFeature } from './core/bookings/bookings.store';
-import * as dashboardEffects from './core/dashboard/dashboard.effects';
-import { dashboardFeature } from './core/dashboard/dashboard.store';
 import * as uiEffects from './core/ui/ui.effects';
 import { uiFeature } from './core/ui/ui.store';
 
@@ -35,9 +31,9 @@ export const appConfig: ApplicationConfig = {
     provideStore({}, { metaReducers: [resetOnAuthChange] }),
     provideState(authFeature),
     provideState(uiFeature),
-    provideState(dashboardFeature),
-    provideState(bookingsFeature),
-    provideEffects(authEffects, uiEffects, dashboardEffects, bookingsEffects),
+    // App-wide slices only; `dashboard` and `bookings` are registered by the
+    // lazy shell route (layout/shell.routes.ts).
+    provideEffects(authEffects, uiEffects),
     // Redux DevTools browser extension; read-only outside dev builds.
     provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
   ],

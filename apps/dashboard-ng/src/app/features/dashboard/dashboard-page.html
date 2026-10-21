@@ -26,21 +26,12 @@
   </div>
 
   <div class="kpi-row">
-    @if (summary(); as s) {
-      <th-kpi-stat icon="calendar" label="Lessons today" [value]="'' + s.lessonsToday" />
-      <th-kpi-stat icon="dollar" label="Earnings this week" [value]="money(s.earningsWeekCents)" />
-      <th-kpi-stat
-        icon="star"
-        label="Average rating"
-        [value]="s.avgRating ? s.avgRating.toFixed(1) : '—'"
-        [delta]="s.reviewCount > 0 ? { text: s.reviewCount + ' reviews', tone: 'neutral' } : undefined"
-      />
-      <th-kpi-stat
-        icon="bell"
-        label="Pending requests"
-        [value]="'' + s.pendingCount"
-        [delta]="s.pendingCount > 0 ? { text: 'Action needed', tone: 'danger' } : undefined"
-      />
+    @if (kpis(); as cards) {
+      @for (k of cards; track k.label) {
+        <th-kpi-stat [icon]="k.icon" [label]="k.label" [value]="k.value" [delta]="k.delta" />
+      }
+    } @else if (summaryError(); as error) {
+      <th-error-state [message]="'Could not load your stats: ' + error" (retry)="retrySummary()" />
     } @else {
       @for (i of skeletons; track i) {
         <th-skeleton [height]="120" />
@@ -54,7 +45,9 @@
         <h3>Today's schedule</h3>
         <a routerLink="/calendar" class="card-head__link">Open calendar →</a>
       </div>
-      @if (today().length > 0) {
+      @if (todayFailed()) {
+        <th-error-state message="Could not load today's schedule." (retry)="retryToday()" />
+      } @else if (today().length > 0) {
         <div class="sched-list">
           @for (b of today(); track b.id) {
             <div class="sched-row">

@@ -20,7 +20,8 @@ export interface DashboardState {
   summary: DashboardSummary | null;
   /** `tutorSettings.isActive` — onboarding is done. False until known (as in React). */
   published: boolean;
-  summaryLoading: boolean;
+  /** Set when the KPI summary failed to load; cleared by the next attempt. */
+  summaryError: string | null;
   /** The bell's feed (pending requests, unread threads, recent reviews), newest first. */
   notifications: TutorNotification[];
 }
@@ -29,7 +30,7 @@ const initialState: DashboardState = {
   me: null,
   summary: null,
   published: false,
-  summaryLoading: false,
+  summaryError: null,
   notifications: [],
 };
 
@@ -63,7 +64,7 @@ export const dashboardFeature = createFeature({
       DashboardActions.loadSummary,
       (state): DashboardState => ({
         ...state,
-        summaryLoading: state.summary === null,
+        summaryError: null,
       }),
     ),
     on(
@@ -71,14 +72,14 @@ export const dashboardFeature = createFeature({
       (state, { summary }): DashboardState => ({
         ...state,
         summary,
-        summaryLoading: false,
+        summaryError: null,
       }),
     ),
     on(
       DashboardActions.loadSummaryFailure,
-      (state): DashboardState => ({
+      (state, { error }): DashboardState => ({
         ...state,
-        summaryLoading: false,
+        summaryError: error,
       }),
     ),
     on(

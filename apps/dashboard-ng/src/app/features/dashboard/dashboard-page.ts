@@ -4,12 +4,14 @@ import { Store } from '@ngrx/store';
 import { ReviewsApi } from '../../core/api/reviews-api';
 import { cachedQuery, loadOnTags } from '../../core/api/cache-tags';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
-import { dashboardFeature } from '../../core/dashboard/dashboard.store';
+import { DashboardActions, dashboardFeature } from '../../core/dashboard/dashboard.store';
 import { money, timeOf } from '../../core/format';
 import { Avatar } from '../../shared/avatar';
 import { Button } from '../../shared/button';
 import { Card } from '../../shared/card';
-import { KpiStat } from '../../shared/kpi-stat';
+import { ErrorState } from '../../shared/error-state';
+import type { IconName } from '../../shared/icon';
+import { type KpiDelta, KpiStat } from '../../shared/kpi-stat';
 import { Skeleton } from '../../shared/skeleton';
 import { StarRating } from '../../shared/star-rating';
 import { StatusPill } from '../../shared/status-pill';
@@ -21,6 +23,14 @@ function greeting(): string {
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+/** One KPI card's worth of display data (the template only loops over these). */
+interface KpiCard {
+  icon: IconName;
+  label: string;
+  value: string;
+  delta?: KpiDelta;
 }
 
 function readBannerDismissed(): boolean {
@@ -41,7 +51,17 @@ function readBannerDismissed(): boolean {
  */
 @Component({
   selector: 'th-dashboard-page',
-  imports: [RouterLink, Avatar, Button, Card, KpiStat, Skeleton, StarRating, StatusPill],
+  imports: [
+    RouterLink,
+    Avatar,
+    Button,
+    Card,
+    ErrorState,
+    KpiStat,
+    Skeleton,
+    StarRating,
+    StatusPill,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
 })
@@ -49,7 +69,10 @@ export class DashboardPage {
   private readonly store = inject(Store);
   private readonly reviewsApi = inject(ReviewsApi);
 
-  protected readonly summary = this.store.selectSignal(dashboardFeature.selectSummary);
+  private readonly summary = this.store.selectSignal(dashboardFeature.selectSummary);
+  protected readonly summaryError = this.store.selectSignal(dashboardFeature.selectSummaryError);
+  private readonly todayStatus = this.store.selectSignal(bookingsFeature.selectTodayStatus);
+  protected readonly todayFailed = computed(() => this.todayStatus() === 'error');
   protected readonly me = this.store.selectSignal(dashboardFeature.selectMe);
   protected readonly published = this.store.selectSignal(dashboardFeature.selectPublished);
   protected readonly today = this.store.selectSignal(bookingsFeature.selectToday);
@@ -66,12 +89,43 @@ export class DashboardPage {
   protected readonly bannerDismissed = signal(readBannerDismissed());
   protected readonly skeletons = [0, 1, 2, 3];
 
-  protected readonly money = money;
+  /** The four KPI cards, or null while the summary hasn't arrived. */
+  protected readonly kpis = computed<KpiCard[] | null>(() => {
+    const s = this.summary();
+    if (s === null) return null;
+    return [
+      { icon: 'calendar', label: 'Lessons today', value: String(s.lessonsToday) },
+      { icon: 'dollar', label: 'Earnings this week', value: money(s.earningsWeekCents) },
+      {
+        icon: 'star',
+        label: 'Average rating',
+        value: s.avgRating ? s.avgRating.toFixed(1) : '—',
+        ...(s.reviewCount > 0 && {
+          delta: { text: `${String(s.reviewCount)} reviews`, tone: 'neutral' },
+        }),
+      },
+      {
+        icon: 'bell',
+        label: 'Pending requests',
+        value: String(s.pendingCount),
+        ...(s.pendingCount > 0 && { delta: { text: 'Action needed', tone: 'danger' } }),
+      },
+    ];
+  });
+
   protected readonly timeOf = timeOf;
 
   constructor() {
     // useGetTodayScheduleQuery() → load now, and again when 'Booking' is invalidated.
     loadOnTags(['Booking'], () => BookingsActions.loadToday());
+  }
+
+  protected retrySummary(): void {
+    this.store.dispatch(DashboardActions.loadSummary());
+  }
+
+  protected retryToday(): void {
+    this.store.dispatch(BookingsActions.loadToday());
   }
 
   protected dismissBanner(): void {
