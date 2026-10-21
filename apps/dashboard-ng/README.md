@@ -7,7 +7,7 @@ same look; the React app stays live until cutover. Plan and progress:
 
 **Stack:** Angular 22 (standalone components, signals, **zoneless**), Angular CLI with the
 esbuild `application` builder, RxJS, NgRx, SCSS, **Jasmine + Karma** for unit
-tests, Cypress for E2E (Phase 7).
+tests, **Cypress** for E2E against a fixture API.
 
 ## Run
 
@@ -24,10 +24,12 @@ The React app uses :3100 and the marketplace :3200, so all three can run side by
 ```bash
 npm run dev         # dev server (Vite, HMR) on :3300
 npm run build       # production build → dist/dashboard-ng/browser
-npm run typecheck   # ngc (templates too, strictTemplates) + tsc for the specs
+npm run typecheck   # ngc (templates too, strictTemplates) + tsc for the specs and Cypress
 npm run lint        # eslint + angular-eslint (TS and template rules)
 npm test            # Jasmine on Karma, headless Chrome, single run
 npm run test:watch  # Karma in a real Chrome window, re-runs on save
+npm run e2e         # Cypress, headless (needs `npm run dev` running; no API needed)
+npm run e2e:open    # Cypress's interactive runner
 ```
 
 All of them run through Nx too (`npx nx run-many -t lint typecheck test build`).
@@ -69,8 +71,22 @@ React app. `packages/ui` itself is React-only and is not used here.
 
 ## Tests
 
-- **Unit:** `*.spec.ts` next to the code, Jasmine syntax (`describe` / `it` / `expect`), run by
-  Karma in Chrome via the `@angular/build:unit-test` builder (`runner: "karma"`). `tsconfig.spec.json`
-  only exposes Jasmine's globals, never the repo-root Jest types.
+- **Unit (124 specs):** `*.spec.ts` next to the code, Jasmine syntax (`describe` / `it` /
+  `expect`), run by Karma in Chrome via the `@angular/build:unit-test` builder
+  (`runner: "karma"`). `tsconfig.spec.json` only exposes Jasmine's globals, never the repo-root
+  Jest types. Covered: NgRx reducers, selectors and effects (functional effects called directly,
+  marble tests for `switchMap` vs `mergeMap`), the interceptor and GraphQL client
+  (`HttpTestingController`), guards, `cachedQuery` / `CacheTags`, the socket service (fake socket),
+  and components (`fakeAsync` for the modal and toasts, Reactive Forms through the DOM, MockStore).
+- **zone.js for tests only:** the test target builds with `build:test`, whose polyfills add
+  `zone.js` so `fakeAsync` / `tick` work. The builder then also defaults TestBed to zone change
+  detection, so `src/test-setup.ts` (a global `beforeEach`) switches every TestBed back to
+  zoneless — tests run the way the app does. The production build never ships zone.js.
+- **E2E (10 tests):** `cypress/e2e/*.cy.ts`. There is no backend: one `cy.intercept` answers every
+  `/graphql` call by its root field from `cypress/fixtures/graphql.json` (or a per-test override,
+  which can be stateful), aliased by that name (`cy.wait('@acceptBooking')`). An operation without
+  a fixture fails the test (`cypress/support/e2e.ts`).
+- **CI:** Karma runs in the `verify` job (`KARMA_BROWSER=ChromeHeadlessNoSandbox`); Cypress runs in
+  the `dashboard-ng-e2e` job against the dev server, with failure screenshots uploaded.
 - **Note:** Karma is deprecated upstream and Vitest is Angular's default runner; Karma is used here
   on purpose to learn it.

@@ -618,6 +618,33 @@ silently broken the Messages two-pane grid and the Catalog card layout since Pha
 element selectors in `styles/_hosts.scss`. 20 Karma specs (was 17, + CSV quoting and formula
 guard); initial bundle unchanged at 100.9 kB.
 
+**10.7 Tests: Jasmine/Karma, Cypress, CI ✅** — **Built:** **124 Karma specs** (was 20): ports of
+the React tests (ui slice, the account-switch cache reset, the onboarding route, and the legacy
+week calendar replaced by a real month-grid spec) plus new ones for reducers and selectors, functional
+effects (called directly with fakes) and **marble tests** (`TestScheduler`) proving `switchMap`
+drops a stale calendar week while `mergeMap` keeps both status changes, the interceptor and
+GraphQL client (`HttpTestingController`), guards (MockStore), `cachedQuery`/`CacheTags`, the socket
+service (fake socket via its `InjectionToken`), and components — `fakeAsync`/`tick` for the modal
+and toasts, the promotion form driven through the DOM, review replies, the notifications bell.
+zone.js is loaded **for tests only** (a `build:test` configuration). **Cypress**: 10 E2E tests
+against a **fixture API** (one `cy.intercept` routing each GraphQL root field to a fixture or a
+stateful override; an unmocked operation fails the test), incl. a smoke test through all 11
+screens. **CI**: Karma in the `verify` job (`ChromeHeadlessNoSandbox`), a new `dashboard-ng-e2e`
+job (no database), failure screenshots uploaded.
+
+**Verified (not just generated):** typecheck (app, specs and Cypress), lint and all 124 specs
+green; Cypress 10/10 headless. **Tested the tests:** a script planted 8 deliberate bugs one at a
+time — each failed exactly its spec; one first slipped through (a "theme survives sign-out" spec
+that passed anyway because the default theme follows the OS, and this Mac is dark) and was
+rewritten. Deleting one fixture proved the E2E guard: the Analytics card had rendered empty
+without complaint, the guard failed the run. **Caught a trap, fixed:** with zone.js present, the
+builder's generated TestBed init silently switches every test to zone change detection (the
+existing `App` spec broke); a global `beforeEach` in `src/test-setup.ts` restores zoneless so tests
+match the app. Also found zoneless `whenStable()` waits on a loading resource (pending task), and
+`BarChart` wrote `height: NaN%` (fixed). The CI workflow parses and the no-sandbox launcher name
+resolves locally; **the GitHub run itself hasn't happened yet** (nothing pushed). zone.js 0.16.3 +
+Cypress 15.17.0 added with **no new audit findings**.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

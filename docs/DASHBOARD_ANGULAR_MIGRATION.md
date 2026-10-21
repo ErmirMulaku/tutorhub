@@ -268,6 +268,62 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   promotion reads "$13 off" in both apps; the "Withdraw now" label disappears on hover in both
   apps (shared CSS).
 
+**Implementation notes (Phase 7):**
+
+- **zone.js only for `fakeAsync`, and a trap it set.** The `unit-test` builder (Karma runner) has
+  no `polyfills` option of its own; it takes them from its build target. So the test target
+  points at a `build:test` configuration whose polyfills are `["zone.js"]` (the builder adds
+  `zone.js/testing`). The trap: once it sees zone.js, the builder's generated TestBed init also
+  adds `provideZoneChangeDetection()`, quietly turning **every** test zone-based — the existing
+  `App` spec broke at once (the theme effect never ran). `src/test-setup.ts` is listed first in
+  `test.options.include` and registers a global `beforeEach` that provides
+  `provideZonelessChangeDetection()`, so TestBed behaves like the zoneless app while `fakeAsync`
+  keeps working. Angular's NG0914 warning ("zoneless, but Zone.js is loaded") confirms the
+  combination; that one warning code is filtered, nothing else.
+- **Ports of the React tests:** `ui-slice.test.ts` → `core/ui/ui.store.spec.ts` (+ persistence
+  effects); `auth-cache-reset.test.ts` → `reset-on-auth-change.spec.ts` (a real store with the real
+  meta-reducer); `OnboardingRoute.test.tsx` → `auth.guards.spec.ts` (incl. "decides nothing while
+  loading" via an unanswered Subject); `WeekCalendar.test.tsx` (unrouted legacy) →
+  `month-grid.spec.ts` on the real month view, including the October DST page.
+- **What each Angular testing tool is used for:**
+
+  | Tool                                    | Used in                                                                                                            |
+  | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+  | Calling a functional effect with fakes  | `persistTheme(actions$, store)` — no TestBed module needed                                                         |
+  | `TestScheduler` marble diagrams         | `loadRange` drops a stale week (`switchMap`); `changeStatus` keeps both (`mergeMap`); errors don't kill the effect |
+  | `provideMockStore` + `overrideSelector` | guards, interceptor, notifications bell                                                                            |
+  | `HttpTestingController`                 | interceptor headers / 401, GraphQL unwrapping and auth-error sign-out, one API service's document + tags           |
+  | `fakeAsync` + `tick`                    | toast auto-dismiss (2.5 s), modal rAF-in / 200 ms-out, scroll lock, focus return                                   |
+  | `jasmine.createSpyObj` + `useValue`     | APIs and the toast service in component specs                                                                      |
+  | `InjectionToken` fake                   | `LIVE_SOCKET_FACTORY` → a `FakeSocket` that can fire `connect` / events                                            |
+
+- **Zoneless testing gotcha (worth knowing):** a loading resource is a _pending task_, so
+  `fixture.whenStable()` waits for its data — with a fake request that never answers, it hangs.
+  While a request is open, `TestBed.tick()` runs change detection instead.
+- **Tests that test the tests.** Eight deliberate bugs were planted one at a time by a script
+  (`switchMap` → `mergeMap` in `loadRange`, no sign-out on 401, GraphQL auth errors ignored, the
+  meta-reducer dropping `ui`, `loadOnTags` never unsubscribing, dollars sent instead of cents, the
+  socket left open, the onboarding guard failing closed); each made exactly the intended spec fail.
+  One didn't at first: the "theme survives sign-out" spec passed with `ui` wiped, because the
+  default theme follows the OS and this machine is in dark mode — it now asserts the accent, which
+  has a fixed default.
+- **Small fix found by a spec:** `BarChart` wrote `height: NaN%` for a non-finite value (as React
+  did); non-finite values now size as 0.
+- **Cypress with fixtures, no backend.** One `cy.intercept('POST', …/graphql)` reads each
+  operation's root field, aliases the request by it and replies from `cypress/fixtures/graphql.json`
+  or a per-test override (a function for stateful flows — accept → the next `tutorBookings` shows
+  it confirmed). An operation **without** a fixture fails the test in `afterEach`; proven by
+  deleting `topSubjects`: the Analytics card had silently rendered empty, and the guard caught it.
+  Socket.IO's handshake is refused with a 503. 10 tests: sign-in (no token on the sign-in call,
+  Bearer after), wrong password, a GraphQL auth error signing out, theme surviving sign-out,
+  accept → toast → refetch → both badges, live topbar search, the promotion form (blocked, then
+  1250 cents sent, grid refetched), and a smoke test opening all 11 screens from the sidebar.
+- **CI:** Karma runs inside the existing `verify` job (`nx run-many -t test`) with
+  `KARMA_BROWSER=ChromeHeadlessNoSandbox` (Angular's built-in launcher; the runner's kernel may
+  refuse Chrome's sandbox). A new `dashboard-ng-e2e` job needs no Postgres or API: `npm ci`, then
+  `cypress-io/github-action` starts the dev server and runs the specs; failure screenshots are
+  uploaded as an artifact.
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
