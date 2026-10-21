@@ -23,6 +23,7 @@ COPY packages/slot-engine/package.json packages/slot-engine/
 COPY packages/types/package.json packages/types/
 COPY packages/ui/package.json packages/ui/
 COPY apps/dashboard/package.json apps/dashboard/
+COPY apps/dashboard-ng/package.json apps/dashboard-ng/
 COPY apps/marketplace/package.json apps/marketplace/
 COPY apps/mobile/package.json apps/mobile/
 COPY services/api/package.json services/api/
@@ -59,6 +60,7 @@ COPY packages/slot-engine/package.json packages/slot-engine/
 COPY packages/types/package.json packages/types/
 COPY packages/ui/package.json packages/ui/
 COPY apps/dashboard/package.json apps/dashboard/
+COPY apps/dashboard-ng/package.json apps/dashboard-ng/
 COPY apps/marketplace/package.json apps/marketplace/
 COPY apps/mobile/package.json apps/mobile/
 COPY services/api/package.json services/api/
