@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, map, mergeMap, of, switchMap, tap } from 'rxjs';
 import { BookingsApi, type BookingTransition } from '../api/bookings-api';
+import { CacheTags } from '../api/cache-tags';
 import { UiActions } from '../ui/ui.store';
 import { ToastService } from '../../shared/toast';
 import { BookingsActions } from './bookings.store';
@@ -123,6 +124,19 @@ export const createLessonFailed = createEffect(
     actions$.pipe(
       ofType(BookingsActions.createLessonFailure),
       tap(() => toast.show('Could not book the lesson')),
+    ),
+  { functional: true, dispatch: false },
+);
+
+/**
+ * A live `bookingChanged` invalidates the same tags the React hook did, so
+ * every list, KPI and the notifications feed on screen refetches.
+ */
+export const liveChangedRefetch = createEffect(
+  (actions$ = inject(Actions), tags = inject(CacheTags)) =>
+    actions$.pipe(
+      ofType(BookingsActions.liveChanged),
+      tap(() => tags.invalidate('Booking', 'DashboardSummary', 'Notifications')),
     ),
   { functional: true, dispatch: false },
 );

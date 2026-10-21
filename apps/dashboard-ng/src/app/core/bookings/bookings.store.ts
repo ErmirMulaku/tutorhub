@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@ermulaku/types';
+import { BookingStatus } from '@ermulaku/types';
 import { type EntityState, createEntityAdapter } from '@ngrx/entity';
 import {
   createActionGroup,
@@ -11,8 +11,15 @@ import {
 } from '@ngrx/store';
 import type { BookingTransition } from '../api/bookings-api';
 import type { CreateLessonInput, TutorBooking } from '../api/models';
+import type { BookingChangedEvent } from '../live/live-socket.service';
 
 export type LoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
+const STATUSES: readonly string[] = Object.values(BookingStatus);
+/** The socket payload types `status` as a plain string; only trust known values. */
+function isBookingStatus(value: string): value is BookingStatus {
+  return STATUSES.includes(value);
+}
 
 /**
  * Bookings, normalised. The entity adapter stores each booking once, by id
@@ -69,6 +76,9 @@ export const BookingsActions = createActionGroup({
     'Create Lesson': props<{ input: CreateLessonInput }>(),
     'Create Lesson Success': props<{ id: string }>(),
     'Create Lesson Failure': props<{ error: string }>(),
+
+    /** Pushed by the API's Socket.IO gateway (someone changed a booking). */
+    'Live Changed': props<{ change: BookingChangedEvent }>(),
   },
 });
 
@@ -141,6 +151,26 @@ export const bookingsFeature = createFeature({
         ...state,
         error,
       }),
+    ),
+
+    // A live change patches the booking we already hold right away (updateOne
+    // ignores unknown ids); the follow-up refetch brings in anything new.
+    on(
+      BookingsActions.liveChanged,
+      (state, { change }): BookingsState =>
+        isBookingStatus(change.status)
+          ? bookingsAdapter.updateOne(
+              {
+                id: change.id,
+                changes: {
+                  status: change.status,
+                  startTime: change.startTime,
+                  endTime: change.endTime,
+                },
+              },
+              state,
+            )
+          : state,
     ),
 
     on(BookingsActions.createLesson, (state): BookingsState => ({ ...state, creating: true })),

@@ -54,3 +54,19 @@ export const loadPublished = createEffect(
     ),
   { functional: true },
 );
+
+export const loadNotifications = createEffect(
+  (actions$ = inject(Actions), api = inject(DashboardApi)) =>
+    actions$.pipe(
+      ofType(DashboardActions.loadNotifications),
+      switchMap(() =>
+        api.notifications().pipe(
+          map((notifications) => DashboardActions.loadNotificationsSuccess({ notifications })),
+          catchError((err: unknown) =>
+            of(DashboardActions.loadNotificationsFailure({ error: message(err) })),
+          ),
+        ),
+      ),
+    ),
+  { functional: true },
+);

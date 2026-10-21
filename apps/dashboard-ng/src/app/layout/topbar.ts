@@ -7,6 +7,7 @@ import { PAGE_META } from '../core/nav';
 import { type Accent, UiActions, uiFeature } from '../core/ui/ui.store';
 import { Button } from '../shared/button';
 import { Icon } from '../shared/icon';
+import { NotificationsBell } from './notifications-bell';
 
 const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
   { key: 'teal', label: 'Teal', swatch: '#0e8f8a' },
@@ -14,13 +15,10 @@ const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
   { key: 'plum', label: 'Plum', swatch: '#8b46c9' },
 ];
 
-/**
- * Port of components/Topbar.tsx. The notifications bell arrives with the live
- * feed in Phase 4.
- */
+/** Port of components/Topbar.tsx. */
 @Component({
   selector: 'header[th-topbar]',
-  imports: [Button, Icon],
+  imports: [Button, Icon, NotificationsBell],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'topbar' },
   templateUrl: './topbar.html',

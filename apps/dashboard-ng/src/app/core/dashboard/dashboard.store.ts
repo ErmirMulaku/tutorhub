@@ -6,13 +6,14 @@ import {
   on,
   props,
 } from '@ngrx/store';
-import type { DashboardSummary, MeTutor } from '../api/models';
+import type { DashboardSummary, MeTutor, TutorNotification } from '../api/models';
 
 /**
  * Tutor data the whole shell reads: the sidebar (name, badges, profile link)
  * and the dashboard (greeting, KPIs, setup banner). Keeping it in the store
  * means one request each, shared by every reader — what RTK Query's cache did
- * for `getMeTutor`, `getDashboardSummary` and `getTutorSettings`.
+ * for `getMeTutor`, `getDashboardSummary`, `getTutorSettings` and
+ * `getTutorNotifications` (the topbar bell).
  */
 export interface DashboardState {
   me: MeTutor | null;
@@ -20,6 +21,8 @@ export interface DashboardState {
   /** `tutorSettings.isActive` — onboarding is done. False until known (as in React). */
   published: boolean;
   summaryLoading: boolean;
+  /** The bell's feed (pending requests, unread threads, recent reviews), newest first. */
+  notifications: TutorNotification[];
 }
 
 const initialState: DashboardState = {
@@ -27,6 +30,7 @@ const initialState: DashboardState = {
   summary: null,
   published: false,
   summaryLoading: false,
+  notifications: [],
 };
 
 export const DashboardActions = createActionGroup({
@@ -43,6 +47,10 @@ export const DashboardActions = createActionGroup({
     'Load Published': emptyProps(),
     'Load Published Success': props<{ published: boolean }>(),
     'Load Published Failure': props<{ error: string }>(),
+
+    'Load Notifications': emptyProps(),
+    'Load Notifications Success': props<{ notifications: TutorNotification[] }>(),
+    'Load Notifications Failure': props<{ error: string }>(),
   },
 });
 
@@ -79,6 +87,10 @@ export const dashboardFeature = createFeature({
         ...state,
         published,
       }),
+    ),
+    on(
+      DashboardActions.loadNotificationsSuccess,
+      (state, { notifications }): DashboardState => ({ ...state, notifications }),
     ),
     // A failed lookup counts as not published (use-profile-published.ts).
     on(

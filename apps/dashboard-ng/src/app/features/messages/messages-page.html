@@ -1,0 +1,60 @@
+<th-card class="chat">
+  <div class="chat__list">
+    @for (c of conversations.data() ?? []; track c.id) {
+      <button
+        type="button"
+        class="chat__thread"
+        [class.chat__thread--active]="active()?.id === c.id"
+        (click)="activeId.set(c.id)"
+      >
+        <th-avatar [name]="c.studentName" size="md" />
+        <div class="chat__thread-body">
+          <div class="chat__thread-top">
+            <span class="chat__thread-name" [class.chat__thread-name--unread]="c.unread > 0">
+              {{ c.studentName }}
+            </span>
+            <span class="muted chat__thread-time">{{ timeOf(c.lastMessageAt) }}</span>
+          </div>
+          <div class="chat__thread-preview muted">{{ c.preview }}</div>
+        </div>
+        @if (c.unread > 0) {
+          <span class="chat__unread">{{ c.unread }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <div class="chat__pane">
+    @if (active(); as convo) {
+      <div class="chat__header">
+        <th-avatar [name]="convo.studentName" size="md" />
+        <div>
+          <div class="chat__header-name">{{ convo.studentName }}</div>
+          <div class="muted">{{ convo.subjectName }} student · Active now</div>
+        </div>
+      </div>
+      <div #scroller class="chat__messages">
+        @for (m of messages.data() ?? []; track m.id) {
+          <div
+            class="chat__bubble"
+            [class.chat__bubble--mine]="m.senderKind === 'TUTOR'"
+            [class.chat__bubble--theirs]="m.senderKind !== 'TUTOR'"
+          >
+            {{ m.body }}
+          </div>
+        }
+      </div>
+      <form class="chat__composer" (submit)="onSend($event)">
+        <input
+          placeholder="Write a message…"
+          aria-label="Message"
+          [value]="draft()"
+          (input)="onDraftInput($event)"
+        />
+        <button type="submit" class="chat__send">Send</button>
+      </form>
+    } @else {
+      <div class="chat__empty muted">Select a conversation to start chatting.</div>
+    }
+  </div>
+</th-card>
