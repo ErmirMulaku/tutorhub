@@ -42,13 +42,24 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "380kB",
+                  "maximumError": "420kB"
+                },
+                {
+                  "type": "allScript",
+                  "maximumWarning": "600kB",
+                  "maximumError": "700kB"
+                },
+                {
+                  "type": "bundle",
+                  "name": "shell-routes",
+                  "maximumWarning": "85kB",
+                  "maximumError": "100kB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "2kB",
+                  "maximumError": "4kB"
                 }
               ],
               "outputHashing": "all"
