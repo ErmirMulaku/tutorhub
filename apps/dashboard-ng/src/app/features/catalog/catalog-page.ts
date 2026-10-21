@@ -37,7 +37,6 @@ const TYPE_TONE: Record<ServiceType, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The host is the card (React: <Card className="svc …">).
   host: { class: 'th-card svc', '[class.svc--hidden]': '!service().isActive' },
-  styles: ':host { display: block; }',
   template: `
     @let s = service();
     <div class="svc__head">

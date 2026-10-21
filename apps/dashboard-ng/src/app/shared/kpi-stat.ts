@@ -17,7 +17,6 @@ export interface KpiDelta {
   changeDetection: ChangeDetectionStrategy.OnPush,
   // The host is the card itself (React: <Card className="kpi">).
   host: { class: 'th-card kpi' },
-  styles: ':host { display: block; }',
   template: `
     <div class="kpi__top">
       <span class="kpi__icon"><svg [th-icon]="icon()"></svg></span>

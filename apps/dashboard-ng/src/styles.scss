@@ -1,8 +1,10 @@
 /*
  * Global styles, loaded in the same order as the React app: design tokens and
  * .th-* primitives first (React imports @ermulaku/ui/styles.css), then the
- * dashboard's own shell + screen styles.
+ * dashboard's own shell + screen styles. `hosts` is Angular-only (block
+ * display for component host elements).
  */
 @use 'styles/tokens';
 @use 'styles/primitives';
+@use 'styles/hosts';
 @use 'styles/app';

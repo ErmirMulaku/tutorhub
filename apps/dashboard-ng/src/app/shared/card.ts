@@ -5,8 +5,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   selector: 'th-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'th-card' },
-  // Custom elements are inline by default; a card is a block like React's <div>.
-  styles: ':host { display: block; }',
+  // Block display comes from styles/_hosts.scss (an element selector, so classes win).
   template: '<ng-content />',
 })
 export class Card {}
