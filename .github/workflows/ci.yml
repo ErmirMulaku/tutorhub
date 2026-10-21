@@ -158,15 +158,28 @@ jobs:
         run: npm ci --workspace=@ermulaku/dashboard-ng --include-workspace-root
 
       # The API is faked with cy.intercept fixtures, so no database or API
-      # server is started here — only the Angular dev server.
+      # server is started here — only the Angular dev server. It's started and
+      # awaited here rather than through the action's `start` / `wait-on`, whose
+      # probe failed on its first attempt ("Socket closed before the connection
+      # was established") instead of retrying; curl tries IPv6 and IPv4 and the
+      # loop retries. The server keeps running into the next step.
+      - name: Start the dashboard dev server
+        working-directory: apps/dashboard-ng
+        run: |
+          npm run dev > /tmp/ng-serve.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -sf -o /dev/null http://localhost:3100/; then
+              echo "Dev server is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Dev server failed to start" >&2; cat /tmp/ng-serve.log >&2; exit 1
+
       - name: Cypress E2E (fixtures)
         uses: cypress-io/github-action@v6
         with:
           working-directory: apps/dashboard-ng
           install: false
-          start: npm run dev
-          wait-on: 'http://localhost:3100'
-          wait-on-timeout: 120
 
       - name: Upload failure screenshots
         if: failure()
