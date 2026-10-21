@@ -348,6 +348,34 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   600 / 700 kB, the post-login `shell-routes` chunk 85 / 100 kB, component styles 2 / 4 kB (warning
   / error, raw bytes). Proven by tightening them: the build printed the overrun and exited 1.
 
+**Phase 8 follow-up — the two shared gaps, fixed in the Angular app:**
+
+- **The layout shift was mostly the setup banner, not the skeletons** (correcting the first
+  Phase 8 gap list, which blamed the skeletons alone). Lighthouse names the elements that _moved_, so the trace's raw `LayoutShift`
+  rects were read: the KPI row and the greeting both moved **up** 155 px — something above them
+  vanished. `published` started as `false` while unknown (as in React), so a published tutor saw
+  "Finish setting up" flash and disappear. It is now `boolean | null` and the banner needs
+  `=== false`. The skeletons _were_ also wrong (120 px vs 153 px cards), and `line-height: normal`
+  made the card grow when the web font replaced the fallback; the card's two line boxes are now
+  fixed at the values the font already produced, and the skeletons use an exported
+  `KPI_CARD_HEIGHT`, guarded by a spec that renders a real card under the global CSS in Karma's
+  fallback font.
+- **Reproducing it needed a slow API.** Locally the API often answers before the first paint, so
+  CLS swung between 0 and 0.19 run to run. The measurement server can now hold every API call
+  800 ms (a realistic network to the API) — React then shifts 0.188 on every run, Angular 0.003.
+- **Contrast — fixed at the token level, wider than the two flagged elements.** Every earlier run
+  was in **dark** mode (the machine's OS theme). `--faint` (sidebar labels, eyebrows, calendar
+  hours, chart axes, table headers) was 2.2:1 in light and 3.9:1 in dark; it is now 5.0 / 5.2:1 on
+  its real backgrounds. The white buttons on the brand gradient (Up next, Earnings balance, setup
+  banner, onboarding step dots) used `--primary-700`, which the dark ramp flips to a light shade
+  (1.9:1); a theme-independent `--on-white-primary` per accent fixes all four (5.6–7.4:1). The same
+  rule pair also caused the "Withdraw now" label to vanish on hover (the primitive's hover is more
+  specific and painted the text colour behind it) — fixed too. All deviations live in
+  `styles/_overrides.scss`; `_app.scss` stays verbatim.
+- **Caught on the way:** `MockStore.overrideSelector` patches the shared memoized selector, so the
+  new dashboard spec's override leaked into a later real-store spec; every spec that overrides now
+  calls `store.resetSelectors()` (the NgRx-documented teardown).
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
@@ -445,62 +473,82 @@ test server, because Lighthouse clears storage.
 | Lighthouse accessibility (login / dashboard)   | 91 / 91 (95 mobile)       | 94 / 91 (95 mobile)           |
 | Lighthouse best practices                      | 100                       | 100                           |
 
+**After the Phase 8 follow-up fixes** (same machine and method; Angular rebuilt, React unchanged —
+React still has the gaps Angular had before; Angular's Phase 8 run had CLS 0.180 mobile):
+
+| Lighthouse (median of 3)                         | React           | Angular        |
+| ------------------------------------------------ | --------------- | -------------- |
+| `/dashboard` mobile — performance / CLS          | 86 / 0.188      | **93 / 0.003** |
+| `/dashboard` mobile, API +800 ms — perf / CLS    | 80 / 0.188 (×3) | **91 / 0.003** |
+| `/dashboard` desktop — performance / CLS         | 96 / 0.051      | **99 / 0.004** |
+| Accessibility, dark — login / dashboard mobile   | 91 / 95         | **100 / 100**  |
+| Accessibility, light — login / dashboard desktop | 91 / 91         | 94 / 91        |
+
+The light-theme accessibility runs are new: they surfaced the brand-colour findings in the gap
+list below, which the earlier (dark) runs could not see.
+
 **Reading it honestly:** Angular ships **26 % less JavaScript up front** because every route is
 lazy, and paints first a bit sooner (FCP −0.4 s on throttled mobile). But its **total** JavaScript
 is **40 % larger**: Angular core + router + RxJS + NgRx + Forms outweigh React + Redux Toolkit. A
 signed-in visit to the dashboard downloads the same 132 kB in both, so it's a wash there; the win
-is on the login page and on every screen the tutor never opens. Mobile scores sit at 83–85 for
-both because of the same layout shift (see the gaps below), not JavaScript.
+is on the login page and on every screen the tutor never opens. Before the follow-up, mobile scores
+sat at 83–85 for both because of the same layout shift, not JavaScript; with it fixed, Angular's
+mobile dashboard scores 93.
 
 ## 8. Parity checklist (Phase 8)
 
 ✅ same behaviour · ✅+ same, plus a documented improvement · ⚠️ a deliberate difference.
 
-| React screen / shell element                        | Angular                                          | Status                                                                      |
-| --------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- |
-| Login (+ unverified → verify code)                  | `LoginPage`, `VerifyPanel`                       | ✅                                                                          |
-| Sign-up → verify → onboarding                       | `SignupPage`, `VerifyPanel`                      | ✅                                                                          |
-| Session: 401 / GraphQL auth error → `/login`        | interceptor + `GraphqlClient` + sign-out effect  | ✅                                                                          |
-| Account switch drops the previous tutor's cache     | `resetOnAuthChange` meta-reducer                 | ✅                                                                          |
-| `/onboarding` route                                 | behind `authGuard` + `onboardingGuard`           | ⚠️ signed-out visitors go to `/login` first (React let them in, then 401'd) |
-| Onboarding wizard (6 steps, publish)                | `OnboardingPage`                                 | ✅+ toasts now show (React's provider sat inside the shell)                 |
-| Sidebar (groups, badges, profile link, sign-out)    | `aside[th-sidebar]`                              | ✅                                                                          |
-| Mobile drawer (< 1024 px)                           | shell + `ui.sidebarOpen`                         | ✅                                                                          |
-| Topbar (titles, online pill, accent, theme)         | `header[th-topbar]`                              | ✅                                                                          |
-| Topbar search → `/lessons?q=`                       | same                                             | ✅+ live (debounced) while on /lessons                                      |
-| Notifications bell                                  | `NotificationsBell` (NgRx `dashboard`)           | ✅                                                                          |
-| New-lesson modal                                    | `NewLessonModal` (NgRx `bookings`)               | ✅                                                                          |
-| Toasts                                              | `ToastService` + root `ToastHost`                | ✅+ shown outside the shell too                                             |
-| Theme / accent persisted (same keys)                | `ui` effects                                     | ✅                                                                          |
-| Live bookings socket (shell) + messages socket      | `LiveSocketService`, two connections as in React | ✅                                                                          |
-| Dashboard (KPIs, today, up next, review, banner)    | `DashboardPage`                                  | ✅+ failed loads show Retry                                                 |
-| Calendar Day / Week / Month                         | `CalendarPage`, `MonthGrid`                      | ✅+ DST-safe (React showed 25 Oct twice)                                    |
-| Lessons tabs, accept / decline / complete           | `LessonsPage` (entity adapter)                   | ✅+ failed updates toast (React silent)                                     |
-| Messages (threads, chat, composer, live)            | `MessagesPage`                                   | ✅+ failed send restores the draft                                          |
-| Catalog + new service                               | `CatalogPage`, `NewServiceModal`                 | ✅+ inline validation                                                       |
-| Availability (hours, rules, time off)               | `AvailabilityPage`, `WeeklyHoursEditor`          | ✅+ inline validation; time off works (API fix `8136a7f` helps React too)   |
-| Earnings (balance, chart, payout, CSV)              | `EarningsPage`                                   | ✅+ CSV quotes fields / defuses formulas; withdraw errors shown             |
-| Marketing (stats, promotions, gift cards, referral) | `MarketingPage`, `NewPromotionModal`             | ✅+ validation, typed amount kept, honest "Copied"                          |
-| Reviews (summary, filters, replies)                 | `ReviewsPage`, `ReviewCard`                      | ✅+ Enter sends, failures toast                                             |
-| Analytics (KPIs + four charts)                      | `AnalyticsPage`, `AreaChart`, `BarChart`         | ✅                                                                          |
-| Settings (profile, payout, notifications, delete)   | `SettingsPage`, `DeleteAccountCard`              | ✅+ timezone validation, optimistic toggles roll back                       |
-| Unknown URL → `/dashboard`                          | `**` redirect                                    | ✅                                                                          |
-| Redux DevTools                                      | development builds only                          | ⚠️ React exposes the store to the extension in production too               |
-| Data caching                                        | `cachedQuery` + `CacheTags`                      | ⚠️ a screen refetches on every visit (RTK served a fresh cache)             |
-| 5 unrouted legacy components                        | not ported                                       | ⚠️ dead code, no visible behaviour                                          |
+| React screen / shell element                        | Angular                                          | Status                                                                                |
+| --------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Login (+ unverified → verify code)                  | `LoginPage`, `VerifyPanel`                       | ✅                                                                                    |
+| Sign-up → verify → onboarding                       | `SignupPage`, `VerifyPanel`                      | ✅                                                                                    |
+| Session: 401 / GraphQL auth error → `/login`        | interceptor + `GraphqlClient` + sign-out effect  | ✅                                                                                    |
+| Account switch drops the previous tutor's cache     | `resetOnAuthChange` meta-reducer                 | ✅                                                                                    |
+| `/onboarding` route                                 | behind `authGuard` + `onboardingGuard`           | ⚠️ signed-out visitors go to `/login` first (React let them in, then 401'd)           |
+| Onboarding wizard (6 steps, publish)                | `OnboardingPage`                                 | ✅+ toasts now show (React's provider sat inside the shell)                           |
+| Sidebar (groups, badges, profile link, sign-out)    | `aside[th-sidebar]`                              | ✅                                                                                    |
+| Mobile drawer (< 1024 px)                           | shell + `ui.sidebarOpen`                         | ✅                                                                                    |
+| Topbar (titles, online pill, accent, theme)         | `header[th-topbar]`                              | ✅                                                                                    |
+| Topbar search → `/lessons?q=`                       | same                                             | ✅+ live (debounced) while on /lessons                                                |
+| Notifications bell                                  | `NotificationsBell` (NgRx `dashboard`)           | ✅                                                                                    |
+| New-lesson modal                                    | `NewLessonModal` (NgRx `bookings`)               | ✅                                                                                    |
+| Toasts                                              | `ToastService` + root `ToastHost`                | ✅+ shown outside the shell too                                                       |
+| Theme / accent persisted (same keys)                | `ui` effects                                     | ✅                                                                                    |
+| Live bookings socket (shell) + messages socket      | `LiveSocketService`, two connections as in React | ✅                                                                                    |
+| Dashboard (KPIs, today, up next, review, banner)    | `DashboardPage`                                  | ✅+ failed loads show Retry; no banner flash or KPI jump while loading                |
+| Calendar Day / Week / Month                         | `CalendarPage`, `MonthGrid`                      | ✅+ DST-safe (React showed 25 Oct twice)                                              |
+| Lessons tabs, accept / decline / complete           | `LessonsPage` (entity adapter)                   | ✅+ failed updates toast (React silent)                                               |
+| Messages (threads, chat, composer, live)            | `MessagesPage`                                   | ✅+ failed send restores the draft                                                    |
+| Catalog + new service                               | `CatalogPage`, `NewServiceModal`                 | ✅+ inline validation                                                                 |
+| Availability (hours, rules, time off)               | `AvailabilityPage`, `WeeklyHoursEditor`          | ✅+ inline validation; time off works (API fix `8136a7f` helps React too)             |
+| Earnings (balance, chart, payout, CSV)              | `EarningsPage`                                   | ✅+ CSV quotes fields / defuses formulas; withdraw errors shown; hover label readable |
+| Marketing (stats, promotions, gift cards, referral) | `MarketingPage`, `NewPromotionModal`             | ✅+ validation, typed amount kept, honest "Copied"                                    |
+| Reviews (summary, filters, replies)                 | `ReviewsPage`, `ReviewCard`                      | ✅+ Enter sends, failures toast                                                       |
+| Analytics (KPIs + four charts)                      | `AnalyticsPage`, `AreaChart`, `BarChart`         | ✅                                                                                    |
+| Settings (profile, payout, notifications, delete)   | `SettingsPage`, `DeleteAccountCard`              | ✅+ timezone validation, optimistic toggles roll back                                 |
+| Unknown URL → `/dashboard`                          | `**` redirect                                    | ✅                                                                                    |
+| Redux DevTools                                      | development builds only                          | ⚠️ React exposes the store to the extension in production too                         |
+| Data caching                                        | `cachedQuery` + `CacheTags`                      | ⚠️ a screen refetches on every visit (RTK served a fresh cache)                       |
+| 5 unrouted legacy components                        | not ported                                       | ⚠️ dead code, no visible behaviour                                                    |
 
 **Gaps and follow-ups (not done in this migration):**
 
-1. **Layout shift on the dashboard, both apps (CLS ≈ 0.18 mobile, 0.05 desktop).** 0.153 of it is
-   the KPI row: four 120 px skeletons give way to cards of a different height once they stack on
-   phones. Fix: size the skeletons like the cards per breakpoint (shared CSS, so it also fixes React).
-2. **Colour contrast, both apps:** the login "FOR TUTORS" eyebrow (3.87:1 on dark) and a teal
-   button on a white card on the dashboard (1.9:1). Token-level fix in the shared styles.
+1. ~~Layout shift on the dashboard~~ — **fixed** (follow-up above): CLS 0.18 → 0.003 on mobile.
+2. ~~Colour contrast of `--faint` and the white gradient buttons~~ — **fixed**: dark-theme
+   accessibility 100 on login and the mobile dashboard.
 3. **socket.io (~49 kB raw) ships in the shell chunk**, i.e. on the path to the first signed-in
    screen. It could be loaded with a dynamic `import()` once the shell is shown.
-4. **Kept React quirks:** `money()` rounds to whole dollars ($12.50 promotion → "$13 off"), the
-   "Withdraw now" label disappears on hover, and the lessons list always says "60 min".
-5. **CI has not run on GitHub yet** (nothing pushed); the Karma + Cypress jobs were only validated
+4. **Kept React quirks:** `money()` rounds to whole dollars ($12.50 promotion → "$13 off") and the
+   lessons list always says "60 min". (The "Withdraw now" hover label is fixed.)
+5. **Light-theme contrast, both apps — a design decision, not a bug fix:** the brand **teal**
+   `#0e8f8a` is 3.95:1 against white, both as the primary button background (white text) and as
+   link text ("Open calendar →", "Create an account", avatars); AA for small text needs 4.5. Indigo
+   and plum already pass. The success green on its tint (`#1fa463` on `#e2f5ea`, the "Online" and
+   "Confirmed" pills) is 2.82:1. Fixing either means darkening a brand colour.
+6. **Touch targets, both apps:** the three accent swatches are 16 × 16 px; WCAG 2.2 asks for a
+   24 px target (the dots can stay 16 px with a larger hit area).
+7. **CI has not run on GitHub yet** (nothing pushed); the Karma + Cypress jobs were only validated
    locally.
-6. Outside this migration: ~60 pre-existing `npm audit` findings, the 6 pre-existing API e2e
+8. Outside this migration: ~60 pre-existing `npm audit` findings, the 6 pre-existing API e2e
    failures (10.5b), and Karma's deprecation (Vitest is Angular's default runner).

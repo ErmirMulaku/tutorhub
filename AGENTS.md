@@ -663,6 +663,26 @@ CSS): a 0.18 mobile layout shift from the KPI skeletons and one colour-contrast 
 listed with fixes, not changed here. Whole-workspace `nx run-many` green, 124 Karma specs, Cypress
 10/10.
 
+**10.8b Layout shift + contrast (both apps' gaps, fixed in Angular) ✅** — **Built:** the setup
+banner no longer flashes for published tutors (`published` is `null` until known — React used
+`false`); KPI skeletons sized from an exported `KPI_CARD_HEIGHT`, with the card's line boxes
+fixed so its height doesn't depend on the font; `--faint` raised to AA in both themes; a
+theme-independent `--on-white-primary` for the four white-on-gradient controls (which also fixes
+the vanishing "Withdraw now" hover label). All deviations from the React CSS sit in
+`styles/_overrides.scss`.
+
+**Verified (not just generated):** the first diagnosis was wrong — the trace's `LayoutShift` rects
+showed the KPI row _moving up_ 155 px (the banner vanishing), not the skeletons growing; both were
+fixed. With the API slowed 800 ms to make the shift reproducible, CLS went **0.188 (React, every
+run) → 0.003 (Angular)**; mobile dashboard performance 85 → **93**; dark-theme accessibility
+**100** on login and the mobile dashboard. Contrast checked in the browser for both themes × all
+three accents (5.0–7.4:1) and the hover state with a real hover. Three new specs, each
+mutation-tested (removing the line-box fix, reverting the banner condition, or the 120 px
+skeleton each fail exactly one spec); found and fixed a `MockStore.overrideSelector` leak between
+specs (`resetSelectors()`). New light-theme runs surfaced **brand-colour** findings in both apps
+(teal 3.95:1, success-green pill 2.82:1, 16 px accent swatches) — listed as a design decision, not
+changed.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
