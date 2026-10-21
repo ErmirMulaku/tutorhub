@@ -23,7 +23,7 @@ The React app uses :3100 and the marketplace :3200, so all three can run side by
 
 ```bash
 npm run dev         # dev server (Vite, HMR) on :3300
-npm run build       # production build → dist/dashboard-ng/browser
+npm run build       # production build → dist/dashboard-ng/browser (fails over a size budget)
 npm run typecheck   # ngc (templates too, strictTemplates) + tsc for the specs and Cypress
 npm run lint        # eslint + angular-eslint (TS and template rules)
 npm test            # Jasmine on Karma, headless Chrome, single run
@@ -44,6 +44,11 @@ Angular equivalent of the React app's Webpack `DefinePlugin`:
 
 Read it through `src/environments/environment.ts`, never the global directly. Changing it needs a
 rebuild.
+
+Redux DevTools are registered only in **development** builds: `angular.json` swaps
+`src/environments/dev-tools.ts` (no providers) for `dev-tools.development.ts` there, so production
+never bundles them. Size budgets (initial 420 kB, all scripts 700 kB, the post-login
+`shell-routes` chunk 100 kB — errors; warnings a little lower) live in the production configuration.
 
 ## Layout
 

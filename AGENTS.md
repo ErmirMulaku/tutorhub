@@ -645,6 +645,24 @@ match the app. Also found zoneless `whenStable()` waits on a loading resource (p
 resolves locally; **the GitHub run itself hasn't happened yet** (nothing pushed). zone.js 0.16.3 +
 Cypress 15.17.0 added with **no new audit findings**.
 
+**10.8 Performance + parity ✅** — **Built:** budgets that fail the production build (initial,
+all scripts, the post-login `shell-routes` chunk by name, component styles); Redux DevTools moved
+to development builds only via `fileReplacements` (they had been shipping 15.3 kB raw to every
+visitor behind a runtime `isDevMode()` switch); and the measured results + a parity checklist (one
+row per React screen and shell element, with the gaps) in the migration doc. Audited: all 44
+components `OnPush`, only built-in control flow, every `@for` tracked.
+
+**Verified (not just generated):** both production builds served the same way and measured the
+same way — Angular loads **97.5 kB** of JS up front vs React's **131.4 kB** (gzip), but **184.3 vs
+131.4 kB in total**; Lighthouse (median of 3) 100 / 99 / 85 vs 100 / 98 / 83 (login desktop /
+dashboard desktop / dashboard mobile), signed in against the real API. Budgets were proven by
+tightening them (build exits 1). **Measured, then reverted, `@defer` on the charts:** it split them
+out but put the deferrable-views runtime into the core chunk every page loads (+3.9 kB gzip up
+front to save 1.4 kB already-lazy code). Lighthouse showed two gaps **shared with React** (same
+CSS): a 0.18 mobile layout shift from the KPI skeletons and one colour-contrast failure per page —
+listed with fixes, not changed here. Whole-workspace `nx run-many` green, 124 Karma specs, Cypress
+10/10.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

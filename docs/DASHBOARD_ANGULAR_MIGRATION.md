@@ -324,6 +324,30 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   `cypress-io/github-action` starts the dev server and runs the specs; failure screenshots are
   uploaded as an artifact.
 
+**Implementation notes (Phase 8):**
+
+- **Already in place:** all 44 components are `OnPush`; templates use only the built-in control
+  flow (`@if` / `@for` / `@switch` — no `*ngIf`, `*ngFor` or `CommonModule`), and every `@for` has
+  a `track` (three track by index, each over a fixed list that never reorders). The app has been
+  zoneless since Phase 1.
+- **Redux DevTools out of production (−4.8 kB gzip initial).** The esbuild metafile
+  (`ng build --stats-json`) showed `@ngrx/store-devtools` — 15.3 kB raw — in the initial bundle:
+  `logOnly: !isDevMode()` is a _runtime_ switch, so the code always ships. Devtools are now
+  provided from `environments/dev-tools.ts` (no providers) which the `development` configuration
+  swaps for `dev-tools.development.ts` (`fileReplacements`). Verified: the production bundle has
+  no `__REDUX_DEVTOOLS_EXTENSION__`, the development build does.
+- **`@defer` for the charts: measured, then reverted.** Wrapping both charts in
+  `@defer (on viewport; prefetch on idle)` did split them out (AreaChart 1.9 kB, BarChart 1.3 kB
+  raw) — but the deferrable-views runtime (IntersectionObserver / idle triggers, dependency
+  loading) landed in Angular's core chunk, which **every** page loads: initial JS went 102.3 →
+  106.2 kB gzip to save 1.4 kB of code that was already lazy with its route. A plain `@defer` still
+  cost +3.3 kB. `@defer` pays off for heavy, rarely shown blocks inside an eagerly loaded view; here
+  every route is already lazy and the deferrable candidates are tiny. (The heaviest post-login code
+  is socket.io — a service, not a template block — see gap 3.)
+- **Budgets that fail the build** (`angular.json`, production): initial 380 / 420 kB, all scripts
+  600 / 700 kB, the post-login `shell-routes` chunk 85 / 100 kB, component styles 2 / 4 kB (warning
+  / error, raw bytes). Proven by tightening them: the build printed the overrun and exited 1.
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
@@ -398,15 +422,85 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
 
 ---
 
-## 7. Results (filled in during Phase 8)
+## 7. Results (measured in Phase 8, 2026-10-21)
 
-| Metric                   | React (`apps/dashboard`) | Angular (`apps/dashboard-ng`) |
-| ------------------------ | ------------------------ | ----------------------------- |
-| Initial JS (gzip)        | _tbd_                    | _tbd_                         |
-| Total JS (gzip)          | _tbd_                    | _tbd_                         |
-| Lighthouse performance   | _tbd_                    | _tbd_                         |
-| Lighthouse accessibility | _tbd_                    | _tbd_                         |
+Both production builds, served the same way (gzip, immutable caching for hashed assets, SPA
+fallback — like Vercel) from a local static server. Bundle sizes are gzip -9 of the built files;
+"initial" is what `index.html` loads. Lighthouse 12.6.1, **median of 3 runs**; the signed-in
+dashboard talks to the real local API (seed tutor) — the session is put in `localStorage` by the
+test server, because Lighthouse clears storage.
 
-## 8. Parity checklist (filled in during Phase 8)
+| Metric                                         | React (`apps/dashboard`)  | Angular (`apps/dashboard-ng`) |
+| ---------------------------------------------- | ------------------------- | ----------------------------- |
+| Initial JS (gzip)                              | 131.4 kB (3 files)        | **97.5 kB** (4 files)         |
+| Total JS (gzip)                                | **131.4 kB** (one bundle) | 184.3 kB (36 lazy chunks)     |
+| Initial CSS (gzip)                             | 11.3 kB                   | 8.5 kB                        |
+| JS transferred on `/login`                     | 132 kB                    | **115 kB**                    |
+| JS transferred on `/dashboard` (signed in)     | 132 kB                    | 132 kB                        |
+| Lighthouse performance — `/login`, desktop     | 100                       | 100                           |
+| Lighthouse performance — `/dashboard`, desktop | 98                        | 99                            |
+| Lighthouse performance — `/dashboard`, mobile  | 83                        | 85                            |
+| FCP / LCP — `/dashboard`, mobile               | 2.41 s / 3.22 s           | 2.01 s / 2.86 s               |
+| TBT / CLS — `/dashboard`, mobile               | 6 ms / 0.188              | 22 ms / 0.180                 |
+| Lighthouse accessibility (login / dashboard)   | 91 / 91 (95 mobile)       | 94 / 91 (95 mobile)           |
+| Lighthouse best practices                      | 100                       | 100                           |
 
-_tbd — one row per React screen and shell element._
+**Reading it honestly:** Angular ships **26 % less JavaScript up front** because every route is
+lazy, and paints first a bit sooner (FCP −0.4 s on throttled mobile). But its **total** JavaScript
+is **40 % larger**: Angular core + router + RxJS + NgRx + Forms outweigh React + Redux Toolkit. A
+signed-in visit to the dashboard downloads the same 132 kB in both, so it's a wash there; the win
+is on the login page and on every screen the tutor never opens. Mobile scores sit at 83–85 for
+both because of the same layout shift (see the gaps below), not JavaScript.
+
+## 8. Parity checklist (Phase 8)
+
+✅ same behaviour · ✅+ same, plus a documented improvement · ⚠️ a deliberate difference.
+
+| React screen / shell element                        | Angular                                          | Status                                                                      |
+| --------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- |
+| Login (+ unverified → verify code)                  | `LoginPage`, `VerifyPanel`                       | ✅                                                                          |
+| Sign-up → verify → onboarding                       | `SignupPage`, `VerifyPanel`                      | ✅                                                                          |
+| Session: 401 / GraphQL auth error → `/login`        | interceptor + `GraphqlClient` + sign-out effect  | ✅                                                                          |
+| Account switch drops the previous tutor's cache     | `resetOnAuthChange` meta-reducer                 | ✅                                                                          |
+| `/onboarding` route                                 | behind `authGuard` + `onboardingGuard`           | ⚠️ signed-out visitors go to `/login` first (React let them in, then 401'd) |
+| Onboarding wizard (6 steps, publish)                | `OnboardingPage`                                 | ✅+ toasts now show (React's provider sat inside the shell)                 |
+| Sidebar (groups, badges, profile link, sign-out)    | `aside[th-sidebar]`                              | ✅                                                                          |
+| Mobile drawer (< 1024 px)                           | shell + `ui.sidebarOpen`                         | ✅                                                                          |
+| Topbar (titles, online pill, accent, theme)         | `header[th-topbar]`                              | ✅                                                                          |
+| Topbar search → `/lessons?q=`                       | same                                             | ✅+ live (debounced) while on /lessons                                      |
+| Notifications bell                                  | `NotificationsBell` (NgRx `dashboard`)           | ✅                                                                          |
+| New-lesson modal                                    | `NewLessonModal` (NgRx `bookings`)               | ✅                                                                          |
+| Toasts                                              | `ToastService` + root `ToastHost`                | ✅+ shown outside the shell too                                             |
+| Theme / accent persisted (same keys)                | `ui` effects                                     | ✅                                                                          |
+| Live bookings socket (shell) + messages socket      | `LiveSocketService`, two connections as in React | ✅                                                                          |
+| Dashboard (KPIs, today, up next, review, banner)    | `DashboardPage`                                  | ✅+ failed loads show Retry                                                 |
+| Calendar Day / Week / Month                         | `CalendarPage`, `MonthGrid`                      | ✅+ DST-safe (React showed 25 Oct twice)                                    |
+| Lessons tabs, accept / decline / complete           | `LessonsPage` (entity adapter)                   | ✅+ failed updates toast (React silent)                                     |
+| Messages (threads, chat, composer, live)            | `MessagesPage`                                   | ✅+ failed send restores the draft                                          |
+| Catalog + new service                               | `CatalogPage`, `NewServiceModal`                 | ✅+ inline validation                                                       |
+| Availability (hours, rules, time off)               | `AvailabilityPage`, `WeeklyHoursEditor`          | ✅+ inline validation; time off works (API fix `8136a7f` helps React too)   |
+| Earnings (balance, chart, payout, CSV)              | `EarningsPage`                                   | ✅+ CSV quotes fields / defuses formulas; withdraw errors shown             |
+| Marketing (stats, promotions, gift cards, referral) | `MarketingPage`, `NewPromotionModal`             | ✅+ validation, typed amount kept, honest "Copied"                          |
+| Reviews (summary, filters, replies)                 | `ReviewsPage`, `ReviewCard`                      | ✅+ Enter sends, failures toast                                             |
+| Analytics (KPIs + four charts)                      | `AnalyticsPage`, `AreaChart`, `BarChart`         | ✅                                                                          |
+| Settings (profile, payout, notifications, delete)   | `SettingsPage`, `DeleteAccountCard`              | ✅+ timezone validation, optimistic toggles roll back                       |
+| Unknown URL → `/dashboard`                          | `**` redirect                                    | ✅                                                                          |
+| Redux DevTools                                      | development builds only                          | ⚠️ React exposes the store to the extension in production too               |
+| Data caching                                        | `cachedQuery` + `CacheTags`                      | ⚠️ a screen refetches on every visit (RTK served a fresh cache)             |
+| 5 unrouted legacy components                        | not ported                                       | ⚠️ dead code, no visible behaviour                                          |
+
+**Gaps and follow-ups (not done in this migration):**
+
+1. **Layout shift on the dashboard, both apps (CLS ≈ 0.18 mobile, 0.05 desktop).** 0.153 of it is
+   the KPI row: four 120 px skeletons give way to cards of a different height once they stack on
+   phones. Fix: size the skeletons like the cards per breakpoint (shared CSS, so it also fixes React).
+2. **Colour contrast, both apps:** the login "FOR TUTORS" eyebrow (3.87:1 on dark) and a teal
+   button on a white card on the dashboard (1.9:1). Token-level fix in the shared styles.
+3. **socket.io (~49 kB raw) ships in the shell chunk**, i.e. on the path to the first signed-in
+   screen. It could be loaded with a dynamic `import()` once the shell is shown.
+4. **Kept React quirks:** `money()` rounds to whole dollars ($12.50 promotion → "$13 off"), the
+   "Withdraw now" label disappears on hover, and the lessons list always says "60 min".
+5. **CI has not run on GitHub yet** (nothing pushed); the Karma + Cypress jobs were only validated
+   locally.
+6. Outside this migration: ~60 pre-existing `npm audit` findings, the 6 pre-existing API e2e
+   failures (10.5b), and Karma's deprecation (Vitest is Angular's default runner).
