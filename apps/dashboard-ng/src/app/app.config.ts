@@ -1,13 +1,9 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import {
-  type ApplicationConfig,
-  isDevMode,
-  provideBrowserGlobalErrorListeners,
-} from '@angular/core';
+import { type ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
-import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { devTools } from '../environments/dev-tools';
 import { routes } from './app.routes';
 import * as authEffects from './core/auth/auth.effects';
 import { authInterceptor } from './core/auth/auth.interceptor';
@@ -34,7 +30,7 @@ export const appConfig: ApplicationConfig = {
     // App-wide slices only; `dashboard` and `bookings` are registered by the
     // lazy shell route (layout/shell.routes.ts).
     provideEffects(authEffects, uiEffects),
-    // Redux DevTools browser extension; read-only outside dev builds.
-    provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
+    // Redux DevTools in development builds only (see environments/dev-tools.ts).
+    ...devTools,
   ],
 };

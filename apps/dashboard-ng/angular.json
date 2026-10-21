@@ -67,7 +67,13 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/dev-tools.ts",
+                  "with": "src/environments/dev-tools.development.ts"
+                }
+              ]
             },
             "test": {
               "optimization": false,
