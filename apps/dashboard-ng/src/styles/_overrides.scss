@@ -18,3 +18,53 @@
 .kpi__label {
   line-height: 17px;
 }
+
+/*
+ * 2. Tertiary text (`--faint`) at WCAG AA. It labels sidebar groups, eyebrows,
+ *    calendar hours, chart axes and table headers — all small text, so it needs
+ *    4.5:1. The React values were 2.2:1 (light, on white) and 3.9:1 (dark, on
+ *    the card surface). These sit on the same hue, nudged toward `--muted`, and
+ *    clear 4.6:1 on every surface/background of their theme while staying a
+ *    step lighter than `--muted`.
+ */
+:root {
+  --faint: #617181;
+}
+[data-theme='dark'] {
+  --faint: #8193a2;
+}
+
+/*
+ * 3. White buttons (and step dots) on the brand gradient. React coloured their
+ *    text `--primary-700`, but in dark mode that ramp flips to a *light* shade,
+ *    so the text dropped to 1.9:1 on white. And on hover the button primitive's
+ *    `:not(:disabled):hover` (more specific) painted the background
+ *    `--th-primary-hover` — in the light theme the very colour of the text, so
+ *    the label vanished. `--on-white-primary` is each accent's dark shade
+ *    regardless of theme (5.6:1 teal, 7.4:1 indigo, 7.1:1 plum on white);
+ *    hover keeps a white-based tint.
+ */
+:root {
+  --on-white-primary: #0b746f;
+  --on-white-primary-tint: #f0f9f8;
+}
+[data-accent='indigo'] {
+  --on-white-primary: #3f46bf;
+  --on-white-primary-tint: #f1f2fd;
+}
+[data-accent='plum'] {
+  --on-white-primary: #743aad;
+  --on-white-primary-tint: #f7f0fc;
+}
+.upnext .th-btn--primary,
+.earn__balance .th-btn--primary,
+.setup-banner .th-btn--primary,
+.ob__step--done .ob__step-dot,
+.ob__step--current .ob__step-dot {
+  color: var(--on-white-primary);
+}
+.upnext .th-btn--primary:not(:disabled):hover,
+.earn__balance .th-btn--primary:not(:disabled):hover,
+.setup-banner .th-btn--primary:not(:disabled):hover {
+  background: var(--on-white-primary-tint);
+}
