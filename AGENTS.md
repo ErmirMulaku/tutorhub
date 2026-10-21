@@ -446,6 +446,21 @@ booking-assistant widget, reusing its token-stays-server-side pattern.
   didn't have the full way through. `npm run rag:eval` (hit@4 + `RAG_MAX_DISTANCE` calibration) is
   built but hasn't been run live either.
 
+### Phase 10 — Dashboard → Angular migration (in progress)
+
+Migrating `apps/dashboard` (React + Redux Toolkit + RTK Query + custom Webpack) to Angular at
+`apps/dashboard-ng`, one feature per sub-phase, with the React app untouched until cutover. Plan,
+mappings, version check and risks: `docs/DASHBOARD_ANGULAR_MIGRATION.md`.
+
+**10.0 Plan ✅** — **Built:** the migration doc — a React-feature → Angular route/component/
+service/NgRx table, a React → Angular concept mapping, the phase order, and a risk list.
+**Verified (not just generated):** read every file in `apps/dashboard` plus its deploy config;
+counted the 54 RTK Query endpoints (50 GraphQL, 4 REST) and found 5 unrouted legacy components
+(not to be ported). Checked versions with `npm view` rather than from memory: Angular 22.2.3 needs
+TypeScript `>=6.0 <6.1` (root has 6.0.3 ✅) and Node `^22.22.3` (local 22.22.2 ⚠️, CI/Vercel fine);
+NgRx 22.0.1; Karma still supported by `@angular/build` 22 but deprecated upstream; Angular 22 apps
+are zoneless by default, so `fakeAsync` needs zone.js in the test polyfills only.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
