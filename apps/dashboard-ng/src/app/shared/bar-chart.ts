@@ -33,12 +33,14 @@ export class BarChart {
 
   protected readonly rows = computed(() => {
     const bars = this.bars();
-    const max = Math.max(1, ...bars.map((b) => (Number.isFinite(b.value) ? b.value : 0)));
+    // Non-finite values count as 0 for sizing (React wrote "NaN%" for those).
+    const size = (v: number): number => (Number.isFinite(v) ? Math.max(0, v) : 0);
+    const max = Math.max(1, ...bars.map((b) => size(b.value)));
     return bars.map((b) => ({
       label: b.label,
       highlight: b.highlight === true,
       text: this.format()(b.value),
-      heightPct: Math.round((Math.max(0, b.value) / max) * 100),
+      heightPct: Math.round((size(b.value) / max) * 100),
     }));
   });
 
