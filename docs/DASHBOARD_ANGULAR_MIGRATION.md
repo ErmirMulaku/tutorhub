@@ -225,11 +225,13 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   4. **Live search on /lessons** — typing in the topbar while on Lessons updates `?q=`
      (`debounceTime(300)` + `distinctUntilChanged`: 6 input events → 1 navigation). Elsewhere it
      still searches on Enter, as React did.
-- **Pre-existing API bug found (not fixed — needs a `services/api` change, to be agreed):**
+- **Pre-existing API bug found — fixed in `8136a7f` (`fix(api)`), with approval:**
   `addTimeOff` always fails with `Bad Request Exception`. The global `ValidationPipe` uses
   `forbidNonWhitelisted`, but `TimeOffInput.startDate` / `endDate` carry no class-validator
   decorators, so they're rejected as unknown properties. Reproduced with React's exact request via
-  `curl`; React hid it (no error handling), the Angular port now shows the error toast.
+  `curl`; React hid it (no error handling). Fixed with `@IsDate()` + a server-side
+  end-before-start rule; `main.ts` and all e2e suites now share one `createValidationPipe()`
+  (most suites had been running without `forbidNonWhitelisted`, which is how it slipped through).
 
 ## 4. Phase order
 

@@ -582,8 +582,18 @@ validators immediately, before a required `input()` exists; replaced with a `com
 **Found two React bugs:** the month view shows **25 Oct twice** across the DST change (seen live in
 React, fixed + spec'd here), and onboarding toasts never showed (toast host now at the root).
 **Found a pre-existing API bug:** `addTimeOff` always 400s (`forbidNonWhitelisted` + undecorated
-date fields) — reproduced with React's exact request, React hid it; left unfixed pending approval
-to touch `services/api`. 17 Karma specs (was 4), incl. the DST regression.
+date fields) — reproduced with React's exact request, React hid it. 17 Karma specs (was 4), incl.
+the DST regression.
+
+**10.5b API fix (approved): `addTimeOff`** — added `@IsDate()` to `TimeOffInput.startDate/endDate`
+and a server-side end-before-start rule. **Root cause of it slipping through:** 8 of 10 e2e suites
+built their own `ValidationPipe` _without_ `forbidNonWhitelisted`, so tests ran looser than
+production. `main.ts` and every suite now share one `createValidationPipe()`. New e2e tests (add,
+remove, end-before-start) **fail without the fix and pass with it**. Running the whole API e2e
+suite under the production config added **zero** failures; 6 pre-existing failures (earnings
+withdraw, publish/isActive, the tutors filter, 3 assistant tests) fail identically with the old
+config — they predate this branch (stale expectations / local Stripe+AWS env) and are left for a
+separate fix. Verified in the browser: time off now adds and removes (React benefits too).
 
 ---
 
