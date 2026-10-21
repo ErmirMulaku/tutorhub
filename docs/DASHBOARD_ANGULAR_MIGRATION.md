@@ -183,6 +183,23 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   `Notifications` exactly like the React hook, so lists and KPIs refetch a moment later.
 - **Notifications** live in the NgRx `dashboard` feature (the bell is on every page).
 
+**Senior-review cleanup (between Phases 4 and 5):**
+
+- **Errors are visible — a deliberate improvement over React**, which left a failed query as an
+  endless skeleton or an empty list and failed mutations silently. Failed loads (KPIs, today's
+  schedule, lessons, conversations) show an `ErrorState` with Retry; a failed booking update shows
+  a toast; a failed message send restores the draft and says why. One shared `errorMessage()`.
+- **No `effect()` writes state any more.** New-lesson defaults are `linkedSignal`s derived from the
+  loaded lists; mark-as-read is `toObservable(active) → filter → exhaustMap`, which also stops a
+  double request when a live refetch re-emits the same unread thread. The remaining effects only
+  sync the DOM (theme attributes, modal timing, scroll lock).
+- **Route-level state.** `bookings` and `dashboard` (reducers, effects, `@ngrx/entity`) are
+  registered in the providers of the lazy shell route (`loadChildren` → `shell.routes.ts`), so
+  login and sign-up never download them. Initial transfer 104.8 → 100.9 kB.
+- Verified by stopping the API mid-session: the error state appeared, Retry recovered once the API
+  was back, and — after socket.io's automatic reconnect — a live change still arrived, proving the
+  room is rejoined on reconnect.
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |

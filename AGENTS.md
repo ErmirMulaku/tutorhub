@@ -550,6 +550,17 @@ socket (it upgrades to a WebSocket, invisible to request timing) — covered by 
 mock-socket test. TypeScript caught a real typing gap (socket.io's `any[]` listeners vs. a
 `never[]` placeholder), fixed with generic listener signatures.
 
+**10.4b Senior-review cleanup ✅** — Asked for an honest review of the Angular code so far, I listed
+the gaps a senior reviewer would raise, then fixed the ones that weren't scheduled for later:
+visible errors with Retry (and toasts / draft restore for failed mutations) where React failed
+silently; no more state-writing `effect()`s (`linkedSignal` for derived defaults, an
+`exhaustMap` stream for mark-as-read); `bookings` + `dashboard` NgRx slices moved into the lazy
+shell route's providers; a shared `errorMessage()`; KPI cards from a `computed` view model.
+**Verified:** **stopped the API mid-session** — the Lessons error state appeared, Retry recovered
+after restart, and the console showed socket.io's reconnect backoff; then a `curl` change still
+arrived live, **proving the room is rejoined after a reconnect** (claimed in 10.4, now observed).
+Initial bundle 104.8 → 100.9 kB transfer. Tests and focus-trap remain for Phases 7–8.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
