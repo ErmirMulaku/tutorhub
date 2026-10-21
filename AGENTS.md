@@ -561,6 +561,30 @@ after restart, and the console showed socket.io's reconnect backoff; then a `cur
 arrived live, **proving the room is rejoined after a reconnect** (claimed in 10.4, now observed).
 Initial bundle 104.8 → 100.9 kB transfer. Tests and focus-trap remain for Phases 7–8.
 
+**10.5 Forms + RxJS screens ✅** — **Built:** Availability (a typed `FormArray` of weekly hours
+shared with onboarding, booking rules, time off), Catalog (service cards + a validated
+new-service modal), Settings (profile with an IANA-timezone validator, payout schedule,
+optimistic notification toggles with rollback, delete-account card), the 6-step **onboarding
+wizard** (with the payout editor and Stripe Connect card), and the **Calendar** (Day / Week /
+Month) on pure, unit-tested date helpers + an NgRx `loadRange` effect. Shared: a
+`ControlValueAccessor` toggle, a `FieldError` that reacts to `control.events`, typed validators.
+RxJS: `combineLatest` + `switchMap` for the calendar window, `concatMap` for ordered toggle saves,
+`debounceTime` live search on /lessons.
+
+**Verified (not just generated):** every form in a real browser against the API, with
+invalid input blocked and each save checked **in the database** (then restored); a service
+priced 199.99 stored as **19999 cents**; the optimistic toggle observed flipping and **rolling
+back** on a forced network failure; **switchMap observed aborting 3 of 4 rapid calendar
+requests**; debounce turning 6 input events into 1 navigation; onboarding run end-to-end with
+fresh unpublished tutors (subject modal layered above the overlay, publish → dashboard).
+**Caught in the browser, fixed:** NG0950 — a `FormControl` built in a field initializer runs its
+validators immediately, before a required `input()` exists; replaced with a `computed`.
+**Found two React bugs:** the month view shows **25 Oct twice** across the DST change (seen live in
+React, fixed + spec'd here), and onboarding toasts never showed (toast host now at the root).
+**Found a pre-existing API bug:** `addTimeOff` always 400s (`forbidNonWhitelisted` + undecorated
+date fields) — reproduced with React's exact request, React hid it; left unfixed pending approval
+to touch `services/api`. 17 Karma specs (was 4), incl. the DST regression.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

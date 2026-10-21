@@ -200,6 +200,37 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
   was back, and — after socket.io's automatic reconnect — a live change still arrived, proving the
   room is rejoined on reconnect.
 
+**Implementation notes (Phase 5):**
+
+- **Typed Reactive Forms everywhere data is edited**: weekly hours (a `FormArray` of seven
+  `FormGroup`s with a per-day end-after-start validator), booking rules, time off, new service,
+  settings profile (incl. a real IANA-timezone check), onboarding profile, payout method.
+  `FieldError` shows a control's first error once touched; it listens to `control.events`
+  because form state is not a signal. `ToggleSwitch` is a `ControlValueAccessor`, so it works as
+  `formControlName` and as a stand-alone `[(checked)]`.
+- **RxJS where it fits:** the calendar window is `combineLatest(view, anchor)` → `rangeFor` →
+  `distinctUntilChanged`, merged with the `Booking` tag; the fetch is a `switchMap` effect —
+  paging fast aborts the stale requests (observed: 4 started, 3 aborted, 1 rendered). Notification
+  toggles are optimistic with `concatMap` (saves stay in click order) and roll back on error.
+- **Deliberate differences from React (improvements, each verified in the browser):**
+  1. **Inline validation** — React only had `min` attributes; invalid forms now block the save
+     and say why.
+  2. **Calendar DST fix** — React stepped days as `midnight + i × 24h`; on the 25-hour
+     25 Oct 2026 fall-back day every later date shifts, so React's October month page shows
+     **"25" twice** and ends a day early (seen live). `addDays()` uses calendar arithmetic, and a
+     spec guards it.
+  3. **Toasts work outside the shell** — React's `ToastProvider` sat inside `AppShell`, so
+     onboarding's toasts silently did nothing. The toast host is now in the app root, layered
+     above the onboarding overlay.
+  4. **Live search on /lessons** — typing in the topbar while on Lessons updates `?q=`
+     (`debounceTime(300)` + `distinctUntilChanged`: 6 input events → 1 navigation). Elsewhere it
+     still searches on Enter, as React did.
+- **Pre-existing API bug found (not fixed — needs a `services/api` change, to be agreed):**
+  `addTimeOff` always fails with `Bad Request Exception`. The global `ValidationPipe` uses
+  `forbidNonWhitelisted`, but `TimeOffInput.startDate` / `endDate` carry no class-validator
+  decorators, so they're rejected as unknown properties. Reproduced with React's exact request via
+  `curl`; React hid it (no error handling), the Angular port now shows the error toast.
+
 ## 4. Phase order
 
 | Phase | Scope                                                                                                                                                                                                                 | Done when                                                                       |
