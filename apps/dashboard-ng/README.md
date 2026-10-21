@@ -6,7 +6,7 @@ same look; the React app stays live until cutover. Plan and progress:
 [`docs/DASHBOARD_ANGULAR_MIGRATION.md`](../../docs/DASHBOARD_ANGULAR_MIGRATION.md).
 
 **Stack:** Angular 22 (standalone components, signals, **zoneless**), Angular CLI with the
-esbuild `application` builder, RxJS, NgRx (from Phase 2), SCSS, **Jasmine + Karma** for unit
+esbuild `application` builder, RxJS, NgRx, SCSS, **Jasmine + Karma** for unit
 tests, Cypress for E2E (Phase 7).
 
 ## Run
@@ -47,17 +47,21 @@ rebuild.
 
 ```
 src/
-  main.ts                 bootstrapApplication(App, appConfig)
+  main.ts                    bootstrapApplication(App, appConfig)
   app/
-    app.ts                root component
-    app.config.ts         providers (router; NgRx, HttpClient arrive in Phase 2/3)
-    app.routes.ts         route table (lazy routes from Phase 2)
-    core/format.ts        money / time / status helpers (ported from React lib/format.ts)
-  environments/           API_URL
-  styles.scss             entry: tokens → primitives → app
-  styles/_tokens.scss     design tokens + light/dark + Teal/Indigo/Plum (from packages/ui)
-  styles/_primitives.scss .th-* classes (from packages/ui)
-  styles/_app.scss        shell + screen styles (from apps/dashboard/src/styles.css)
+    app.ts                   root: <router-outlet> + theme/accent → <html> (signal effect)
+    app.config.ts            router, HttpClient + auth interceptor, NgRx store/effects/devtools
+    app.routes.ts            route table — every screen lazy (loadComponent)
+    core/
+      auth/                  NgRx auth feature + effects, interceptor, guards, AuthApiService
+      ui/                    NgRx ui feature (theme, accent, online, drawer, modal) + effects
+      api/                   GraphqlClient (POST /graphql, no Apollo), services, response models
+      format.ts, validation.ts, nav.ts   framework-free helpers ported from React
+    layout/                  Shell, Sidebar (aside[th-sidebar]), Topbar (header[th-topbar])
+    shared/                  Button, Card, Avatar, Icon, Toast — Angular ports of @ermulaku/ui
+    features/<screen>/       one folder per route
+  environments/              API_URL
+  styles.scss + styles/      tokens → primitives → app (ported verbatim)
 ```
 
 The styles are copied verbatim with the same class names, so templates render identically to the

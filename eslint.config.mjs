@@ -52,9 +52,11 @@ export default tseslint.config(
     extends: [...angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     rules: {
+      // Attribute components (`<button th-button>`, `<aside th-sidebar>`) keep
+      // the native element, so the ported CSS and a11y semantics still apply.
       '@angular-eslint/component-selector': [
         'error',
-        { type: 'element', prefix: 'th', style: 'kebab-case' },
+        { type: ['element', 'attribute'], prefix: 'th', style: 'kebab-case' },
       ],
       '@angular-eslint/directive-selector': [
         'error',

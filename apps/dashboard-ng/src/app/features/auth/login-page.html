@@ -1,0 +1,45 @@
+<div class="login">
+  <div class="login__panel">
+    <div class="login__brand">
+      Tutor<strong>Hub</strong> <span class="login__eyebrow">FOR TUTORS</span>
+    </div>
+
+    @if (unverified()) {
+      <th-verify-panel [email]="form.controls.email.value" (verified)="onAuthenticated($event)">
+        <p class="login__subtitle">
+          Your account isn’t verified yet. Enter the code we sent to
+          <strong>{{ form.controls.email.value }}</strong>, or request a new one.
+        </p>
+      </th-verify-panel>
+    } @else {
+      <h1 class="login__title">Welcome back</h1>
+      <p class="login__subtitle">Sign in to manage your tutoring practice.</p>
+
+      <!-- ngNativeValidate: Reactive Forms adds `novalidate` by default; this
+           keeps the browser's own required/type=email checks, as in React. -->
+      <form class="login__form" ngNativeValidate [formGroup]="form" (ngSubmit)="signIn()">
+        <label class="login__field">
+          <span>Email</span>
+          <input type="email" formControlName="email" autocomplete="username" required />
+        </label>
+        <label class="login__field">
+          <span>Password</span>
+          <input
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        @if (error(); as message) {
+          <p class="login__error">{{ message }}</p>
+        }
+        <button th-button type="submit" block [disabled]="busy()">
+          {{ busy() ? 'Signing in…' : 'Sign in' }}
+        </button>
+      </form>
+
+      <p class="login__alt">New to TutorHub? <a routerLink="/signup">Create an account</a></p>
+    }
+  </div>
+</div>

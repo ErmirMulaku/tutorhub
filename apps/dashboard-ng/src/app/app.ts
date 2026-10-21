@@ -1,25 +1,29 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { environment } from '../environments/environment';
+import { Store } from '@ngrx/store';
+import { uiFeature } from './core/ui/ui.store';
 
-/** Root component. Phase 1 placeholder; the shell + routes arrive in Phase 2. */
+/** Root component: hosts the router and reflects theme/accent onto <html>. */
 @Component({
   selector: 'th-root',
   imports: [RouterOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="login">
-      <div class="login__panel">
-        <div class="login__brand">
-          Tutor<strong>Hub</strong> <span class="login__eyebrow">FOR TUTORS</span>
-        </div>
-        <h1 class="login__title">Angular dashboard</h1>
-        <p class="login__subtitle">Scaffold ready. Talking to {{ apiUrl }}.</p>
-      </div>
-    </div>
-    <router-outlet />
-  `,
+  template: '<router-outlet />',
 })
 export class App {
-  protected readonly apiUrl = environment.apiUrl;
+  constructor() {
+    const store = inject(Store);
+    const theme = store.selectSignal(uiFeature.selectTheme);
+    const accent = store.selectSignal(uiFeature.selectAccent);
+    const root = inject(DOCUMENT).documentElement;
+
+    // Port of use-theme.ts. An effect re-runs whenever a signal it read
+    // changes — like useEffect with [theme, accent] as dependencies, but the
+    // dependencies are tracked automatically.
+    effect(() => {
+      root.dataset['theme'] = theme();
+      root.dataset['accent'] = accent();
+    });
+  }
 }
