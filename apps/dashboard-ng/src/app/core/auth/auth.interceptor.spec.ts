@@ -38,7 +38,10 @@ describe('authInterceptor', () => {
     spyOn(store, 'dispatch');
   });
 
-  afterEach(() => backend.verify()); // no request left unanswered
+  afterEach(() => {
+    backend.verify(); // no request left unanswered
+    store.resetSelectors(); // overrides patch the shared selectors; don't leak them
+  });
 
   it('adds the Bearer token to API calls', () => {
     http.post(api, {}).subscribe();

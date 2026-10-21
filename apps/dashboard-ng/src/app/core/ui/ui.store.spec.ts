@@ -90,6 +90,8 @@ describe('ui feature', () => {
       TestBed.configureTestingModule({ providers: [provideMockStore()] });
       store = TestBed.inject<MockStore<object>>(MockStore);
     });
+    // overrideSelector patches the shared selector itself — undo it, or it leaks into later specs.
+    afterEach(() => store.resetSelectors());
 
     it('persists the theme read back from the store after a toggle', () => {
       // toggleTheme has no payload: the effect reads the new value from the store.

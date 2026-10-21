@@ -33,6 +33,8 @@ describe('authGuard', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideMockStore()] });
     store = TestBed.inject<MockStore<object>>(MockStore);
   });
+  // overrideSelector patches the shared selector itself — undo it, or it leaks into later specs.
+  afterEach(() => store.resetSelectors());
 
   it('lets a signed-in tutor through', () => {
     store.overrideSelector(authFeature.selectIsSignedIn, true);

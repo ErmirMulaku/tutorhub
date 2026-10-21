@@ -51,7 +51,10 @@ describe('NotificationsBell', () => {
     await fixture.whenStable();
   }
 
-  afterEach(() => el().remove());
+  afterEach(() => {
+    el().remove();
+    store.resetSelectors(); // overrides patch the shared selectors; don't leak them
+  });
 
   it('asks for the feed as soon as it appears', async () => {
     await create([]);
