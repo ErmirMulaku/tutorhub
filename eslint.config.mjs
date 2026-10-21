@@ -67,6 +67,13 @@ export default tseslint.config(
       '@typescript-eslint/unbound-method': ['error', { ignoreStatic: true }],
     },
   },
+  // Specs: `expect(api.reply).toHaveBeenCalled()` hands Jasmine the spy
+  // itself — nothing calls it unbound — so the rule only reports false
+  // positives there.
+  {
+    files: ['apps/dashboard-ng/**/*.spec.ts'],
+    rules: { '@typescript-eslint/unbound-method': 'off' },
+  },
   {
     files: ['apps/dashboard-ng/**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],

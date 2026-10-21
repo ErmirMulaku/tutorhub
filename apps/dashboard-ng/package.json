@@ -9,7 +9,7 @@
     "build": "ng build --define \"API_URL='${API_URL:-http://localhost:4000}'\"",
     "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "lint": "eslint src",
-    "test": "ng test --no-watch --no-progress --browsers=ChromeHeadless",
+    "test": "ng test --no-watch --no-progress --browsers=${KARMA_BROWSER:-ChromeHeadless}",
     "test:watch": "ng test"
   },
   "dependencies": {
@@ -39,6 +39,7 @@
     "karma-chrome-launcher": "3.2.0",
     "karma-coverage": "2.2.1",
     "karma-jasmine": "5.1.0",
-    "karma-jasmine-html-reporter": "2.3.0"
+    "karma-jasmine-html-reporter": "2.3.0",
+    "zone.js": "0.16.3"
   }
 }
