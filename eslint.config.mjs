@@ -1,5 +1,6 @@
 // @ts-check
 import js from '@eslint/js';
+import angular from 'angular-eslint';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import globals from 'globals';
@@ -16,6 +17,7 @@ export default tseslint.config(
       '**/cypress/**',
       '**/cypress.config.ts',
       '.nx/**',
+      '**/.angular/**',
     ],
   },
 
@@ -41,6 +43,28 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
+  },
+
+  // Angular dashboard: angular-eslint on top of the shared TS rules, with inline
+  // templates extracted so the template rules below see them too.
+  {
+    files: ['apps/dashboard-ng/**/*.ts'],
+    extends: [...angular.configs.tsRecommended],
+    processor: angular.processInlineTemplates,
+    rules: {
+      '@angular-eslint/component-selector': [
+        'error',
+        { type: 'element', prefix: 'th', style: 'kebab-case' },
+      ],
+      '@angular-eslint/directive-selector': [
+        'error',
+        { type: 'attribute', prefix: 'th', style: 'camelCase' },
+      ],
+    },
+  },
+  {
+    files: ['apps/dashboard-ng/**/*.html'],
+    extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
   },
 
   // Plain JS/CJS/MJS (config files, hooks) — no type-aware rules.

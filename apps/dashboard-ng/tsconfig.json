@@ -1,0 +1,35 @@
+/*
+ * Shared compiler options for the app and its tests. Extends the monorepo base
+ * (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes, the
+ * @ermulaku/types path) and overrides only what a browser bundle needs.
+ *
+ * This is a real config (not a solution file with only `references`) so the
+ * root ESLint `projectService` can type-check every file under src/, specs
+ * included.
+ */
+{
+  "extends": "../../tsconfig.base.json",
+  "compileOnSave": false,
+  "compilerOptions": {
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": ["jasmine"]
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true,
+    "typeCheckHostBindings": true
+  },
+  "include": ["src/**/*.ts"]
+}

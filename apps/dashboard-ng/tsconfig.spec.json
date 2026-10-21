@@ -1,0 +1,8 @@
+/* Unit tests (Jasmine on Karma). Only jasmine's globals — never the root @types/jest. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jasmine"]
+  },
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts"]
+}

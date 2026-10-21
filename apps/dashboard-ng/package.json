@@ -1,0 +1,39 @@
+{
+  "name": "@ermulaku/dashboard-ng",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TutorHub tutor dashboard — Angular + NgRx port of apps/dashboard.",
+  "scripts": {
+    "ng": "ng",
+    "dev": "ng serve --port 3300",
+    "build": "ng build --define \"API_URL='${API_URL:-http://localhost:4000}'\"",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
+    "lint": "eslint src",
+    "test": "ng test --no-watch --no-progress --browsers=ChromeHeadless",
+    "test:watch": "ng test"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.3",
+    "@angular/compiler": "22.2.3",
+    "@angular/core": "22.2.3",
+    "@angular/forms": "22.2.3",
+    "@angular/platform-browser": "22.2.3",
+    "@angular/router": "22.2.3",
+    "@ermulaku/types": "*",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.3",
+    "@angular/cli": "22.2.3",
+    "@angular/compiler-cli": "22.2.3",
+    "@types/jasmine": "6.0.0",
+    "istanbul-lib-instrument": "6.0.3",
+    "jasmine-core": "6.3.0",
+    "karma": "6.4.4",
+    "karma-chrome-launcher": "3.2.0",
+    "karma-coverage": "2.2.1",
+    "karma-jasmine": "5.1.0",
+    "karma-jasmine-html-reporter": "2.3.0"
+  }
+}

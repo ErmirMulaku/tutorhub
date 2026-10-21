@@ -1,0 +1,359 @@
+/* Ported verbatim from packages/ui/src/styles.css (lines 178–end): the .th-*
+ * primitive classes our Angular primitives render, plus their keyframes. */
+
+/* ---- Button -------------------------------------------------------------- */
+.th-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--th-space-2);
+  font-family: var(--th-font);
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--th-radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    opacity var(--th-duration) var(--th-ease);
+  will-change: transform;
+}
+.th-btn:disabled,
+.th-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.th-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+.th-btn:focus-visible {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 2px;
+}
+.th-btn--sm {
+  font-size: 0.8125rem;
+  padding-block: var(--th-space-2);
+  padding-inline: var(--th-space-3);
+}
+.th-btn--md {
+  font-size: 0.9375rem;
+  padding-block: var(--th-space-3);
+  padding-inline: var(--th-space-4);
+}
+.th-btn--lg {
+  font-size: 1.0625rem;
+  padding-block: var(--th-space-4);
+  padding-inline: var(--th-space-5);
+}
+.th-btn--primary {
+  background: var(--th-primary);
+  color: var(--th-primary-contrast);
+}
+.th-btn--primary:not(:disabled):hover {
+  background: var(--th-primary-hover);
+}
+.th-btn--secondary {
+  background: var(--th-surface-2);
+  color: var(--th-text);
+  border-color: var(--th-border);
+}
+.th-btn--ghost {
+  background: transparent;
+  color: var(--th-primary);
+}
+.th-btn--ghost:not(:disabled):hover {
+  background: var(--th-surface-2);
+}
+.th-btn--block {
+  display: flex;
+  inline-size: 100%;
+}
+
+/* ---- Card ---------------------------------------------------------------- */
+.th-card {
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-1);
+  padding: var(--th-space-5);
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    box-shadow var(--th-duration) var(--th-ease);
+}
+.th-card--interactive {
+  cursor: pointer;
+  will-change: transform;
+}
+.th-card--interactive:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--th-shadow-2);
+}
+.th-card--interactive:focus-within {
+  outline: 2px solid var(--th-focus);
+  outline-offset: 2px;
+}
+
+/* ---- Avatar -------------------------------------------------------------- */
+.th-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--th-primary);
+  color: var(--th-primary-contrast);
+  font-family: var(--th-font);
+  font-weight: 700;
+  overflow: hidden;
+  flex: none;
+  user-select: none;
+}
+.th-avatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.th-avatar--sm {
+  inline-size: 2rem;
+  block-size: 2rem;
+  font-size: 0.75rem;
+}
+.th-avatar--md {
+  inline-size: 3rem;
+  block-size: 3rem;
+  font-size: 1rem;
+}
+.th-avatar--lg {
+  inline-size: 4.5rem;
+  block-size: 4.5rem;
+  font-size: 1.5rem;
+}
+
+/* ---- StarRating ---------------------------------------------------------- */
+.th-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-2);
+  font-family: var(--th-font);
+}
+.th-rating__stars {
+  position: relative;
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+  /* The empty track is the muted glyphs; the fill clips bright glyphs on top. */
+  color: var(--th-border);
+}
+.th-rating__stars::before {
+  content: '★★★★★';
+  letter-spacing: 2px;
+}
+.th-rating__fill {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--th-star);
+}
+.th-rating__fill::before {
+  content: '★★★★★';
+  letter-spacing: 2px;
+}
+.th-rating__value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--th-text-muted);
+}
+
+/* ---- Tag ----------------------------------------------------------------- */
+.th-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-1);
+  font-family: var(--th-font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding-block: var(--th-space-1);
+  padding-inline: var(--th-space-2);
+  border-radius: 999px;
+  background: var(--th-surface-2);
+  color: var(--th-text-muted);
+  border: 1px solid var(--th-border);
+}
+.th-tag--beginner {
+  background: rgba(14, 143, 138, 0.12);
+  color: var(--th-primary);
+  border-color: transparent;
+}
+.th-tag--intermediate {
+  background: rgba(26, 115, 232, 0.12);
+  color: var(--th-focus);
+  border-color: transparent;
+}
+.th-tag--advanced {
+  background: rgba(242, 153, 74, 0.16);
+  color: var(--th-accent);
+  border-color: transparent;
+}
+
+/* ---- Price --------------------------------------------------------------- */
+.th-price {
+  font-family: var(--th-font);
+  font-weight: 700;
+  color: var(--th-text);
+  white-space: nowrap;
+}
+.th-price__unit {
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--th-text-muted);
+}
+
+/* ---- Skeleton ------------------------------------------------------------ */
+.th-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--th-surface-2);
+  border-radius: var(--th-radius-sm);
+}
+.th-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: th-shimmer 1.4s infinite;
+  will-change: transform;
+}
+[dir='rtl'] .th-skeleton::after {
+  animation-name: th-shimmer-rtl;
+}
+@keyframes th-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes th-shimmer-rtl {
+  100% {
+    transform: translateX(-200%);
+  }
+}
+
+/* ---- Modal / Sheet ------------------------------------------------------- */
+.th-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--th-space-4);
+  background: rgba(16, 32, 43, 0.45);
+  opacity: 0;
+  transition: opacity var(--th-duration) var(--th-ease);
+  will-change: opacity;
+  z-index: 1000;
+}
+.th-modal-overlay[data-state='open'] {
+  opacity: 1;
+}
+.th-modal {
+  position: relative;
+  inline-size: min(34rem, 100%);
+  max-block-size: calc(100dvh - 2 * var(--th-space-6));
+  overflow: auto;
+  background: var(--th-surface);
+  color: var(--th-text);
+  border-radius: var(--th-radius-lg);
+  box-shadow: var(--th-shadow-2);
+  padding: var(--th-space-6);
+  transform: translateY(12px) scale(0.98);
+  opacity: 0;
+  transition:
+    transform var(--th-duration) var(--th-ease),
+    opacity var(--th-duration) var(--th-ease);
+  will-change: transform, opacity;
+}
+.th-modal-overlay[data-state='open'] .th-modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+.th-modal__close {
+  position: absolute;
+  inset-block-start: var(--th-space-4);
+  inset-inline-end: var(--th-space-4);
+  border: none;
+  background: transparent;
+  color: var(--th-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--th-space-1);
+  border-radius: var(--th-radius-sm);
+}
+.th-modal__close:hover {
+  background: var(--th-surface-2);
+}
+
+/* ---- Status pill --------------------------------------------------------- */
+.th-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--th-space-1);
+  font-family: var(--th-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding-block: 3px;
+  padding-inline: 11px;
+  border-radius: 999px;
+  background: var(--th-surface-2);
+  color: var(--th-text-muted);
+  white-space: nowrap;
+}
+.th-pill--success {
+  background: var(--th-success-tint);
+  color: var(--th-success);
+}
+.th-pill--warn {
+  background: var(--th-warn-tint);
+  color: var(--th-warn-ink);
+}
+.th-pill--danger {
+  background: var(--th-danger-tint);
+  color: var(--th-danger);
+}
+.th-pill--info {
+  background: var(--th-blue-tint);
+  color: var(--th-blue-ink);
+}
+
+/* ---- fadeUp (dropdowns, menus, inline panels) ---------------------------- */
+@keyframes th-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.th-fade-up {
+  animation: th-fade-up 0.2s var(--th-ease);
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-btn,
+  .th-card,
+  .th-modal,
+  .th-modal-overlay,
+  .th-fade-up,
+  .th-skeleton::after {
+    transition: none;
+    animation: none;
+  }
+}
