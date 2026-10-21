@@ -1,0 +1,58 @@
+<div class="lessons">
+  @if (query() !== '') {
+    <div class="lessons__searchbar">
+      <span class="lessons__searchchip">
+        Results for “{{ query() }}”
+        <button type="button" aria-label="Clear search" (click)="clearSearch()">✕</button>
+      </span>
+    </div>
+  } @else {
+    <th-segmented-tabs [segments]="segments()" [value]="tab()" (changed)="changeTab($event)" />
+  }
+
+  <th-card>
+    @if (isLoading()) {
+      <th-skeleton [height]="160" />
+    } @else if (rows().length === 0) {
+      <p class="muted">
+        {{ query() !== '' ? 'No lessons match “' + query() + '”.' : 'No ' + tab() + ' lessons.' }}
+      </p>
+    } @else {
+      <div class="lesson-list">
+        @for (b of rows(); track b.id) {
+          <div class="lesson-row">
+            <th-avatar [name]="b.student.fullName" size="md" />
+            <div class="lesson-row__who">
+              <div class="lesson-row__name">{{ b.student.fullName }}</div>
+              <div class="muted">{{ b.subject.name }} · {{ b.subject.level.toLowerCase() }}</div>
+            </div>
+            <div class="lesson-row__when">
+              <div>{{ dayOf(b.startTime) }}</div>
+              <div class="muted">{{ timeOf(b.startTime) }} · 60 min</div>
+            </div>
+            <th-status-pill [status]="b.status" />
+            <div class="lesson-row__actions">
+              @if (b.status === 'PENDING') {
+                <button th-button size="sm" variant="ghost" (click)="change(b, 'decline')">
+                  Decline
+                </button>
+                <button th-button size="sm" (click)="change(b, 'accept')">Accept</button>
+              }
+              @if (b.status === 'CONFIRMED') {
+                <button th-button size="sm" variant="secondary" (click)="say('Opening chat…')">
+                  Message
+                </button>
+                <button th-button size="sm" (click)="change(b, 'complete')">Mark complete</button>
+              }
+              @if (tab() === 'past') {
+                <button th-button size="sm" variant="secondary" (click)="say('Rebooking…')">
+                  Rebook
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </th-card>
+</div>

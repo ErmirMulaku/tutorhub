@@ -1,0 +1,32 @@
+<th-modal [open]="open()" title="New lesson" (closed)="close()">
+  <form class="svc-form" ngNativeValidate [formGroup]="form" (ngSubmit)="submit()">
+    <label class="login__field">
+      <span>Student</span>
+      <select formControlName="studentId" required>
+        @for (s of students.data() ?? []; track s.id) {
+          <option [value]="s.id">{{ s.fullName }}</option>
+        }
+      </select>
+    </label>
+    <label class="login__field">
+      <span>Subject</span>
+      <select formControlName="subjectId" required>
+        @for (s of subjects.data() ?? []; track s.id) {
+          <option [value]="s.id">{{ s.name }} · {{ s.level.toLowerCase() }}</option>
+        }
+      </select>
+    </label>
+    <label class="login__field">
+      <span>Date & time</span>
+      <input type="datetime-local" formControlName="startTime" required />
+    </label>
+    <button
+      th-button
+      type="submit"
+      block
+      [disabled]="creating() || !form.controls.studentId.value || !form.controls.subjectId.value"
+    >
+      {{ creating() ? 'Booking…' : 'Book lesson' }}
+    </button>
+  </form>
+</th-modal>

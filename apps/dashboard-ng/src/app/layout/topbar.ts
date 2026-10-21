@@ -16,7 +16,7 @@ const ACCENTS: { key: Accent; label: string; swatch: string }[] = [
 
 /**
  * Port of components/Topbar.tsx. The notifications bell arrives with the live
- * feed in Phase 4; the New-lesson modal it opens arrives in Phase 3.
+ * feed in Phase 4.
  */
 @Component({
   selector: 'header[th-topbar]',

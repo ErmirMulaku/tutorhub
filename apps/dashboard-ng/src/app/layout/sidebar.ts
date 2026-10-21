@@ -1,16 +1,19 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { catchError, of } from 'rxjs';
-import { ProfileService } from '../core/api/profile.service';
+import { loadOnTags } from '../core/api/cache-tags';
 import { AuthActions } from '../core/auth/auth.store';
-import { NAV_GROUPS } from '../core/nav';
+import { DashboardActions, dashboardFeature } from '../core/dashboard/dashboard.store';
+import { type NavItem, NAV_GROUPS } from '../core/nav';
 import { Avatar } from '../shared/avatar';
 
+type Badge = NonNullable<NavItem['badge']>;
+
 /**
- * Port of components/Sidebar.tsx. Live badge counts (pending / unread) come
- * with the dashboard summary in Phase 3.
+ * Port of components/Sidebar.tsx. The sidebar is on every shell page, so it's
+ * the one that keeps the shared tutor data loaded (name, KPI summary for the
+ * badges, published flag); the dashboard screen reads the same store slice
+ * instead of fetching again.
  */
 @Component({
   selector: 'aside[th-sidebar]',
@@ -21,19 +24,27 @@ import { Avatar } from '../shared/avatar';
 })
 export class Sidebar {
   private readonly store = inject(Store);
-  private readonly profile = inject(ProfileService);
 
   protected readonly groups = NAV_GROUPS;
+  protected readonly me = this.store.selectSignal(dashboardFeature.selectMe);
+  protected readonly published = this.store.selectSignal(dashboardFeature.selectPublished);
+  private readonly summary = this.store.selectSignal(dashboardFeature.selectSummary);
 
-  // toSignal subscribes once and exposes the latest value as a signal. Errors
-  // are caught first: a signal that holds an error re-throws when read.
-  protected readonly me = toSignal(this.profile.meTutor().pipe(catchError(() => of(null))), {
-    initialValue: null,
-  });
-  protected readonly published = toSignal(
-    this.profile.isPublished().pipe(catchError(() => of(false))),
-    { initialValue: false },
-  );
+  constructor() {
+    loadOnTags(['MeTutor'], () => DashboardActions.loadMe());
+    loadOnTags(['DashboardSummary'], () => DashboardActions.loadSummary());
+    loadOnTags(['Settings'], () => DashboardActions.loadPublished());
+  }
+
+  /** Live badge counts that aren't part of the static nav model. */
+  protected badgeFor(item: NavItem): Badge | undefined {
+    const summary = this.summary();
+    if (item.to === '/lessons' && summary && summary.pendingCount > 0)
+      return { count: summary.pendingCount, tone: 'primary' };
+    if (item.to === '/messages' && summary && summary.unreadMessages > 0)
+      return { count: summary.unreadMessages, tone: 'danger' };
+    return item.badge;
+  }
 
   protected signOut(): void {
     // The auth effect clears storage and navigates to /login.

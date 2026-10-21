@@ -13,7 +13,7 @@
       @for (item of group.items; track item.to) {
         <a [routerLink]="item.to" routerLinkActive="sidebar__link--active" class="sidebar__link">
           <span>{{ item.label }}</span>
-          @if (item.badge; as badge) {
+          @if (badgeFor(item); as badge) {
             <span class="sidebar__badge sidebar__badge--{{ badge.tone }}">{{ badge.count }}</span>
           }
         </a>
