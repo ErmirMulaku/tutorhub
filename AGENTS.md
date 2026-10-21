@@ -461,6 +461,27 @@ TypeScript `>=6.0 <6.1` (root has 6.0.3 ✅) and Node `^22.22.3` (local 22.22.2 
 NgRx 22.0.1; Karma still supported by `@angular/build` 22 but deprecated upstream; Angular 22 apps
 are zoneless by default, so `fakeAsync` needs zone.js in the test polyfills only.
 
+**10.1 Scaffold ✅** — **Built:** `apps/dashboard-ng` from the real Angular CLI (`ng new`
+22.2.3: standalone, SCSS, routing, `--test-runner=karma`, zoneless, OnPush root), adapted to the
+monorepo — an npm workspace (`@ermulaku/dashboard-ng`) whose `dev`/`build`/`typecheck`/`lint`/
+`test` scripts Nx picks up; tsconfigs extending the strict base (plus `strictTemplates`) with
+Jasmine-only test types; `API_URL` inlined via the builder's `define` (React's `DefinePlugin`
+equivalent); the design tokens, `.th-*` primitives and dashboard styles ported verbatim as
+global SCSS; `angular-eslint` (TS + template + a11y rules) in the root flat config; and the
+`format.ts` helpers ported against `@ermulaku/types` with the first Jasmine spec.
+
+**Verified (not just generated):** `ngc` template type-checking and the angular-eslint rules were
+each proven by planting a deliberate error and watching it fail; **4 Jasmine specs pass on Karma
+in headless Chrome**; the production build inlines the default URL and an env-provided one
+replaces it entirely (and ships no zone.js); a headless-Chrome screenshot matches the React login
+panel's styling. Node bumped to 22.23.4 (Angular 22 needs `^22.22.3`). **Supply chain:** the new
+deps added 4 audit findings — fixed Angular's pinned `vite` (8.3.0 → 8.3.5, scoped override) and
+the stale root `postcss` override (8.5.15 → 8.5.31); **accepted** `karma` → `chokidar@3` →
+`braces`, which has no patched release (dev-only). Applying overrides required regenerating
+`package-lock.json`, so **`nx run-many -t lint typecheck test build` was re-run across all 9
+projects without cache — green**. ~60 audit findings that predate this branch (Next, Nx, NestJS,
+Prisma, Expo, Storybook) are out of scope here and need their own fix.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
