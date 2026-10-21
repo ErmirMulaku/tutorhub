@@ -46,8 +46,8 @@ otherwise the screen uses a typed `HttpClient` service + RxJS/signals in the com
 | React route / feature | Angular route                                                             | Angular components                                                                                               | Service(s)                                                                    | NgRx?                                                                                     | Phase                         |
 | --------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------- |
 | `AppShell` layout     | `''` layout route, `canActivate: [authGuard]`, children lazy              | `ShellComponent`, `SidebarComponent`, `TopbarComponent`, `ToastHostComponent`                                    | `ToastService`, `ThemeService` (effect → `<html>` attributes)                 | **Yes** — `ui` feature (theme, accent, online, sidebar, newLessonOpen)                    | 2                             |
-| `/login`              | `login` (`guestGuard`)                                                    | `LoginPageComponent`, `VerifyPanelComponent`                                                                     | `AuthApiService` (no token, see risks)                                        | **Yes** — `auth` feature (`setCredentials`)                                               | 2                             |
-| `/signup`             | `signup` (`guestGuard`)                                                   | `SignupPageComponent`, `VerifyPanelComponent`                                                                    | `AuthApiService`                                                              | **Yes** — `auth`                                                                          | 2                             |
+| `/login`              | `login` (no guard — as in React)                                          | `LoginPageComponent`, `VerifyPanelComponent`                                                                     | `AuthApiService` (no token, see risks)                                        | **Yes** — `auth` feature (`setCredentials`)                                               | 2                             |
+| `/signup`             | `signup` (no guard — as in React)                                         | `SignupPageComponent`, `VerifyPanelComponent`                                                                    | `AuthApiService`                                                              | **Yes** — `auth`                                                                          | 2                             |
 | `/onboarding`         | `onboarding` (`authGuard`, `notPublishedGuard` → `UrlTree('/dashboard')`) | `OnboardingWizardComponent` (reuses `NewServiceModal`, `WeeklyHoursEditor`, `PayoutEditor`)                      | `SettingsService`, `CatalogService`, `AvailabilityService`, `EarningsService` | No                                                                                        | 2 (route + guard), 5 (wizard) |
 | `/dashboard`          | `dashboard`                                                               | `DashboardPageComponent`, `KpiStatComponent`, `ScheduleRowComponent`, `StatusPillComponent`, setup banner        | `BookingsApiService`, `DashboardApiService`, `ReviewsService`                 | **Yes** — `bookings` (today's schedule) + `dashboard` (summary, `meTutor`, notifications) | 3                             |
 | `/lessons`            | `lessons` (`?status=` / `?q=` query params)                               | `LessonsPageComponent`, `SegmentedTabsComponent`                                                                 | `BookingsApiService`                                                          | **Yes** — `bookings` entity adapter, accept/decline/complete effects                      | 3                             |
@@ -126,6 +126,21 @@ both (NgRx meta-reducer + `CacheTags.invalidateAll()`), porting the `store.ts` l
 | Cypress (marketplace)                                                   | Cypress in `apps/dashboard-ng/cypress`, `cy.intercept` fixtures (no real API)                                                                                                                                  |
 
 ---
+
+**Implementation notes (Phase 2):**
+
+- **No `guestGuard`.** The plan above first listed one on `/login` and `/signup`, but the React app
+  lets a signed-in tutor open both, so adding a redirect would change behaviour. Dropped.
+- **Sign-out redirect is an NgRx effect.** React re-rendered `<Navigate to="/login">` whenever the
+  token became `null`; Angular guards only run on navigation, so `clearCredentials` (sign-out,
+  account deletion, 401, GraphQL auth error) navigates to `/login` from an effect.
+- **`/onboarding` is behind `authGuard`.** React left it unguarded, so a signed-out visitor hit
+  401s there; now they go to `/login` first. No change for signed-in tutors.
+- **Attribute components** (`<button th-button>`, `<aside th-sidebar>`, `<header th-topbar>`,
+  `<svg th-icon>`) keep the native element, so the verbatim CSS (e.g.
+  `.topbar__actions > .th-btn`) and the native semantics still apply.
+- **Reactive Forms add `novalidate`**; the auth forms set `ngNativeValidate` to keep React's
+  browser-native `required` / `type=email` / `minlength` checks.
 
 ## 4. Phase order
 

@@ -482,6 +482,31 @@ the stale root `postcss` override (8.5.15 → 8.5.31); **accepted** `karma` → 
 projects without cache — green**. ~60 audit findings that predate this branch (Next, Nx, NestJS,
 Prisma, Expo, Storybook) are out of scope here and need their own fix.
 
+**10.2 Shell, auth, routing ✅** — **Built:** NgRx `auth` and `ui` features (`createActionGroup`
+
+- `createFeature`; ports of the two Redux slices) with **functional effects** for the side effects
+  RTK had inside reducers (localStorage) and for the sign-out redirect; a functional
+  `HttpInterceptorFn` (Bearer token on API calls only, `401 → clearCredentials`); a no-Apollo
+  `GraphqlClient` that also clears the session on GraphQL auth errors (they arrive as HTTP 200);
+  an `AuthApiService` for the pre-session calls (`SKIP_AUTH` context token, raw body so screens can
+  branch on `EMAIL_NOT_VERIFIED`); `authGuard` + `onboardingGuard` (functional, return `UrlTree`s);
+  the Shell / Sidebar / Topbar, theme + accent synced to `<html>` by a signal `effect()`, a
+  `ToastService`; Angular Button / Card / Avatar / Icon primitives; Login, Signup and the shared
+  VerifyPanel (Reactive Forms, `input()`/`output()`, content projection, `linkedSignal`); and **every
+  route lazy** (`loadComponent`) with placeholder screens.
+
+**Verified (not just generated):** the production build emits **one lazy chunk per route** (shell,
+login, signup, onboarding and all 11 screens; ~96 kB initial transfer). **Drove it in a real
+browser against the real API:** no session → `/login`; seed sign-in → shell with the tutor's name
+(proves the interceptor's token); clicking Calendar fetched its chunk only then; dark + Plum
+persisted across reload; search → `/lessons?q=Sofia`; a published tutor is bounced off
+`/onboarding`; **a forged token** came back as HTTP 200 + GraphQL errors and still cleared the
+session to `/login` (the reason that check lives in the GraphQL client); the mobile drawer closes
+on navigation; sign-out keeps the theme; **sign-up → dev code → verify** (digits-only input,
+autofocus) → an unpublished tutor reaches `/onboarding`. Unit: 4 Karma specs incl. a new
+theme-effect test; external templates proven linted. `follow-redirects` (via Karma) overridden
+1.16.0 → 1.16.1. Deliberately **no `guestGuard`** — React has none (doc corrected).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability
