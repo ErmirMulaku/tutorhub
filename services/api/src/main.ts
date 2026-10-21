@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { fileURLToPath } from 'node:url';
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { type MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { DomainExceptionFilter } from './common/domain-exception.filter.js';
+import { createValidationPipe } from './common/validation.js';
 import { MetricsService } from './monitoring/metrics.service.js';
 import { createRequestMetrics } from './monitoring/request-metrics.js';
 
@@ -30,9 +30,7 @@ async function bootstrap(): Promise<void> {
   app.use(createRequestMetrics(app.get(MetricsService)));
 
   // Validate and strip every inbound payload (SPEC §7: validate all input).
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-  );
+  app.useGlobalPipes(createValidationPipe());
 
   // Map transport-agnostic domain errors to HTTP / GraphQL shapes.
   app.useGlobalFilters(new DomainExceptionFilter());

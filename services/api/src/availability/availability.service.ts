@@ -5,7 +5,7 @@ import {
   type Slot,
   type WorkingWindow,
 } from 'tutorhub-slot-engine';
-import { EntityNotFoundError } from '../common/errors.js';
+import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
 import { BookingStatus, type TimeOff } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
@@ -61,6 +61,11 @@ export class AvailabilityService {
   }
 
   async addTimeOff(tutorId: string, input: TimeOffInput): Promise<MyAvailability> {
+    // Never trust the client's own check: a break can't end before it starts
+    // (a one-day break, same start and end, is fine).
+    if (input.endDate.getTime() < input.startDate.getTime()) {
+      throw new BadRequestDomainError('Time off cannot end before it starts.');
+    }
     await this.prisma.timeOff.create({ data: { ...input, tutorId } });
     return this.myAvailability(tutorId);
   }
