@@ -1,0 +1,61 @@
+{
+  "name": "@ermulaku/dashboard-ng",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TutorHub tutor dashboard — Angular + NgRx (replaced the React app; its last version is the git tag dashboard-react-final).",
+  "scripts": {
+    "ng": "ng",
+    "dev": "ng serve --port 3100",
+    "build": "ng build --define \"API_URL='${API_URL:-http://localhost:4000}'\"",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit && tsc -p cypress/tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "ng test --no-watch --no-progress --browsers=${KARMA_BROWSER:-ChromeHeadless}",
+    "test:watch": "ng test",
+    "e2e": "cypress run",
+    "e2e:open": "cypress open"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.3",
+    "@angular/compiler": "22.2.3",
+    "@angular/core": "22.2.3",
+    "@angular/forms": "22.2.3",
+    "@angular/platform-browser": "22.2.3",
+    "@angular/router": "22.2.3",
+    "@ermulaku/types": "*",
+    "@ngrx/effects": "22.0.1",
+    "@ngrx/entity": "22.0.1",
+    "@ngrx/store": "22.0.1",
+    "@ngrx/store-devtools": "22.0.1",
+    "rxjs": "7.8.2",
+    "socket.io-client": "4.8.3",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.3",
+    "@angular/cli": "22.2.3",
+    "@angular/compiler-cli": "22.2.3",
+    "@types/jasmine": "6.0.0",
+    "cypress": "15.17.0",
+    "istanbul-lib-instrument": "6.0.3",
+    "jasmine-core": "6.3.0",
+    "karma": "6.4.4",
+    "karma-chrome-launcher": "3.2.0",
+    "karma-coverage": "2.2.1",
+    "karma-jasmine": "5.1.0",
+    "karma-jasmine-html-reporter": "2.3.0",
+    "zone.js": "0.16.3"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "env": "API_URL"
+          }
+        ]
+      }
+    }
+  }
+}

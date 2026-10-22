@@ -1,10 +1,11 @@
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
+import { createValidationPipe } from '../src/common/validation.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 /**
@@ -23,7 +24,7 @@ describe('New lesson + notifications (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(createValidationPipe());
     app.useGlobalFilters(new DomainExceptionFilter());
     await app.init();
     prisma = app.get(PrismaService);

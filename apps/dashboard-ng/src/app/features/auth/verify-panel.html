@@ -1,0 +1,40 @@
+<h1 class="login__title">Check your email</h1>
+<ng-content />
+
+<form class="login__form" (submit)="verify($event)">
+  <label class="login__field">
+    <span>Verification code</span>
+    <input
+      #codeInput
+      type="text"
+      inputmode="numeric"
+      maxlength="6"
+      autocomplete="one-time-code"
+      [value]="code()"
+      (input)="onCodeInput($event)"
+    />
+  </label>
+  @if (devCode(); as dev) {
+    <p class="login__hint">Dev mode — no email configured, your code is {{ dev }}.</p>
+  }
+  @if (demoCode(); as demo) {
+    <p class="login__hint">
+      Demo mode — email delivery isn’t live yet, so enter <strong>{{ demo }}</strong> to verify any
+      address. We’re setting up our own domain soon; after that, real codes are emailed to any
+      address.
+    </p>
+  }
+  @if (sent() && devCode() === null) {
+    <p class="login__hint">A new code is on its way.</p>
+  }
+  @if (error(); as message) {
+    <p class="login__error">{{ message }}</p>
+  }
+  <button th-button type="submit" block [disabled]="busy()">
+    {{ busy() ? 'Verifying…' : 'Verify & continue' }}
+  </button>
+</form>
+
+<button type="button" class="login__resend" [disabled]="busy()" (click)="resend()">
+  Resend code
+</button>

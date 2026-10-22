@@ -446,6 +446,266 @@ booking-assistant widget, reusing its token-stays-server-side pattern.
   didn't have the full way through. `npm run rag:eval` (hit@4 + `RAG_MAX_DISTANCE` calibration) is
   built but hasn't been run live either.
 
+### Phase 10 — Dashboard → Angular migration (done on the branch; going live is a runbook)
+
+Migrating `apps/dashboard` (React + Redux Toolkit + RTK Query + custom Webpack) to Angular at
+`apps/dashboard-ng`, one feature per sub-phase, with the React app untouched until cutover. Plan,
+mappings, version check and risks: `docs/DASHBOARD_ANGULAR_MIGRATION.md`.
+
+**10.0 Plan ✅** — **Built:** the migration doc — a React-feature → Angular route/component/
+service/NgRx table, a React → Angular concept mapping, the phase order, and a risk list.
+**Verified (not just generated):** read every file in `apps/dashboard` plus its deploy config;
+counted the 54 RTK Query endpoints (50 GraphQL, 4 REST) and found 5 unrouted legacy components
+(not to be ported). Checked versions with `npm view` rather than from memory: Angular 22.2.3 needs
+TypeScript `>=6.0 <6.1` (root has 6.0.3 ✅) and Node `^22.22.3` (local 22.22.2 ⚠️, CI/Vercel fine);
+NgRx 22.0.1; Karma still supported by `@angular/build` 22 but deprecated upstream; Angular 22 apps
+are zoneless by default, so `fakeAsync` needs zone.js in the test polyfills only.
+
+**10.1 Scaffold ✅** — **Built:** `apps/dashboard-ng` from the real Angular CLI (`ng new`
+22.2.3: standalone, SCSS, routing, `--test-runner=karma`, zoneless, OnPush root), adapted to the
+monorepo — an npm workspace (`@ermulaku/dashboard-ng`) whose `dev`/`build`/`typecheck`/`lint`/
+`test` scripts Nx picks up; tsconfigs extending the strict base (plus `strictTemplates`) with
+Jasmine-only test types; `API_URL` inlined via the builder's `define` (React's `DefinePlugin`
+equivalent); the design tokens, `.th-*` primitives and dashboard styles ported verbatim as
+global SCSS; `angular-eslint` (TS + template + a11y rules) in the root flat config; and the
+`format.ts` helpers ported against `@ermulaku/types` with the first Jasmine spec.
+
+**Verified (not just generated):** `ngc` template type-checking and the angular-eslint rules were
+each proven by planting a deliberate error and watching it fail; **4 Jasmine specs pass on Karma
+in headless Chrome**; the production build inlines the default URL and an env-provided one
+replaces it entirely (and ships no zone.js); a headless-Chrome screenshot matches the React login
+panel's styling. Node bumped to 22.23.4 (Angular 22 needs `^22.22.3`). **Supply chain:** the new
+deps added 4 audit findings — fixed Angular's pinned `vite` (8.3.0 → 8.3.5, scoped override) and
+the stale root `postcss` override (8.5.15 → 8.5.31); **accepted** `karma` → `chokidar@3` →
+`braces`, which has no patched release (dev-only). Applying overrides required regenerating
+`package-lock.json`, so **`nx run-many -t lint typecheck test build` was re-run across all 9
+projects without cache — green**. ~60 audit findings that predate this branch (Next, Nx, NestJS,
+Prisma, Expo, Storybook) are out of scope here and need their own fix.
+
+**10.2 Shell, auth, routing ✅** — **Built:** NgRx `auth` and `ui` features (`createActionGroup`
+
+- `createFeature`; ports of the two Redux slices) with **functional effects** for the side effects
+  RTK had inside reducers (localStorage) and for the sign-out redirect; a functional
+  `HttpInterceptorFn` (Bearer token on API calls only, `401 → clearCredentials`); a no-Apollo
+  `GraphqlClient` that also clears the session on GraphQL auth errors (they arrive as HTTP 200);
+  an `AuthApiService` for the pre-session calls (`SKIP_AUTH` context token, raw body so screens can
+  branch on `EMAIL_NOT_VERIFIED`); `authGuard` + `onboardingGuard` (functional, return `UrlTree`s);
+  the Shell / Sidebar / Topbar, theme + accent synced to `<html>` by a signal `effect()`, a
+  `ToastService`; Angular Button / Card / Avatar / Icon primitives; Login, Signup and the shared
+  VerifyPanel (Reactive Forms, `input()`/`output()`, content projection, `linkedSignal`); and **every
+  route lazy** (`loadComponent`) with placeholder screens.
+
+**Verified (not just generated):** the production build emits **one lazy chunk per route** (shell,
+login, signup, onboarding and all 11 screens; ~96 kB initial transfer). **Drove it in a real
+browser against the real API:** no session → `/login`; seed sign-in → shell with the tutor's name
+(proves the interceptor's token); clicking Calendar fetched its chunk only then; dark + Plum
+persisted across reload; search → `/lessons?q=Sofia`; a published tutor is bounced off
+`/onboarding`; **a forged token** came back as HTTP 200 + GraphQL errors and still cleared the
+session to `/login` (the reason that check lives in the GraphQL client); the mobile drawer closes
+on navigation; sign-out keeps the theme; **sign-up → dev code → verify** (digits-only input,
+autofocus) → an unpublished tutor reaches `/onboarding`. Unit: 4 Karma specs incl. a new
+theme-effect test; external templates proven linted. `follow-redirects` (via Karma) overridden
+1.16.0 → 1.16.1. Deliberately **no `guestGuard`** — React has none (doc corrected).
+
+**10.3 API layer + Dashboard + Lessons ✅** — **Built:** the whole data layer — typed
+`HttpClient` services for every GraphQL operation in `api.ts` (documents copied verbatim; the 4
+REST endpoints served only the unported legacy screens), a `CacheTags` service carrying RTK
+Query's tag names, `cachedQuery()` (an `rxResource` that reloads on invalidation) and
+`loadOnTags()`; NgRx **`bookings`** (`@ngrx/entity` adapter, request/success/failure actions,
+`switchMap` loads, `mergeMap` mutations, toasts in effects) and **`dashboard`** (me, KPI summary,
+published flag — one request shared by the sidebar badges and the dashboard); a meta-reducer that
+resets data on account switch; Skeleton, StarRating, StatusPill, KpiStat, a generic
+SegmentedTabs and a hand-written Modal; and the **Dashboard**, **Lessons** (query params bound to
+inputs) and **New-lesson** screens.
+
+**Verified (not just generated):** ran **both apps side by side** against the same API + seed and
+extracted the dashboard field by field — KPIs, today's schedule, Up next, latest review,
+greeting, badges — **identical**, screenshots match. Accepting a request showed React's exact
+toast, dropped the tab and sidebar badges 3 → 2, and the network showed exactly the expected
+refetches (lessons + summary). Search "Sofia" → 13 rows in both apps. New lesson: pickers only
+fetched on open (React's `skip`), booking **persisted as CONFIRMED** (10:00 CET → 09:00Z),
+modal closed, scroll lock released; Escape closes and returns focus. **Signing out and in as
+another tutor never showed the previous tutor's name or KPIs.** Lint caught a real a11y point on
+the modal backdrop — kept as a mouse-only shortcut (Escape and the × button are the keyboard
+path), documented inline. Recorded one honest difference: screens refetch on mount where RTK
+served a fresh cache.
+
+**10.4 Real-time ✅** — **Built:** `LiveSocketService` — socket.io-client wrapped in cold RxJS
+Observables (connect + room join on every `connect`, so reconnects rejoin; teardown closes the
+socket; `io()` behind an `InjectionToken` for testing); live `bookingChanged` → an NgRx
+`liveChanged` action (entity patched immediately) + an effect invalidating the same tags as the
+React hook; the notifications feed in the NgRx `dashboard` feature and the `NotificationsBell`
+(outside-click via a document host listener); and the **Messages** screen (thread list,
+conversation, composer, mark-read, `afterRenderEffect` auto-scroll, its own live subscription).
+
+**Verified (not just generated):** **an external `curl` (same tutor, "another device") accepted a
+booking while the Angular dashboard sat untouched** — a DOM watcher recorded the pill flip to
+Confirmed and "Up next" appear first (straight from the socket payload via `updateOne`), then the
+Pending KPI and sidebar badge drop 2 → 1 about 70 ms later (the tag-driven refetch). A message sent
+by `curl` into the open thread appeared live, scrolled into view, with the thread preview updated;
+opening an unread thread cleared the sidebar badge; the composer sends. The bell showed the 7-item
+feed with type dots and relative times, and closes on outside click. Two Socket.IO handshakes on
+/messages (shell + screen), as in React. **Not yet proven:** that leaving /messages closes its
+socket (it upgrades to a WebSocket, invisible to request timing) — covered by the Phase 7
+mock-socket test. TypeScript caught a real typing gap (socket.io's `any[]` listeners vs. a
+`never[]` placeholder), fixed with generic listener signatures.
+
+**10.4b Senior-review cleanup ✅** — Asked for an honest review of the Angular code so far, I listed
+the gaps a senior reviewer would raise, then fixed the ones that weren't scheduled for later:
+visible errors with Retry (and toasts / draft restore for failed mutations) where React failed
+silently; no more state-writing `effect()`s (`linkedSignal` for derived defaults, an
+`exhaustMap` stream for mark-as-read); `bookings` + `dashboard` NgRx slices moved into the lazy
+shell route's providers; a shared `errorMessage()`; KPI cards from a `computed` view model.
+**Verified:** **stopped the API mid-session** — the Lessons error state appeared, Retry recovered
+after restart, and the console showed socket.io's reconnect backoff; then a `curl` change still
+arrived live, **proving the room is rejoined after a reconnect** (claimed in 10.4, now observed).
+Initial bundle 104.8 → 100.9 kB transfer. Tests and focus-trap remain for Phases 7–8.
+
+**10.5 Forms + RxJS screens ✅** — **Built:** Availability (a typed `FormArray` of weekly hours
+shared with onboarding, booking rules, time off), Catalog (service cards + a validated
+new-service modal), Settings (profile with an IANA-timezone validator, payout schedule,
+optimistic notification toggles with rollback, delete-account card), the 6-step **onboarding
+wizard** (with the payout editor and Stripe Connect card), and the **Calendar** (Day / Week /
+Month) on pure, unit-tested date helpers + an NgRx `loadRange` effect. Shared: a
+`ControlValueAccessor` toggle, a `FieldError` that reacts to `control.events`, typed validators.
+RxJS: `combineLatest` + `switchMap` for the calendar window, `concatMap` for ordered toggle saves,
+`debounceTime` live search on /lessons.
+
+**Verified (not just generated):** every form in a real browser against the API, with
+invalid input blocked and each save checked **in the database** (then restored); a service
+priced 199.99 stored as **19999 cents**; the optimistic toggle observed flipping and **rolling
+back** on a forced network failure; **switchMap observed aborting 3 of 4 rapid calendar
+requests**; debounce turning 6 input events into 1 navigation; onboarding run end-to-end with
+fresh unpublished tutors (subject modal layered above the overlay, publish → dashboard).
+**Caught in the browser, fixed:** NG0950 — a `FormControl` built in a field initializer runs its
+validators immediately, before a required `input()` exists; replaced with a `computed`.
+**Found two React bugs:** the month view shows **25 Oct twice** across the DST change (seen live in
+React, fixed + spec'd here), and onboarding toasts never showed (toast host now at the root).
+**Found a pre-existing API bug:** `addTimeOff` always 400s (`forbidNonWhitelisted` + undecorated
+date fields) — reproduced with React's exact request, React hid it. 17 Karma specs (was 4), incl.
+the DST regression.
+
+**10.5b API fix (approved): `addTimeOff`** — added `@IsDate()` to `TimeOffInput.startDate/endDate`
+and a server-side end-before-start rule. **Root cause of it slipping through:** 8 of 10 e2e suites
+built their own `ValidationPipe` _without_ `forbidNonWhitelisted`, so tests ran looser than
+production. `main.ts` and every suite now share one `createValidationPipe()`. New e2e tests (add,
+remove, end-before-start) **fail without the fix and pass with it**. Running the whole API e2e
+suite under the production config added **zero** failures; 6 pre-existing failures (earnings
+withdraw, publish/isActive, the tutors filter, 3 assistant tests) fail identically with the old
+config — they predate this branch (stale expectations / local Stripe+AWS env) and are left for a
+separate fix. Verified in the browser: time off now adds and removes (React benefits too).
+
+**10.6 Charts + Earnings, Marketing, Reviews, Analytics ✅** — **Built:** an SVG `AreaChart` (an
+attribute component on the `<svg>`, geometry in one `computed`, a unique gradient id per instance)
+and a flex `BarChart`; a `CodeChip`; and the last four screens — **Earnings** (balance, 8-month
+chart, payout method + Stripe Connect card, transactions with CSV export), **Marketing** (stats,
+promotion cards with End, a validated new-promotion modal, gift cards, referrals), **Reviews**
+(rating distribution, All / Needs reply / Replied as query params, inline replies) and
+**Analytics** (KPIs, area chart, top subjects, weekday bars, student mix). All are `cachedQuery`s
+under React's tags (no NgRx — "fetch, show, save" screens). **Every React route now has an Angular
+equivalent.**
+
+**Verified (not just generated):** each screen **side by side with React** against the same API and
+seed — Marketing, Analytics, Reviews and Earnings render identically (1 active / 46 redemptions /
+$145; $374 / $47 / $2,104). Invalid promotions are blocked with inline errors (code upper-cased as
+typed); a $12.50 promotion persisted as **1250 cents**, then ended; Replied/Needs-reply filtered
+correctly; a reply fired exactly the 3 refetches React's tags imply (logged from `fetch`); the CSV
+export produced React's format for all 20 rows; withdraw surfaced the API's "Connect payout
+onboarding is not complete" (React shows nothing); no overflow at 375px; the DB was restored to its
+snapshot afterwards. **Caught in the browser, fixed:** the Reviews summary stacked instead of sitting
+side by side — `Card`'s `:host { display: block }` outranked the screens' classes, which had also
+silently broken the Messages two-pane grid and the Catalog card layout since Phase 2/4; moved to
+element selectors in `styles/_hosts.scss`. 20 Karma specs (was 17, + CSV quoting and formula
+guard); initial bundle unchanged at 100.9 kB.
+
+**10.7 Tests: Jasmine/Karma, Cypress, CI ✅** — **Built:** **124 Karma specs** (was 20): ports of
+the React tests (ui slice, the account-switch cache reset, the onboarding route, and the legacy
+week calendar replaced by a real month-grid spec) plus new ones for reducers and selectors, functional
+effects (called directly with fakes) and **marble tests** (`TestScheduler`) proving `switchMap`
+drops a stale calendar week while `mergeMap` keeps both status changes, the interceptor and
+GraphQL client (`HttpTestingController`), guards (MockStore), `cachedQuery`/`CacheTags`, the socket
+service (fake socket via its `InjectionToken`), and components — `fakeAsync`/`tick` for the modal
+and toasts, the promotion form driven through the DOM, review replies, the notifications bell.
+zone.js is loaded **for tests only** (a `build:test` configuration). **Cypress**: 10 E2E tests
+against a **fixture API** (one `cy.intercept` routing each GraphQL root field to a fixture or a
+stateful override; an unmocked operation fails the test), incl. a smoke test through all 11
+screens. **CI**: Karma in the `verify` job (`ChromeHeadlessNoSandbox`), a new `dashboard-ng-e2e`
+job (no database), failure screenshots uploaded.
+
+**Verified (not just generated):** typecheck (app, specs and Cypress), lint and all 124 specs
+green; Cypress 10/10 headless. **Tested the tests:** a script planted 8 deliberate bugs one at a
+time — each failed exactly its spec; one first slipped through (a "theme survives sign-out" spec
+that passed anyway because the default theme follows the OS, and this Mac is dark) and was
+rewritten. Deleting one fixture proved the E2E guard: the Analytics card had rendered empty
+without complaint, the guard failed the run. **Caught a trap, fixed:** with zone.js present, the
+builder's generated TestBed init silently switches every test to zone change detection (the
+existing `App` spec broke); a global `beforeEach` in `src/test-setup.ts` restores zoneless so tests
+match the app. Also found zoneless `whenStable()` waits on a loading resource (pending task), and
+`BarChart` wrote `height: NaN%` (fixed). The CI workflow parses and the no-sandbox launcher name
+resolves locally; **the GitHub run itself hasn't happened yet** (nothing pushed). zone.js 0.16.3 +
+Cypress 15.17.0 added with **no new audit findings**.
+
+**10.8 Performance + parity ✅** — **Built:** budgets that fail the production build (initial,
+all scripts, the post-login `shell-routes` chunk by name, component styles); Redux DevTools moved
+to development builds only via `fileReplacements` (they had been shipping 15.3 kB raw to every
+visitor behind a runtime `isDevMode()` switch); and the measured results + a parity checklist (one
+row per React screen and shell element, with the gaps) in the migration doc. Audited: all 44
+components `OnPush`, only built-in control flow, every `@for` tracked.
+
+**Verified (not just generated):** both production builds served the same way and measured the
+same way — Angular loads **97.5 kB** of JS up front vs React's **131.4 kB** (gzip), but **184.3 vs
+131.4 kB in total**; Lighthouse (median of 3) 100 / 99 / 85 vs 100 / 98 / 83 (login desktop /
+dashboard desktop / dashboard mobile), signed in against the real API. Budgets were proven by
+tightening them (build exits 1). **Measured, then reverted, `@defer` on the charts:** it split them
+out but put the deferrable-views runtime into the core chunk every page loads (+3.9 kB gzip up
+front to save 1.4 kB already-lazy code). Lighthouse showed two gaps **shared with React** (same
+CSS): a 0.18 mobile layout shift from the KPI skeletons and one colour-contrast failure per page —
+listed with fixes, not changed here. Whole-workspace `nx run-many` green, 124 Karma specs, Cypress
+10/10.
+
+**10.8b Layout shift + contrast (both apps' gaps, fixed in Angular) ✅** — **Built:** the setup
+banner no longer flashes for published tutors (`published` is `null` until known — React used
+`false`); KPI skeletons sized from an exported `KPI_CARD_HEIGHT`, with the card's line boxes
+fixed so its height doesn't depend on the font; `--faint` raised to AA in both themes; a
+theme-independent `--on-white-primary` for the four white-on-gradient controls (which also fixes
+the vanishing "Withdraw now" hover label). All deviations from the React CSS sit in
+`styles/_overrides.scss`.
+
+**Verified (not just generated):** the first diagnosis was wrong — the trace's `LayoutShift` rects
+showed the KPI row _moving up_ 155 px (the banner vanishing), not the skeletons growing; both were
+fixed. With the API slowed 800 ms to make the shift reproducible, CLS went **0.188 (React, every
+run) → 0.003 (Angular)**; mobile dashboard performance 85 → **93**; dark-theme accessibility
+**100** on login and the mobile dashboard. Contrast checked in the browser for both themes × all
+three accents (5.0–7.4:1) and the hover state with a real hover. Three new specs, each
+mutation-tested (removing the line-box fix, reverting the banner condition, or the 120 px
+skeleton each fail exactly one spec); found and fixed a `MockStore.overrideSelector` leak between
+specs (`resetSelectors()`). New light-theme runs surfaced **brand-colour** findings in both apps
+(teal 3.95:1, success-green pill 2.82:1, 16 px accent swatches) — listed as a design decision, not
+changed.
+
+**10.9 Cutover prepared ✅** — **Built:** `apps/dashboard-ng/vercel.json` and the deploy workflow
+pointed at the Angular app; tag `dashboard-react-final` on `master` (what production runs);
+`apps/dashboard` removed in its own commit (86 files, its toolchain pruned from the lockfile);
+the dashboard keeps port 3100 locally so no other app's defaults change; a step-by-step cutover
+and rollback runbook (migration doc §9) and CV bullets + interview Q&A
+(`docs/DASHBOARD_ANGULAR_INTERVIEW.md`).
+
+**Verified (not just generated):** preparing the deploy surfaced three **release blockers** the
+branch had carried since the Angular dependencies were added, each reproduced before it was
+fixed — (1) `npm ci` failed on **Linux** (CI, the API image, Vercel) while passing on macOS: an
+optional peer wanted `chokidar@5` where the macOS-written lockfile hoisted 4; re-resolved on Linux,
+nothing else changed version, `npm ci --dry-run` used as the regression check (old lockfile fails,
+new passes); (2) the API Dockerfile lacked the `dashboard-ng` manifest; (3) Nx replayed a cached
+bundle with a stale `API_URL` (`API_URL` is now a build input — A, B, A proved). The Vercel install
+
+- build ran from `vercel.json` in a Linux container (green on Node 22.23.4, refused on 22.22.1 —
+  Angular 22 needs ≥ 22.22.3, hence a preview-build step in the runbook); CI, Vercel and both API
+  image installs pass on the final tree. Removing the React app exposed a phantom dependency
+  (`packages/ui` relied on its `@testing-library/dom`), now declared. Whole-workspace `nx run-many`
+  green on 8 projects, 128 Karma specs. **Not re-run:** Cypress locally (its binary was cleared with
+  the disk cleanup; app code unchanged since the last 10/10) — the PR's CI job runs it. **Not done by
+  me:** pushing, the Vercel Root Directory change, the merge — those are the runbook's steps.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

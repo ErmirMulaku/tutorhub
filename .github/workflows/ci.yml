@@ -18,6 +18,9 @@ jobs:
       HUSKY: '0'
       DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
       JWT_SECRET: test-secret
+      # dashboard-ng's Karma run: Angular's built-in launcher with Chrome's
+      # sandbox off — the runner's kernel may refuse the sandbox's namespaces.
+      KARMA_BROWSER: ChromeHeadlessNoSandbox
     services:
       postgres:
         image: postgres:17-alpine
@@ -132,6 +135,59 @@ jobs:
           start: npm run start
           wait-on: 'http://localhost:3200/en'
           wait-on-timeout: 120
+
+  dashboard-ng-e2e:
+    name: Dashboard (Angular) · Cypress
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: '0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Only the dashboard and its workspace deps — the same install Vercel runs.
+      # A full `npm ci` would also run services/api's `postinstall`
+      # (`prisma generate`), which needs DATABASE_URL this job has no use for.
+      - name: Install dependencies
+        run: npm ci --workspace=@ermulaku/dashboard-ng --include-workspace-root
+
+      # The API is faked with cy.intercept fixtures, so no database or API
+      # server is started here — only the Angular dev server. It's started and
+      # awaited here rather than through the action's `start` / `wait-on`, whose
+      # probe failed on its first attempt ("Socket closed before the connection
+      # was established") instead of retrying; curl tries IPv6 and IPv4 and the
+      # loop retries. The server keeps running into the next step.
+      - name: Start the dashboard dev server
+        working-directory: apps/dashboard-ng
+        run: |
+          npm run dev > /tmp/ng-serve.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -sf -o /dev/null http://localhost:3100/; then
+              echo "Dev server is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Dev server failed to start" >&2; cat /tmp/ng-serve.log >&2; exit 1
+
+      - name: Cypress E2E (fixtures)
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: apps/dashboard-ng
+          install: false
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-ng-cypress-screenshots
+          path: apps/dashboard-ng/cypress/screenshots
+          if-no-files-found: ignore
 
   notifications:
     name: Notifications (Elixir)

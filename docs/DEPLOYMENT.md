@@ -78,8 +78,9 @@ group and use strong credentials. Migrations are a manual release step (see §4)
 ### Vercel (front-ends + Storybook)
 
 Three Vercel projects from this repo, each with a different **Root Directory**
-(`apps/marketplace`, `apps/dashboard`, `packages/ui`) and **Node.js 22.x** (Next 16
-fails on Node 18). Each project's `vercel.json` already sets the install/build
+(`apps/marketplace`, `apps/dashboard-ng`, `packages/ui`) and **Node.js 22.x** (Next 16
+fails on Node 18; Angular 22 needs **22.22.3 or newer** — if Vercel's 22.x is older, the
+dashboard build says so and the project's Node.js Version must go to 24.x). Each project's `vercel.json` already sets the install/build
 commands (they `cd` to the repo root so npm workspaces + Nx resolve). GitHub config
 the Vercel workflows expect:
 
@@ -132,14 +133,16 @@ change triggers an App Runner redeployment.
 an env edit + redeploy is enough. Without it, the "Become a tutor" links fall back to
 `http://localhost:3100`.
 
-**dashboard** — Root Directory `apps/dashboard`
+**dashboard** — Root Directory `apps/dashboard-ng` (Angular; it was `apps/dashboard`, the React
+app, until the cutover — see the runbook in `docs/DASHBOARD_ANGULAR_MIGRATION.md` §9)
 
 | Env var   | Value                              |
 | --------- | ---------------------------------- |
 | `API_URL` | `https://<app-runner-service-url>` |
 
-⚠️ The dashboard inlines `API_URL` at **build time** (webpack `DefinePlugin`).
-Changing it requires a **redeploy**, not just an env edit.
+⚠️ The dashboard inlines `API_URL` at **build time** (the Angular builder's `define`).
+Changing it requires a **redeploy**, not just an env edit. The build **fails** when `API_URL` is
+unset rather than shipping `http://localhost:4000`.
 
 > The App Runner **service URL** (`aws apprunner describe-service … Service.ServiceUrl`)
 > has no scheme — use `https://<ServiceUrl>` (or a custom domain) for `API_URL`.

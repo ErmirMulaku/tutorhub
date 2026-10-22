@@ -33,7 +33,7 @@ interface SeedTutor {
 
 const TUTORS: SeedTutor[] = [
   {
-    // The tutor-dashboard persona (design handoff). Signs into apps/dashboard.
+    // The tutor-dashboard persona (design handoff). Signs into apps/dashboard-ng.
     name: 'Lena Hartmann',
     avatarColor: 'teal',
     timezone: 'Europe/Berlin',

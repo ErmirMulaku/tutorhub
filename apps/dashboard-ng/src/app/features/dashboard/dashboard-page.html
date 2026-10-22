@@ -1,0 +1,120 @@
+<div class="dash">
+  <!-- Setup is a one-time flow — once published there is nothing to go back to.
+       `=== false`: while the flag is still loading (null) nothing is shown, so
+       the banner can't flash in and out for a published tutor. -->
+  @if (published() === false && !bannerDismissed()) {
+    <div class="setup-banner">
+      <div class="setup-banner__text">
+        <strong>Finish setting up your tutor profile</strong>
+        <span>Add your subjects, hours and payout details to start getting booked.</span>
+      </div>
+      <div class="setup-banner__actions">
+        <a routerLink="/onboarding"><button th-button size="sm">Continue setup</button></a>
+        <button
+          type="button"
+          class="setup-banner__close"
+          aria-label="Dismiss"
+          (click)="dismissBanner()"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="dash__greeting">
+    <h2>{{ greeting }}, {{ firstName() }} 👋</h2>
+    <p class="muted">Here's how your practice is doing today.</p>
+  </div>
+
+  <div class="kpi-row">
+    @if (kpis(); as cards) {
+      @for (k of cards; track k.label) {
+        <th-kpi-stat [icon]="k.icon" [label]="k.label" [value]="k.value" [delta]="k.delta" />
+      }
+    } @else if (summaryError(); as error) {
+      <th-error-state [message]="'Could not load your stats: ' + error" (retry)="retrySummary()" />
+    } @else {
+      @for (i of skeletons; track i) {
+        <th-skeleton [height]="kpiCardHeight" />
+      }
+    }
+  </div>
+
+  <div class="dash__cols">
+    <th-card>
+      <div class="card-head">
+        <h3>Today's schedule</h3>
+        <a routerLink="/calendar" class="card-head__link">Open calendar →</a>
+      </div>
+      @if (todayFailed()) {
+        <th-error-state message="Could not load today's schedule." (retry)="retryToday()" />
+      } @else if (today().length > 0) {
+        <div class="sched-list">
+          @for (b of today(); track b.id) {
+            <div class="sched-row">
+              <div class="sched-row__time">
+                <span>{{ timeOf(b.startTime) }}</span>
+                <span class="muted">{{ timeOf(b.endTime) }}</span>
+              </div>
+              <span
+                class="sched-row__spine sched-row__spine--{{ b.subject.name.toLowerCase() }}"
+              ></span>
+              <th-avatar [name]="b.student.fullName" size="sm" />
+              <div class="sched-row__info">
+                <div class="sched-row__title">
+                  {{ b.subject.name }} · {{ b.subject.level.toLowerCase() }}
+                </div>
+                <div class="muted">with {{ b.student.fullName }} · Online</div>
+              </div>
+              <th-status-pill [status]="b.status" />
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="muted">No lessons scheduled today.</p>
+      }
+    </th-card>
+
+    <div class="dash__rail">
+      <th-card class="upnext">
+        <div class="upnext__eyebrow">Up next</div>
+        @if (upNext(); as next) {
+          <div class="upnext__title">
+            {{ next.subject.name }} · {{ next.subject.level.toLowerCase() }}
+          </div>
+          <div class="upnext__meta">
+            with {{ next.student.fullName }} · {{ timeOf(next.startTime) }}
+          </div>
+          <button th-button size="sm">Join lesson</button>
+        } @else {
+          <div class="upnext__meta">Nothing more booked today.</div>
+        }
+      </th-card>
+
+      <th-card>
+        <h3 class="card-head__title">Quick actions</h3>
+        <div class="quick-grid">
+          <a routerLink="/availability" class="quick-action">Edit availability</a>
+          <a routerLink="/catalog" class="quick-action">Add a subject</a>
+          <a routerLink="/marketing" class="quick-action">Run a promo</a>
+          <a routerLink="/earnings" class="quick-action">Withdraw earnings</a>
+        </div>
+      </th-card>
+
+      @if (latestReview(); as review) {
+        <th-card>
+          <div class="card-head">
+            <h3 class="card-head__title" style="margin: 0">Latest review</h3>
+            <a routerLink="/reviews" class="card-head__link">All reviews →</a>
+          </div>
+          <th-star-rating [value]="review.rating" />
+          @if (review.comment) {
+            <p class="latest-review__quote">“{{ review.comment }}”</p>
+          }
+          <div class="latest-review__by">{{ review.studentName }} · {{ review.subjectName }}</div>
+        </th-card>
+      }
+    </div>
+  </div>
+</div>

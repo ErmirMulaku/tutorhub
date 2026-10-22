@@ -174,3 +174,6 @@ HANDOFF.md
 
 .claude/worktrees/
 .playwright-mcp/
+# Cypress failure screenshots / videos
+**/cypress/screenshots/
+**/cypress/videos/

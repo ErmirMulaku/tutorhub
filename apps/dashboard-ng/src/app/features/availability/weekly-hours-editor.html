@@ -1,0 +1,33 @@
+@if (availability.data() === undefined) {
+  <th-skeleton [height]="280" />
+} @else {
+  <div class="avail__days">
+    @for (day of days.controls; track $index) {
+      <div class="avail__day" [formGroup]="day">
+        <th-toggle-switch formControlName="enabled" [label]="dayNames[$index]" />
+        <span class="avail__day-name">{{ dayNames[$index] }}</span>
+        @if (day.controls.enabled.value) {
+          <span class="avail__range">
+            <input
+              type="time"
+              formControlName="start"
+              [attr.aria-label]="dayNames[$index] + ' start'"
+            />
+            <span class="muted">–</span>
+            <input
+              type="time"
+              formControlName="end"
+              [attr.aria-label]="dayNames[$index] + ' end'"
+            />
+          </span>
+          <th-field-error [control]="day" />
+        } @else {
+          <span class="muted">Unavailable</span>
+        }
+      </div>
+    }
+  </div>
+  <button th-button size="sm" [disabled]="saving()" (click)="save()">
+    {{ saving() ? 'Saving…' : 'Save availability' }}
+  </button>
+}

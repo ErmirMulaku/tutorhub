@@ -1,0 +1,91 @@
+@if (summary.data(); as s) {
+  <div class="earn">
+    <div class="earn__top">
+      <th-card class="earn__balance">
+        <div class="earn__balance-label">Available to withdraw</div>
+        <div class="earn__balance-value">{{ money(s.availableCents) }}</div>
+        <div class="earn__balance-meta">
+          Next auto-payout · {{ s.payoutSchedule.toLowerCase() }}
+        </div>
+        <button
+          th-button
+          size="sm"
+          [disabled]="withdrawing() || s.availableCents === 0"
+          (click)="withdraw()"
+        >
+          Withdraw now
+        </button>
+      </th-card>
+      <th-card class="earn__stat">
+        <div class="earn__stat-label">Pending clearance</div>
+        <div class="earn__stat-value">{{ money(s.pendingCents) }}</div>
+      </th-card>
+      <th-card class="earn__stat">
+        <div class="earn__stat-label">Lifetime earnings</div>
+        <div class="earn__stat-value">{{ money(s.lifetimeCents) }}</div>
+      </th-card>
+    </div>
+
+    <div class="earn__mid">
+      <th-card>
+        <h3 class="card-head__title">Earnings · last 8 months</h3>
+        @if (bars(); as b) {
+          <th-bar-chart [bars]="b" [format]="money" />
+        }
+      </th-card>
+      <th-card class="earn__payout">
+        <h3 class="card-head__title">Payout method</h3>
+        <div class="earn__method">{{ s.payoutMethod ?? 'No method on file' }}</div>
+        <p class="muted">
+          Auto-payout runs {{ s.payoutSchedule.toLowerCase() }} to your linked card.
+        </p>
+        <th-connect-payouts />
+      </th-card>
+    </div>
+
+    <th-card>
+      <div class="card-head">
+        <h3>Recent transactions</h3>
+        <button
+          th-button
+          size="sm"
+          variant="secondary"
+          [disabled]="!transactions.data()"
+          (click)="exportCsv()"
+        >
+          Export CSV
+        </button>
+      </div>
+      <table class="txn">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Lesson</th>
+            <th>Net</th>
+            <th>Fee</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of transactions.data() ?? []; track t.id) {
+            <tr>
+              <td>{{ dayOf(t.date) }}</td>
+              <td>{{ t.studentName }} · {{ t.subjectName }}</td>
+              <td class="txn__net">+{{ money(t.netCents) }}</td>
+              <td class="muted">−{{ money(t.feeCents) }}</td>
+              <td>
+                <span class="th-pill" [class.th-pill--info]="t.status === 'PAID'">
+                  {{ t.status === 'PAID' ? 'Paid out' : 'Clearing' }}
+                </span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </th-card>
+  </div>
+} @else if (summary.error()) {
+  <th-error-state message="Could not load your earnings." (retry)="summary.reload()" />
+} @else {
+  <th-skeleton [height]="320" />
+}

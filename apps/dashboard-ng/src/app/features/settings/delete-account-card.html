@@ -1,0 +1,36 @@
+<th-card>
+  <h3 class="card-head__title">Delete account</h3>
+  @if (!open()) {
+    <p class="muted">
+      Permanently delete your account and everything on it. This cannot be undone.
+    </p>
+    <button th-button variant="ghost" (click)="open.set(true)">Delete account</button>
+  } @else {
+    <p class="muted">This permanently deletes:</p>
+    <ul class="muted">
+      <li>your profile, subjects, catalog and availability</li>
+      <li>every lesson you have taught, including your students' history of them</li>
+      <li>the payment records for those lessons, and your earnings history</li>
+      <li>reviews students have written about you</li>
+    </ul>
+    <p class="muted">
+      Students with a lesson booked ahead will be told it is cancelled. Nothing here can be
+      restored, and no refunds are issued.
+    </p>
+    <label class="login__field">
+      <span>
+        Type <strong>{{ name() }}</strong> to confirm
+      </span>
+      <input type="text" autocomplete="off" [formControl]="confirm" />
+    </label>
+    @if (error(); as message) {
+      <p class="error">{{ message }}</p>
+    }
+    <div class="settings__danger-actions">
+      <button th-button variant="ghost" (click)="cancel()">Cancel</button>
+      <button th-button [disabled]="!matches() || deleting()" (click)="remove()">
+        {{ deleting() ? 'Deleting…' : 'Delete my account permanently' }}
+      </button>
+    </div>
+  }
+</th-card>

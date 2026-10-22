@@ -1,5 +1,5 @@
 import { Field, GraphQLISODateTime, InputType, Int } from '@nestjs/graphql';
-import { IsInt, IsString, Max, Min } from 'class-validator';
+import { IsDate, IsInt, IsString, Max, Min } from 'class-validator';
 
 @InputType()
 export class WorkingHourInput {
@@ -42,9 +42,13 @@ export class TimeOffInput {
   @IsString()
   label!: string;
 
+  // Each property needs a class-validator decorator: the global pipe uses
+  // `forbidNonWhitelisted`, so an undecorated field rejects the whole request.
   @Field(() => GraphQLISODateTime)
+  @IsDate()
   startDate!: Date;
 
   @Field(() => GraphQLISODateTime)
+  @IsDate()
   endDate!: Date;
 }

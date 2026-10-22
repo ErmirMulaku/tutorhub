@@ -1,0 +1,81 @@
+@if (settings.data(); as s) {
+  <div class="settings">
+    <th-segmented-tabs [segments]="tabs" [value]="tab()" (changed)="tab.set($event)" />
+
+    @switch (tab()) {
+      @case ('profile') {
+        <th-card>
+          <form [formGroup]="profile" (ngSubmit)="saveProfile()">
+            <div class="settings__form">
+              <label class="login__field">
+                <span>Display name</span>
+                <input formControlName="name" />
+                <th-field-error [control]="profile.controls.name" />
+              </label>
+              <label class="login__field">
+                <span>Headline</span>
+                <input formControlName="headline" />
+                <th-field-error [control]="profile.controls.headline" />
+              </label>
+              <label class="login__field">
+                <span>About</span>
+                <textarea rows="4" formControlName="about"></textarea>
+              </label>
+              <label class="login__field">
+                <span>Timezone</span>
+                <input formControlName="timezone" />
+                <th-field-error [control]="profile.controls.timezone" />
+              </label>
+            </div>
+            <button th-button size="sm" type="submit" [disabled]="savingProfile()">
+              Save profile
+            </button>
+          </form>
+        </th-card>
+        <!-- Confirms against the saved name, not the editable field above it. -->
+        <th-delete-account-card [name]="s.name" />
+      }
+      @case ('payout') {
+        <th-card>
+          <h3 class="card-head__title">Payout method</h3>
+          <div class="settings__method">
+            {{ earnings.data()?.payoutMethod ?? 'No method on file' }}
+          </div>
+          <h3 class="card-head__title" style="margin-top: 18px">Payout schedule</h3>
+          <div class="settings__schedule">
+            @for (sched of schedules; track sched) {
+              <button
+                type="button"
+                class="settings__sched"
+                [class.settings__sched--active]="earnings.data()?.payoutSchedule === sched"
+                (click)="setSchedule(sched)"
+              >
+                {{ scheduleLabel(sched) }}
+              </button>
+            }
+          </div>
+        </th-card>
+      }
+      @case ('notifications') {
+        <th-card>
+          @for (row of notifyRows; track row.key) {
+            <div class="settings__notify">
+              <div>
+                <div class="settings__notify-title">{{ row.title }}</div>
+                <div class="muted">{{ row.subtitle }}</div>
+              </div>
+              <th-toggle-switch
+                [formControl]="notifications.controls[row.key]"
+                [label]="row.title"
+              />
+            </div>
+          }
+        </th-card>
+      }
+    }
+  </div>
+} @else if (settings.error()) {
+  <th-error-state message="Could not load your settings." (retry)="settings.reload()" />
+} @else {
+  <th-skeleton [height]="320" />
+}

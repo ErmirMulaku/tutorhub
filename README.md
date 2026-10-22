@@ -39,7 +39,7 @@ Per-phase build log and decisions: [`AGENTS.md`](./AGENTS.md) and [`docs/`](./do
 
 ## Tech stack
 
-TypeScript · React 19 + Redux Toolkit · Next.js 16 (SSR/PWA) · custom Webpack 5 ·
+TypeScript · Angular 22 + NgRx + RxJS · React 19 · Next.js 16 (SSR/PWA) ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
 Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Amazon RDS.
@@ -49,7 +49,7 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Ama
 | Path                                    | What                                                                                                        |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                    |
-| `apps/dashboard`                        | React + Redux tutor dashboard (custom Webpack)                                                              |
+| `apps/dashboard-ng`                     | Angular + NgRx tutor dashboard (zoneless, signals; replaced the React one)                                  |
 | `apps/mobile`                           | Expo / React Native student app                                                                             |
 | `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                |
 | `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                           |
@@ -63,7 +63,8 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Ama
 > `packages/ui` (RTL-safe components + Storybook), `packages/api-client`; the `services/api`
 > NestJS API (Postgres + Prisma) exposing the domain over **REST, GraphQL, and gRPC** — with
 > health/readiness probes, Prometheus metrics, and an **OpenAI booking assistant**;
-> `apps/dashboard`, a React/Redux SPA on a custom Webpack build; `apps/marketplace`, a
+> `apps/dashboard-ng`, the tutor dashboard — first a React/Redux SPA on a custom Webpack build,
+> then rewritten in **Angular + NgRx** and cut over (React version: tag `dashboard-react-final`); `apps/marketplace`, a
 > **Next.js 16** SSR/PWA storefront with an Arabic **RTL** locale and GPU-only animations;
 > `apps/mobile`, an **Expo** student app; and `services/notifications`, an **Elixir/Phoenix**
 > reminders service.

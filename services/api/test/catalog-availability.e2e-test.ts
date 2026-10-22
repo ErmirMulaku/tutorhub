@@ -1,10 +1,11 @@
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
+import { createValidationPipe } from '../src/common/validation.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 /**
@@ -22,7 +23,7 @@ describe('Catalog + availability (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(createValidationPipe());
     app.useGlobalFilters(new DomainExceptionFilter());
     await app.init();
     prisma = app.get(PrismaService);
@@ -62,8 +63,8 @@ describe('Catalog + availability (e2e)', () => {
     const res = await http().post('/auth/tutor/dev-login').send({ email }).expect(200);
     return (res.body as { accessToken: string }).accessToken;
   };
-  const gql = (query: string, t: string): request.Test =>
-    http().post('/graphql').set('authorization', `Bearer ${t}`).send({ query });
+  const gql = (query: string, t: string, variables?: Record<string, unknown>): request.Test =>
+    http().post('/graphql').set('authorization', `Bearer ${t}`).send({ query, variables });
 
   it('createService then myServices lists only the owner services', async () => {
     const t = await token(emailA);
@@ -106,5 +107,58 @@ describe('Catalog + availability (e2e)', () => {
     ).data.myAvailability;
     expect(av.bufferMinutes).toBe(30);
     expect(av.workingHours[0]?.start).toBe('10:00');
+  });
+
+  // Sent exactly as both dashboards send it: GraphQL variables with ISO strings.
+  const ADD_TIME_OFF = `mutation($input: TimeOffInput!){ addTimeOff(input: $input){ bufferMinutes } }`;
+
+  it('addTimeOff persists a break and removeTimeOff deletes it (regression)', async () => {
+    // Used to fail on every real request: the global pipe forbids undecorated
+    // properties and TimeOffInput's dates had no class-validator decorator.
+    const t = await token(emailA);
+    const added = await gql(ADD_TIME_OFF, t, {
+      input: {
+        label: 'Winter break',
+        startDate: '2026-12-24T00:00:00.000Z',
+        endDate: '2026-12-31T00:00:00.000Z',
+      },
+    }).expect(200);
+    expect((added.body as { errors?: unknown }).errors).toBeUndefined();
+
+    const list = await gql(
+      '{ myAvailability { timeOff { id label startDate endDate } } }',
+      t,
+    ).expect(200);
+    const timeOff = (
+      list.body as {
+        data: { myAvailability: { timeOff: { id: string; label: string; startDate: string }[] } };
+      }
+    ).data.myAvailability.timeOff;
+    expect(timeOff).toHaveLength(1);
+    expect(timeOff[0]?.label).toBe('Winter break');
+    expect(timeOff[0]?.startDate).toBe('2026-12-24T00:00:00.000Z');
+
+    await gql(`mutation($id: ID!){ removeTimeOff(id: $id){ bufferMinutes } }`, t, {
+      id: timeOff[0]?.id,
+    }).expect(200);
+    const after = await gql('{ myAvailability { timeOff { id } } }', t).expect(200);
+    expect(
+      (after.body as { data: { myAvailability: { timeOff: unknown[] } } }).data.myAvailability
+        .timeOff,
+    ).toHaveLength(0);
+  });
+
+  it('addTimeOff rejects a break that ends before it starts', async () => {
+    const t = await token(emailA);
+    const res = await gql(ADD_TIME_OFF, t, {
+      input: {
+        label: 'Backwards',
+        startDate: '2026-12-31T00:00:00.000Z',
+        endDate: '2026-12-24T00:00:00.000Z',
+      },
+    }).expect(200);
+    const body = res.body as { errors?: { message: string; extensions?: { code?: string } }[] };
+    expect(body.errors?.[0]?.message).toBe('Time off cannot end before it starts.');
+    expect(body.errors?.[0]?.extensions?.code).toBe('BAD_USER_INPUT');
   });
 });

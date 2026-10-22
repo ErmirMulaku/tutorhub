@@ -1,0 +1,60 @@
+@if (availability.error() && availability.data() === undefined) {
+  <th-error-state message="Could not load your availability." (retry)="availability.reload()" />
+} @else if (availability.data(); as data) {
+  <div class="avail">
+    <th-card>
+      <h3 class="card-head__title">Weekly hours</h3>
+      <th-weekly-hours-editor />
+    </th-card>
+
+    <div class="avail__rail">
+      <th-card>
+        <h3 class="card-head__title">Booking rules</h3>
+        <form [formGroup]="rules" (ngSubmit)="saveRules()">
+          <div class="avail__rules">
+            <label class="login__field">
+              <span>Buffer between lessons (min)</span>
+              <input type="number" min="0" formControlName="bufferMinutes" />
+              <th-field-error [control]="rules.controls.bufferMinutes" />
+            </label>
+            <label class="login__field">
+              <span>Minimum notice (hours)</span>
+              <input type="number" min="0" formControlName="minNoticeHours" />
+              <th-field-error [control]="rules.controls.minNoticeHours" />
+            </label>
+            <label class="login__field">
+              <span>Max lessons per day</span>
+              <input type="number" min="1" formControlName="maxLessonsPerDay" />
+              <th-field-error [control]="rules.controls.maxLessonsPerDay" />
+            </label>
+          </div>
+          <button th-button size="sm" type="submit" [disabled]="savingRules()">Save rules</button>
+        </form>
+      </th-card>
+
+      <th-card>
+        <h3 class="card-head__title">Time off</h3>
+        @for (t of data.timeOff; track t.id) {
+          <div class="avail__off-row">
+            <span>{{ t.label }}</span>
+            <span class="muted">{{ formatDate(t.startDate) }} – {{ formatDate(t.endDate) }}</span>
+            <button th-button size="sm" variant="ghost" (click)="removeTimeOff(t.id)">
+              Remove
+            </button>
+          </div>
+        } @empty {
+          <p class="muted">No time off scheduled.</p>
+        }
+        <form class="avail__off-add" [formGroup]="timeOff" (ngSubmit)="addTimeOff()">
+          <input placeholder="🏖 Holiday" aria-label="Time off label" formControlName="label" />
+          <input type="date" aria-label="Start date" formControlName="startDate" />
+          <input type="date" aria-label="End date" formControlName="endDate" />
+          <button th-button size="sm" variant="secondary" type="submit">Add</button>
+        </form>
+        <th-field-error [control]="timeOff" />
+      </th-card>
+    </div>
+  </div>
+} @else {
+  <th-skeleton [height]="320" />
+}

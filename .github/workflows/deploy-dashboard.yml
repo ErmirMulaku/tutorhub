@@ -1,33 +1,35 @@
 name: Deploy Dashboard
 
-# Deploys the dashboard SPA to Vercel production.
+# Deploys the tutor dashboard SPA (apps/dashboard-ng, Angular) to Vercel production.
 #
 # ⚠️ Vercel's Git integration must be DISABLED for this project, or every merge
 # deploys twice — once from Vercel's own git hook and once from here.
-# Project Settings → Git → disconnect, or add to apps/dashboard/vercel.json:
+# Project Settings → Git → disconnect, or add to apps/dashboard-ng/vercel.json:
 #     "git": { "deploymentEnabled": false }
 #
 # Secrets/vars this workflow assumes:
 #   - secrets.VERCEL_TOKEN             (Account Settings → Tokens)
 #   - vars.VERCEL_ORG_ID               (apps/*/.vercel/project.json → orgId)
-#   - vars.VERCEL_PROJECT_ID_DASHBOARD (apps/dashboard/.vercel → projectId)
+#   - vars.VERCEL_PROJECT_ID_DASHBOARD (the dashboard project's .vercel → projectId)
 #
-# The CLI runs from the REPO ROOT, not apps/dashboard. The Vercel project
-# already sets Root Directory to apps/dashboard, and running from there makes it
+# The CLI runs from the REPO ROOT, not apps/dashboard-ng. The Vercel project
+# sets Root Directory to apps/dashboard-ng (in the Vercel UI — it was
+# apps/dashboard until the Angular cutover), and running from there makes it
 # apply that twice:
-#     The provided path ".../apps/dashboard/apps/dashboard" does not exist
+#     The provided path ".../apps/dashboard-ng/apps/dashboard-ng" does not exist
 # The project is selected by the VERCEL_* env vars instead of by directory.
 #
-# The dashboard inlines API_URL at BUILD time (webpack DefinePlugin). Building
-# on Vercel (`deploy`, not `build` + `deploy --prebuilt`) means the project's
-# env vars apply, so API_URL comes from the Vercel project. Changing it there
-# still needs a redeploy — an env edit alone does nothing.
+# The dashboard inlines API_URL at BUILD time (the Angular builder's `define`).
+# Building on Vercel (`deploy`, not `build` + `deploy --prebuilt`) means the
+# project's env vars apply, so API_URL comes from the Vercel project; the build
+# fails if it is missing. Changing it there still needs a redeploy — an env
+# edit alone does nothing.
 
 on:
   push:
     branches: [master]
     paths:
-      - 'apps/dashboard/**'
+      - 'apps/dashboard-ng/**'
       - 'packages/**'
       - 'package.json'
       - 'package-lock.json'

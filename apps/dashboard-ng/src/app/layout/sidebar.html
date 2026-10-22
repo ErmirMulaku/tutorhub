@@ -1,0 +1,38 @@
+<div class="sidebar__brand">
+  <span class="sidebar__logo" aria-hidden="true">◎</span>
+  <div>
+    <div class="sidebar__wordmark">Tutor<strong>Hub</strong></div>
+    <div class="sidebar__eyebrow">FOR TUTORS</div>
+  </div>
+</div>
+
+<nav class="sidebar__nav">
+  @for (group of groups; track group.label) {
+    <div class="sidebar__group">
+      <div class="sidebar__group-label">{{ group.label }}</div>
+      @for (item of group.items; track item.to) {
+        <a [routerLink]="item.to" routerLinkActive="sidebar__link--active" class="sidebar__link">
+          <span>{{ item.label }}</span>
+          @if (badgeFor(item); as badge) {
+            <span class="sidebar__badge sidebar__badge--{{ badge.tone }}">{{ badge.count }}</span>
+          }
+        </a>
+      }
+    </div>
+  }
+</nav>
+
+<div class="sidebar__footer">
+  <a routerLink="/settings" routerLinkActive="sidebar__link--active" class="sidebar__link">
+    Settings
+  </a>
+  <!-- Onboarding runs once, so a published tutor edits their profile in
+       Settings rather than being sent back through the wizard. -->
+  <a [routerLink]="published() ? '/settings' : '/onboarding'" class="sidebar__profile">
+    <th-avatar [name]="me()?.name ?? 'Tutor'" size="sm" />
+    <div class="sidebar__profile-text">
+      <div class="sidebar__profile-name">{{ me()?.name ?? 'Loading…' }}</div>
+    </div>
+  </a>
+  <button type="button" class="sidebar__link sidebar__signout" (click)="signOut()">Sign out</button>
+</div>

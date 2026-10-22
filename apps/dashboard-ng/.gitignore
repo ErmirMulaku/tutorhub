@@ -1,0 +1,5 @@
+# Build output and Angular CLI cache (the root .gitignore covers node_modules/dist too).
+/dist
+/out-tsc
+/.angular/cache
+/coverage
