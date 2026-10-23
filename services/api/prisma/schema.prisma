@@ -377,6 +377,9 @@ model Booking {
   startTime DateTime
   endTime   DateTime
   status    BookingStatus @default(PENDING)
+  // Optimistic lock: every write bumps it, and edits that change more than
+  // the status only apply `where: { id, version }` — a stale read loses.
+  version   Int           @default(0)
   payment   Payment?
   review    Review?
   createdAt DateTime      @default(now())

@@ -1,13 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { BadRequestDomainError, EntityNotFoundError } from '../common/errors.js';
+import {
+  BadRequestDomainError,
+  ConflictDomainError,
+  EntityNotFoundError,
+} from '../common/errors.js';
+import { isUniqueViolation } from '../common/prisma-errors.js';
 import { BookingStatus, type Booking, type Review } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
 import { assertCanTransition } from './booking-status.js';
+import { InvalidBookingTransitionError } from './booking.errors.js';
 import type { BookInput } from './dto/book-input.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
 
 const SLOT_MINUTES = 60;
+const CHANGED_BY_SOMEONE_ELSE = 'This booking was just changed by someone else.';
 const MS_PER_MINUTE = 60_000;
 
 export interface BookingFilter {
@@ -74,9 +81,27 @@ export class BookingService {
 
   /** Move a booking to `to`, enforcing the lifecycle state machine. */
   async updateStatus(id: string, to: BookingStatus): Promise<Booking> {
-    const booking = await this.findById(id);
+    return this.transition(await this.findById(id), to);
+  }
+
+  /**
+   * Apply a status change to a booking we have just read, race-safely.
+   *
+   * The state machine is checked against the status we read. The write then
+   * only applies if the row still has that status (`where: { id, status }`).
+   * If someone else changed it in between, Postgres matches 0 rows and we
+   * report a conflict instead of overwriting their change (lost update).
+   */
+  private async transition(booking: Booking, to: BookingStatus): Promise<Booking> {
     assertCanTransition(booking.status, to);
-    const updated = await this.prisma.booking.update({ where: { id }, data: { status: to } });
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, status: booking.status },
+      data: { status: to, version: { increment: 1 } },
+    });
+    if (count === 0) {
+      throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+    }
+    const updated = await this.findById(booking.id);
     this.events.emit(updated);
     return updated;
   }
@@ -104,10 +129,21 @@ export class BookingService {
       throw new BadRequestDomainError('Only upcoming bookings can be rescheduled.');
     }
     const duration = booking.endTime.getTime() - booking.startTime.getTime();
-    const updated = await this.prisma.booking.update({
-      where: { id },
-      data: { startTime, endTime: new Date(startTime.getTime() + duration) },
+    // Optimistic lock: only write if nobody has touched the row since we read
+    // it (every write bumps `version`). Otherwise a tutor's cancel that landed
+    // in between would be silently overwritten by our stale copy.
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id, version: booking.version },
+      data: {
+        startTime,
+        endTime: new Date(startTime.getTime() + duration),
+        version: { increment: 1 },
+      },
     });
+    if (count === 0) {
+      throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+    }
+    const updated = await this.findById(id);
     this.events.emit(updated);
     return updated;
   }
@@ -118,7 +154,7 @@ export class BookingService {
     if (booking.studentId !== studentId) {
       throw new EntityNotFoundError('Booking', id);
     }
-    return this.updateStatus(id, BookingStatus.CANCELLED);
+    return this.transition(booking, BookingStatus.CANCELLED);
   }
 
   // --- Tutor-facing (dashboard) ---
@@ -149,20 +185,26 @@ export class BookingService {
 
   /** Tutor accepts a pending request → CONFIRMED. */
   async acceptForTutor(id: string, tutorId: string): Promise<Booking> {
-    await this.findOwnedByTutor(id, tutorId);
-    return this.updateStatus(id, BookingStatus.CONFIRMED);
+    return this.transition(await this.findOwnedByTutor(id, tutorId), BookingStatus.CONFIRMED);
   }
 
-  /** Tutor declines a pending request → CANCELLED. */
+  /**
+   * Tutor declines a pending request → CANCELLED. Only a *request* can be
+   * declined: the state machine also allows CONFIRMED → CANCELLED, so without
+   * this check a decline arriving just after an accept would cancel the lesson
+   * the tutor had just confirmed.
+   */
   async declineForTutor(id: string, tutorId: string): Promise<Booking> {
-    await this.findOwnedByTutor(id, tutorId);
-    return this.updateStatus(id, BookingStatus.CANCELLED);
+    const booking = await this.findOwnedByTutor(id, tutorId);
+    if (booking.status !== BookingStatus.PENDING) {
+      throw new InvalidBookingTransitionError(booking.status, BookingStatus.CANCELLED);
+    }
+    return this.transition(booking, BookingStatus.CANCELLED);
   }
 
   /** Tutor marks a confirmed lesson done → COMPLETED. */
   async completeForTutor(id: string, tutorId: string): Promise<Booking> {
-    await this.findOwnedByTutor(id, tutorId);
-    return this.updateStatus(id, BookingStatus.COMPLETED);
+    return this.transition(await this.findOwnedByTutor(id, tutorId), BookingStatus.COMPLETED);
   }
 
   /** Tutor books a lesson directly (already CONFIRMED) for one of their students. */
@@ -211,12 +253,18 @@ export class BookingService {
     if (booking.status !== BookingStatus.COMPLETED) {
       throw new BadRequestDomainError('Only completed bookings can be reviewed.');
     }
-    const existing = await this.prisma.review.findUnique({ where: { bookingId } });
-    if (existing !== null) {
-      throw new BadRequestDomainError('This booking has already been reviewed.');
+    // No "does a review exist?" read first: two parallel requests could both
+    // see "no". The unique index on `bookingId` is the real guard — the second
+    // insert waits for the first to commit, then fails with P2002.
+    try {
+      return await this.prisma.review.create({
+        data: { bookingId, tutorId: booking.tutorId, rating, comment },
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictDomainError('This booking has already been reviewed.');
+      }
+      throw error;
     }
-    return this.prisma.review.create({
-      data: { bookingId, tutorId: booking.tutorId, rating, comment },
-    });
   }
 }
