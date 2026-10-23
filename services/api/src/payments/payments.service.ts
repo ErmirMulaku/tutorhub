@@ -10,6 +10,7 @@ import type Stripe from 'stripe';
 import { BookingEvents } from '../bookings/booking-events.js';
 import { BookingService } from '../bookings/booking.service.js';
 import { studentPrincipal } from '../idempotency/idempotency.service.js';
+import { recordBookingEvent } from '../outbox/booking-event.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StripeService } from '../stripe/stripe.service.js';
 import type { BookInput } from '../bookings/dto/book-input.js';
@@ -120,7 +121,10 @@ export class PaymentsService {
           where: { key: idempotencyKey, principal: studentPrincipal(studentId) },
         });
       }
-      return count === 1 ? tx.booking.findUniqueOrThrow({ where: { id: bookingId } }) : null;
+      if (count === 0) return null;
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+      return booking;
     });
     if (cancelled !== null) this.events.emit(cancelled);
   }
@@ -194,7 +198,9 @@ export class PaymentsService {
       return null;
     }
     this.logger.log(`Payment ${payment.id} marked PAID; booking ${payment.bookingId} CONFIRMED.`);
-    return tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    const booking = await tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+    return booking;
   }
 
   private async cancelForFailedIntent(
@@ -210,7 +216,9 @@ export class PaymentsService {
     });
     if (count === 0) return null;
     this.logger.log(`Payment ${payment.id} failed; booking ${payment.bookingId} CANCELLED.`);
-    return tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    const booking = await tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+    return booking;
   }
 
   private async syncConnectAccount(

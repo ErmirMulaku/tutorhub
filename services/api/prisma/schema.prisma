@@ -473,3 +473,32 @@ model ProcessedStripeEvent {
   type        String
   processedAt DateTime @default(now())
 }
+
+// Transactional outbox (FRESHA_DEPTH_SPEC Block 4). Every booking change
+// inserts one row here IN THE SAME TRANSACTION as the change, so "the booking
+// changed" and "an event will be published" are always both true or both
+// false. A relay later publishes unpublished rows to Kafka and stamps them.
+// A partial index on unpublished rows lives in the migration SQL (Prisma
+// can't express `WHERE "publishedAt" IS NULL`).
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  aggregateType String
+  aggregateId   String
+  type          String
+  payload       Json
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+  attempts      Int       @default(0)
+  lastError     String?
+}
+
+// Events a consumer has already handled (idempotent consumer). Kafka delivers
+// at least once, so the same event can arrive twice; inserting (consumer,
+// eventId) in the same transaction as the side effect makes a repeat a no-op.
+model ProcessedEvent {
+  consumer    String
+  eventId     String
+  processedAt DateTime @default(now())
+
+  @@id([consumer, eventId])
+}

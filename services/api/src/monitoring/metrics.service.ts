@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 
 type HttpLabel = 'method' | 'route' | 'status';
 type AiRequestLabel = 'task' | 'model' | 'status' | 'cache';
@@ -33,6 +33,10 @@ export class MetricsService {
   private readonly aiCost: Counter<AiCostLabel>;
   private readonly aiDuration: Histogram<AiDurationLabel>;
   private readonly idempotentReplays: Counter;
+  private readonly outboxPending: Gauge;
+  private readonly outboxPublished: Counter;
+  private readonly outboxFailures: Counter;
+  private readonly consumerEvents: Counter<'consumer' | 'result'>;
 
   constructor() {
     this.registry.setDefaultLabels({ app: 'tutorhub-api' });
@@ -83,6 +87,28 @@ export class MetricsService {
       help: 'Requests answered from a stored response because their Idempotency-Key was seen before.',
       registers: [this.registry],
     });
+
+    this.outboxPending = new Gauge({
+      name: 'outbox_pending',
+      help: 'Outbox events not yet published to Kafka (as of the relay’s last run).',
+      registers: [this.registry],
+    });
+    this.outboxPublished = new Counter({
+      name: 'outbox_published_total',
+      help: 'Outbox events published to Kafka.',
+      registers: [this.registry],
+    });
+    this.outboxFailures = new Counter({
+      name: 'outbox_publish_failures_total',
+      help: 'Outbox events whose publish attempt failed (they stay pending and are retried).',
+      registers: [this.registry],
+    });
+    this.consumerEvents = new Counter({
+      name: 'consumer_events_total',
+      help: 'Kafka messages handled by a consumer, by result (processed, duplicate, ignored, dead_lettered).',
+      labelNames: ['consumer', 'result'],
+      registers: [this.registry],
+    });
   }
 
   /** Record one completed request. */
@@ -105,6 +131,22 @@ export class MetricsService {
   /** A retried request got the stored response instead of doing the work again. */
   countIdempotentReplay(): void {
     this.idempotentReplays.inc();
+  }
+
+  setOutboxPending(count: number): void {
+    this.outboxPending.set(count);
+  }
+
+  countOutboxPublished(count: number): void {
+    this.outboxPublished.inc(count);
+  }
+
+  countOutboxFailures(count: number): void {
+    this.outboxFailures.inc(count);
+  }
+
+  countConsumerEvent(consumer: string, result: string): void {
+    this.consumerEvents.inc({ consumer, result });
   }
 
   metrics(): Promise<string> {

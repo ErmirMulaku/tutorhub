@@ -63,8 +63,31 @@ jobs:
       - name: Apply database migrations
         run: npm run db:deploy --workspace @ermulaku/api
 
+      # Kafka-compatible broker for the outbox/Kafka E2E tests (Block 4). Run
+      # with `docker run`, not as a job `services:` container, because
+      # Redpanda needs start-up flags and service containers can't pass a
+      # command.
+      - name: Start Redpanda
+        run: |
+          docker run -d --name redpanda -p 9092:9092 \
+            docker.redpanda.com/redpandadata/redpanda:v26.2.6 \
+            redpanda start --mode=dev-container --smp=1 \
+            --kafka-addr=0.0.0.0:9092 --advertise-kafka-addr=localhost:9092
+          for i in $(seq 1 60); do
+            if docker exec redpanda rpk cluster health | grep -q 'Healthy:.*true'; then
+              echo "Redpanda is up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Redpanda failed to start" >&2; docker logs redpanda >&2; exit 1
+
       - name: E2E tests
         run: npm run test:e2e --workspace @ermulaku/api
+        # A failing Kafka test can leave a connection open so Jest never exits;
+        # fail the step instead of waiting for the 6-hour job limit.
+        timeout-minutes: 15
+        env:
+          KAFKA_BROKERS: localhost:9092
 
   marketplace-e2e:
     name: Marketplace · Cypress · Lighthouse

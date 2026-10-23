@@ -16,6 +16,7 @@ import {
   IdempotencyService,
   studentPrincipal,
 } from '../idempotency/idempotency.service.js';
+import { recordBookingEvent } from '../outbox/booking-event.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
 import { assertCanTransition } from './booking-status.js';
@@ -157,8 +158,8 @@ export class BookingService {
     const insert = (tx?: Prisma.TransactionClient): Promise<Booking> =>
       this.takeSlot(
         dto,
-        (db) =>
-          db.booking.create({
+        async (db) => {
+          const booking = await db.booking.create({
             data: {
               tutorId: dto.tutorId,
               studentId: dto.studentId,
@@ -166,7 +167,10 @@ export class BookingService {
               startTime,
               endTime,
             },
-          }),
+          });
+          await recordBookingEvent(db, 'BookingCreated', booking);
+          return booking;
+        },
         tx,
       );
 
@@ -231,14 +235,20 @@ export class BookingService {
    */
   private async transition(booking: Booking, to: BookingStatus): Promise<Booking> {
     assertCanTransition(booking.status, to);
-    const { count } = await this.prisma.booking.updateMany({
-      where: { id: booking.id, status: booking.status },
-      data: { status: to, version: { increment: 1 } },
+    // The change and its outbox event commit together, or neither does.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.booking.updateMany({
+        where: { id: booking.id, status: booking.status },
+        data: { status: to, version: { increment: 1 } },
+      });
+      if (count === 0) {
+        throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+      }
+      const changed = await tx.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      await recordBookingEvent(tx, 'BookingStatusChanged', changed);
+      return changed;
     });
-    if (count === 0) {
-      throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
-    }
-    const updated = await this.findById(booking.id);
+    // In-process listeners (sockets, gRPC streams) hear about it only after commit.
     this.events.emit(updated);
     return updated;
   }
@@ -277,20 +287,22 @@ export class BookingService {
     // Optimistic lock: only write if nobody has touched the row since we read
     // it (every write bumps `version`). Otherwise a tutor's cancel that landed
     // in between would be silently overwritten by our stale copy.
-    const { count } = await this.takeSlot(booking, (tx) =>
-      tx.booking.updateMany({
+    const updated = await this.takeSlot(booking, async (tx) => {
+      const { count } = await tx.booking.updateMany({
         where: { id, version: booking.version },
         data: {
           startTime,
           endTime: new Date(startTime.getTime() + duration),
           version: { increment: 1 },
         },
-      }),
-    );
-    if (count === 0) {
-      throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
-    }
-    const updated = await this.findById(id);
+      });
+      if (count === 0) {
+        throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+      }
+      const moved = await tx.booking.findUniqueOrThrow({ where: { id } });
+      await recordBookingEvent(tx, 'BookingRescheduled', moved);
+      return moved;
+    });
     this.events.emit(updated);
     return updated;
   }
@@ -369,8 +381,8 @@ export class BookingService {
     if (subject === null || subject.tutorId !== tutorId) {
       throw new EntityNotFoundError('Subject', subjectId);
     }
-    const booking = await this.takeSlot({ tutorId, studentId }, (tx) =>
-      tx.booking.create({
+    const booking = await this.takeSlot({ tutorId, studentId }, async (tx) => {
+      const created = await tx.booking.create({
         data: {
           tutorId,
           studentId,
@@ -379,8 +391,10 @@ export class BookingService {
           endTime: new Date(startTime.getTime() + SLOT_MINUTES * MS_PER_MINUTE),
           status: BookingStatus.CONFIRMED,
         },
-      }),
-    );
+      });
+      await recordBookingEvent(tx, 'BookingCreated', created);
+      return created;
+    });
     this.events.emit(booking);
     return booking;
   }

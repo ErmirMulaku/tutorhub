@@ -21,6 +21,7 @@ import { HelpModule } from './help/help.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { OutboxModule } from './outbox/outbox.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
@@ -57,6 +58,7 @@ const schemaFile = isProd
     TutorsModule,
     SubjectsModule,
     BookingsModule,
+    OutboxModule,
     AvailabilityModule,
     CatalogModule,
     MessagingModule,
