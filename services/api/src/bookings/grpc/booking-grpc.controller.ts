@@ -3,7 +3,11 @@ import { GrpcMethod, RpcException } from '@nestjs/microservices';
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { map, type Observable } from 'rxjs';
 import { InvalidBookingTransitionError } from '../booking.errors.js';
-import { BadRequestDomainError, EntityNotFoundError } from '../../common/errors.js';
+import {
+  BadRequestDomainError,
+  ConflictDomainError,
+  EntityNotFoundError,
+} from '../../common/errors.js';
 import { BookingStatus, type Booking } from '../../generated/prisma/client.js';
 import { BookingEvents } from '../booking-events.js';
 import { BookingService } from '../booking.service.js';
@@ -75,6 +79,11 @@ function toRpcException(error: unknown): RpcException {
   }
   if (error instanceof BadRequestDomainError) {
     return new RpcException({ code: GrpcStatus.INVALID_ARGUMENT, message: error.message });
+  }
+  // A taken slot is "that already exists"; any other lost race is "try again".
+  if (error instanceof ConflictDomainError) {
+    const code = error.code === 'SLOT_UNAVAILABLE' ? GrpcStatus.ALREADY_EXISTS : GrpcStatus.ABORTED;
+    return new RpcException({ code, message: error.message });
   }
   return new RpcException({
     code: GrpcStatus.UNKNOWN,

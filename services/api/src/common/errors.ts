@@ -32,3 +32,22 @@ export class EmailNotVerifiedError extends Error {
     this.name = 'EmailNotVerifiedError';
   }
 }
+
+/** Machine-readable codes a client can branch on when a write loses a race. */
+export type ConflictCode = 'CONFLICT' | 'SLOT_UNAVAILABLE' | 'REQUEST_IN_PROGRESS';
+
+/**
+ * Raised when a write lost a race: the row changed between our read and our
+ * write, a constraint rejected an overlapping booking, or the same idempotent
+ * request is still running. Maps to HTTP 409, GraphQL `extensions.code` =
+ * `code`, and gRPC `ABORTED`. Retrying after re-reading is usually safe.
+ */
+export class ConflictDomainError extends Error {
+  constructor(
+    message: string,
+    readonly code: ConflictCode = 'CONFLICT',
+  ) {
+    super(message);
+    this.name = 'ConflictDomainError';
+  }
+}
