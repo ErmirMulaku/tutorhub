@@ -20,6 +20,12 @@ if System.get_env("PHX_SERVER") do
   config :notifications, NotificationsWeb.Endpoint, server: true
 end
 
+# Kafka brokers for booking events, e.g. "localhost:9092" (docker compose up -d
+# redpanda). Unset = no Kafka consumer. Never started under tests.
+if config_env() != :test do
+  config :notifications, :kafka_brokers, System.get_env("KAFKA_BROKERS")
+end
+
 # Default to 4001 — the NestJS API owns 4000. Override with PORT in deploys.
 config :notifications, NotificationsWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4001"))]
