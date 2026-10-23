@@ -15,10 +15,13 @@ type AuthPayload {
 }
 
 input BookInput {
+  idempotencyKey: ID
   startTime: DateTime!
   subjectId: ID!
   tutorId: ID!
 }
+
+union BookLessonResult = BookingBooked | SlotUnavailable
 
 type Booking {
   endTime: DateTime!
@@ -28,6 +31,20 @@ type Booking {
   student: Student!
   subject: Subject!
   tutor: Tutor!
+}
+
+type BookingBooked {
+  booking: Booking!
+}
+
+type BookingConnection {
+  edges: [BookingEdge!]!
+  pageInfo: PageInfo!
+}
+
+type BookingEdge {
+  cursor: String!
+  node: Booking!
 }
 
 input BookingRulesInput {
@@ -168,6 +185,7 @@ type Mutation {
   addTimeOff(input: TimeOffInput!): MyAvailability!
   appleSignin(idToken: String!): AuthPayload!
   bookLesson(input: BookInput!): Booking!
+  bookLessonV2(input: BookInput!): BookLessonResult!
   buyGiftCard(amountCents: Int!, design: Int! = 0, fromName: String, message: String, toName: String): GiftCard!
   cancelBooking(id: ID!, reason: String): Booking!
   changePassword(currentPassword: String!, newPassword: String!): Student!
@@ -242,6 +260,11 @@ enum NotificationType {
   REVIEW_PROMPT
 }
 
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
 type PaymentMethod {
   brand: String!
   expMonth: Int!
@@ -288,7 +311,8 @@ type Query {
   meTutor: Tutor!
   messages(conversationId: ID!): [Message!]!
   myAvailability: MyAvailability!
-  myBookings(status: BookingStatus): [Booking!]!
+  myBookings(status: BookingStatus): [Booking!]! @deprecated(reason: "Unbounded list. Use myBookingsConnection (cursor pagination).")
+  myBookingsConnection(after: String, first: Int! = 20, status: BookingStatus): BookingConnection!
   myFavoriteIds: [ID!]!
   myFavorites: [Tutor!]!
   myReviews(filter: String): [TutorReview!]!
@@ -305,6 +329,7 @@ type Query {
   transactions: [Transaction!]!
   tutor(id: ID!): Tutor
   tutorBookings(from: String, status: BookingStatus, to: String): [Booking!]!
+  tutorBookingsConnection(after: String, first: Int! = 20, from: String, status: BookingStatus, to: String): BookingConnection!
   tutorNotifications: [TutorNotification!]!
   tutorSettings: TutorSettings!
   tutors(level: Level, limit: Int! = 20, maxPrice: Int, minRating: Float, offset: Int! = 0, query: String, sort: String, subject: String): TutorPage!
@@ -369,6 +394,11 @@ type SignupPayload {
 type Slot {
   end: DateTime!
   start: DateTime!
+}
+
+type SlotUnavailable {
+  message: String!
+  nextFreeSlots: [DateTime!]!
 }
 
 type Student {

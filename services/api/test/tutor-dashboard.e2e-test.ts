@@ -48,22 +48,24 @@ describe('Tutor dashboard (e2e)', () => {
     });
     ids.student = student.id;
 
-    const mk = (tutorId: string, subjectId: string): Promise<{ id: string }> =>
+    // `offsetHours` keeps the shared student's two lessons apart: a student
+    // can't be in two lessons at once (booking_no_student_overlap).
+    const mk = (tutorId: string, subjectId: string, offsetHours: number): Promise<{ id: string }> =>
       prisma.booking.create({
         data: {
           tutorId,
           studentId: student.id,
           subjectId,
-          startTime: new Date(Date.now() + 86_400_000),
-          endTime: new Date(Date.now() + 86_400_000 + 3_600_000),
+          startTime: new Date(Date.now() + 86_400_000 + offsetHours * 3_600_000),
+          endTime: new Date(Date.now() + 86_400_000 + (offsetHours + 1) * 3_600_000),
           status: 'PENDING',
         },
       });
     const subjectB = await prisma.subject.create({
       data: { name: 'Physics', level: 'ADVANCED', tutorId: tutorB.id },
     });
-    ids.bookingA = (await mk(tutorA.id, subject.id)).id;
-    ids.bookingB = (await mk(tutorB.id, subjectB.id)).id;
+    ids.bookingA = (await mk(tutorA.id, subject.id, 0)).id;
+    ids.bookingB = (await mk(tutorB.id, subjectB.id, 2)).id;
   });
 
   afterAll(async () => {

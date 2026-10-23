@@ -9,7 +9,7 @@ import {
   type StreamToken,
 } from './llm-client.js';
 import { costUsd, parseModelPrices, type ModelPrice } from './pricing.js';
-import { withRetry } from './retry.js';
+import { withRetry } from '../../common/retry.js';
 
 const ATTEMPTS_PER_MODEL = 3;
 const BASE_BACKOFF_MS = 500;

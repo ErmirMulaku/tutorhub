@@ -77,7 +77,14 @@ export class AnalyticsService {
   }
 
   async lessonsOverTime(tutorId: string, now: Date = new Date()): Promise<MonthCount[]> {
-    const bookings = await this.completed(tutorId);
+    // Only the 8 months the chart shows. Loading every completed lesson the
+    // tutor ever had (16,696 rows for a busy tutor in the load test) to count
+    // 8 buckets cost ~10.6 ms; the window fetches ~2.4k (docs/QUERY_PERFORMANCE.md).
+    const windowStart = new Date(now.getFullYear(), now.getMonth() - 7, 1);
+    const bookings = await this.prisma.booking.findMany({
+      where: { tutorId, status: BookingStatus.COMPLETED, startTime: { gte: windowStart } },
+      select: { startTime: true },
+    });
     const buckets: MonthCount[] = [];
     for (let i = 7; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);

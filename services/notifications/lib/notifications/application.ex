@@ -14,7 +14,7 @@ defmodule Notifications.Application do
         {Phoenix.PubSub, name: Notifications.PubSub},
         # In-memory reminder store; always running.
         Notifications.Reminders
-      ] ++ scheduler() ++ [NotificationsWeb.Endpoint]
+      ] ++ scheduler() ++ booking_events() ++ [NotificationsWeb.Endpoint]
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
@@ -29,6 +29,17 @@ defmodule Notifications.Application do
       [Notifications.Scheduler]
     else
       []
+    end
+  end
+
+  # Booking events come from Kafka when KAFKA_BROKERS is set (config/runtime.exs).
+  defp booking_events do
+    case Application.get_env(:notifications, :kafka_brokers) do
+      brokers when is_binary(brokers) and brokers != "" ->
+        [{Notifications.BookingEventsPipeline, brokers: brokers}]
+
+      _ ->
+        []
     end
   end
 

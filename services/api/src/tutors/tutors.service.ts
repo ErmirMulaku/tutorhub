@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Level } from '@ermulaku/types';
 import { EntityNotFoundError } from '../common/errors.js';
-import { Prisma, type Review, type Subject, type Tutor } from '../generated/prisma/client.js';
+import { Prisma, type Subject, type Tutor } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTutorDto, WorkingHoursDto } from './dto/create-tutor.dto.js';
 import type { UpdateTutorDto } from './dto/update-tutor.dto.js';
@@ -12,6 +12,9 @@ function toJsonWorkingHours(workingHours: WorkingHoursDto[]): Prisma.InputJsonVa
 }
 
 /** Sort orders supported by the discover/search grid. */
+/** Most tutors one discover page may return. */
+const MAX_PAGE_SIZE = 100;
+
 export type TutorSort = 'relevance' | 'priceAsc' | 'priceDesc' | 'rating';
 
 export interface TutorPageFilter {
@@ -51,9 +54,9 @@ export class TutorsService {
   }
 
   /**
-   * Paginated discover/search. Supports subject/level/free-text/price filters.
-   * `minRating` and `relevance`/`rating` ordering depend on per-tutor review
-   * aggregates, so they are applied in memory after the DB query.
+   * Paginated discover/search: subject/level/free-text/price/rating filters,
+   * sorted by rating (default) or price, `limit` capped at 100. Everything —
+   * filter, sort, count, page — happens in Postgres.
    */
   async findPage(filter: TutorPageFilter): Promise<{ items: Tutor[]; total: number }> {
     // Only constrain on fields that were actually supplied. GraphQL nullable
@@ -82,52 +85,33 @@ export class TutorsService {
         ],
       });
     }
-    const where: Prisma.TutorWhereInput = and.length > 0 ? { AND: and } : {};
-
-    // Fetch the full matching set; ratings are needed for filter/sort and the
-    // marketplace catalogue is small. Pagination is applied after sorting.
-    const matched = await this.prisma.tutor.findMany({ where, orderBy: { createdAt: 'asc' } });
-    const ratings = await this.ratingsFor(matched.map((t) => t.id));
-
-    let ranked = matched;
     if (filter.minRating != null && filter.minRating > 0) {
-      const min = filter.minRating;
-      ranked = ranked.filter((t) => (ratings.get(t.id) ?? 0) >= min);
+      and.push({ ratingAvg: { gte: filter.minRating } });
     }
+    const where: Prisma.TutorWhereInput = { AND: and };
 
+    // The database filters, sorts, counts and returns one page. Rating comes
+    // from the tutor's stored aggregate (ratingAvg), so sorting by it needs no
+    // review rows. Tutors without reviews sort last; ties keep a stable order
+    // (oldest first, then id) so a tutor can't appear on two pages.
     const sort = filter.sort ?? 'relevance';
-    ranked = [...ranked].sort((a, b) => {
-      switch (sort) {
-        case 'priceAsc':
-          return a.hourlyCents - b.hourlyCents;
-        case 'priceDesc':
-          return b.hourlyCents - a.hourlyCents;
-        case 'rating':
-        case 'relevance':
-        default:
-          return (ratings.get(b.id) ?? 0) - (ratings.get(a.id) ?? 0);
-      }
-    });
+    const orderBy: Prisma.TutorOrderByWithRelationInput[] =
+      sort === 'priceAsc'
+        ? [{ hourlyCents: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }]
+        : sort === 'priceDesc'
+          ? [{ hourlyCents: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }]
+          : [{ ratingAvg: { sort: 'desc', nulls: 'last' } }, { createdAt: 'asc' }, { id: 'asc' }];
 
-    const total = ranked.length;
-    const items = ranked.slice(filter.offset, filter.offset + filter.limit);
+    const [items, total] = await Promise.all([
+      this.prisma.tutor.findMany({
+        where,
+        orderBy,
+        skip: Math.max(filter.offset, 0),
+        take: Math.min(Math.max(filter.limit, 1), MAX_PAGE_SIZE),
+      }),
+      this.prisma.tutor.count({ where }),
+    ]);
     return { items, total };
-  }
-
-  /** Average rating per tutor id (0 when a tutor has no reviews yet). */
-  private async ratingsFor(tutorIds: string[]): Promise<Map<string, number>> {
-    if (tutorIds.length === 0) return new Map();
-    const grouped = await this.prisma.review.groupBy({
-      by: ['tutorId'],
-      where: { tutorId: { in: tutorIds } },
-      _avg: { rating: true },
-    });
-    return new Map(grouped.map((g) => [g.tutorId, g._avg.rating ?? 0]));
-  }
-
-  /** Number of reviews a tutor has received. */
-  reviewCountOf(tutorId: string): Promise<number> {
-    return this.prisma.review.count({ where: { tutorId } });
   }
 
   async findOne(id: string): Promise<Tutor> {
@@ -149,18 +133,6 @@ export class TutorsService {
 
   subjectsOf(tutorId: string): Promise<Subject[]> {
     return this.prisma.subject.findMany({ where: { tutorId }, orderBy: { name: 'asc' } });
-  }
-
-  reviewsOf(tutorId: string): Promise<Review[]> {
-    return this.prisma.review.findMany({ where: { tutorId } });
-  }
-
-  async ratingOf(tutorId: string): Promise<number | null> {
-    const { _avg } = await this.prisma.review.aggregate({
-      where: { tutorId },
-      _avg: { rating: true },
-    });
-    return _avg.rating;
   }
 
   async update(id: string, dto: UpdateTutorDto): Promise<Tutor> {

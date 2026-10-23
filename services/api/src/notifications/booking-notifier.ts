@@ -1,7 +1,7 @@
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { BookingEvents } from '../bookings/booking-events.js';
-import { BookingStatus, NotificationType } from '../generated/prisma/client.js';
-import type { Booking } from '../generated/prisma/client.js';
+import { BookingStatus, NotificationType, type Prisma } from '../generated/prisma/client.js';
+import { KafkaService } from '../outbox/kafka.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /**
@@ -17,17 +17,24 @@ const NOTIFY_ON: Partial<Record<BookingStatus, NotificationType>> = {
   [BookingStatus.COMPLETED]: NotificationType.REVIEW_PROMPT,
 };
 
+/** The booking fields a notification needs. */
+export interface NotifiableBooking {
+  studentId: string;
+  tutorId: string;
+  subjectId: string;
+  status: BookingStatus;
+}
+
 /**
- * Turns booking changes into notifications in the student's feed.
+ * Turns booking status changes into notifications in the student's feed.
  *
- * The feed, its four types and their localised copy all existed, but nothing
- * ever wrote a row: every notification a student saw came from the seed, so a
- * real booking produced silence. This subscribes to the same in-process bus the
- * Socket.IO gateway uses, so the booking flow itself needs no changes and a
- * failure here can't fail a booking.
+ * With Kafka configured, the `BookingNotificationsConsumer` calls
+ * {@link writeFor} for each `BookingStatusChanged` event — durable, because the
+ * event comes from the outbox, which commits with the booking.
  *
- * Live socket events only reach a student who is connected at that moment;
- * these rows are what they find when they come back.
+ * Without Kafka (`KAFKA_BROKERS` unset), it falls back to the old in-process
+ * bus: fire-and-forget, so a crash between the booking commit and this
+ * listener loses the notification (the dual-write problem the outbox fixes).
  */
 @Injectable()
 export class BookingNotifier implements OnModuleInit {
@@ -36,29 +43,35 @@ export class BookingNotifier implements OnModuleInit {
   constructor(
     private readonly events: BookingEvents,
     private readonly prisma: PrismaService,
+    private readonly kafka: KafkaService,
   ) {}
 
   onModuleInit(): void {
+    if (this.kafka.enabled) return; // the Kafka consumer owns notifications
     this.events.all().subscribe((booking) => {
       // Fire-and-forget: a booking must not fail because its notification did.
-      void this.notify(booking).catch((err: unknown) => {
+      void this.writeFor(this.prisma, booking).catch((err: unknown) => {
         const reason = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Could not notify booking ${booking.id}: ${reason}`);
+        this.logger.error(`Could not notify booking: ${reason}`);
       });
     });
   }
 
-  private async notify(booking: Booking): Promise<void> {
+  /** Write the student's notification for this status, if it's one we notify on. */
+  async writeFor(
+    db: Prisma.TransactionClient | PrismaService,
+    booking: NotifiableBooking,
+  ): Promise<boolean> {
     const type = NOTIFY_ON[booking.status];
-    if (type === undefined) return;
+    if (type === undefined) return false;
 
     const [tutor, subject] = await Promise.all([
-      this.prisma.tutor.findUnique({ where: { id: booking.tutorId }, select: { name: true } }),
-      this.prisma.subject.findUnique({ where: { id: booking.subjectId }, select: { name: true } }),
+      db.tutor.findUnique({ where: { id: booking.tutorId }, select: { name: true } }),
+      db.subject.findUnique({ where: { id: booking.subjectId }, select: { name: true } }),
     ]);
-    if (tutor === null || subject === null) return;
+    if (tutor === null || subject === null) return false;
 
-    await this.prisma.notification.create({
+    await db.notification.create({
       data: {
         studentId: booking.studentId,
         type,
@@ -67,5 +80,6 @@ export class BookingNotifier implements OnModuleInit {
         detail: subject.name,
       },
     });
+    return true;
   }
 }

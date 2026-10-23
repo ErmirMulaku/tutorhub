@@ -1,8 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BadRequestDomainError } from '../common/errors.js';
-import { BookingStatus, PaymentStatus } from '../generated/prisma/client.js';
+import {
+  BookingStatus,
+  PaymentStatus,
+  type Booking,
+  type Prisma,
+} from '../generated/prisma/client.js';
 import type Stripe from 'stripe';
+import { BookingEvents } from '../bookings/booking-events.js';
 import { BookingService } from '../bookings/booking.service.js';
+import { studentPrincipal } from '../idempotency/idempotency.service.js';
+import { recordBookingEvent } from '../outbox/booking-event.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StripeService } from '../stripe/stripe.service.js';
 import type { BookInput } from '../bookings/dto/book-input.js';
@@ -30,6 +38,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly bookings: BookingService,
+    private readonly events: BookingEvents,
   ) {}
 
   async createLessonPaymentIntent(
@@ -46,16 +55,36 @@ export class PaymentsService {
     }
     const feeCents = Math.round(amountCents * PLATFORM_FEE_RATE);
 
-    // Create the booking first (PENDING) so the intent can reference it.
-    const booking = await this.bookings.bookLesson(input, studentId);
+    // Create the booking first (PENDING) so the intent can reference it. With
+    // an idempotency key, a retry gets the same booking back...
+    const booking = await this.bookings.bookLesson(input, studentId, input.idempotencyKey);
 
-    const intent = await this.stripe.createPaymentIntent({
-      amountCents,
-      metadata: { bookingId: booking.id, tutorId: tutor.id, studentId },
-    });
+    // ...and, because Stripe's key is derived from the booking id, the same
+    // PaymentIntent too. Creating an intent doesn't move money (the card is
+    // only charged when the student confirms it), so if Stripe stays down we
+    // release the booking and let the student try again.
+    let intent: Stripe.PaymentIntent;
+    try {
+      intent = await this.stripe.createPaymentIntent({
+        amountCents,
+        metadata: { bookingId: booking.id, tutorId: tutor.id, studentId },
+        idempotencyKey: `payment-intent:${booking.id}`,
+      });
+    } catch (error) {
+      await this.releaseBooking(booking.id, studentId, input.idempotencyKey).catch(
+        (releaseError: unknown) => {
+          this.logger.error(`Could not release booking ${booking.id}: ${String(releaseError)}`);
+        },
+      );
+      throw error;
+    }
 
-    const payment = await this.prisma.payment.create({
-      data: {
+    // upsert, so a retried request reuses the payment row instead of failing
+    // on the one-payment-per-booking unique index.
+    const payment = await this.prisma.payment.upsert({
+      where: { bookingId: booking.id },
+      update: {},
+      create: {
         bookingId: booking.id,
         amountCents,
         feeCents,
@@ -71,67 +100,136 @@ export class PaymentsService {
     return { clientSecret: intent.client_secret, bookingId: booking.id, paymentId: payment.id };
   }
 
-  /** Reconcile a verified Stripe webhook event against our records. */
+  /**
+   * Undo a booking whose payment could not be started: cancel it (frees the
+   * slot) and forget its idempotency key, in one transaction. Forgetting the
+   * key matters: otherwise a retry with the same key would replay the stored
+   * "PENDING" booking — which is now cancelled — and could charge for it.
+   */
+  private async releaseBooking(
+    bookingId: string,
+    studentId: string,
+    idempotencyKey: string | undefined,
+  ): Promise<void> {
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.booking.updateMany({
+        where: { id: bookingId, status: BookingStatus.PENDING },
+        data: { status: BookingStatus.CANCELLED, version: { increment: 1 } },
+      });
+      if (idempotencyKey !== undefined) {
+        await tx.idempotencyKey.deleteMany({
+          where: { key: idempotencyKey, principal: studentPrincipal(studentId) },
+        });
+      }
+      if (count === 0) return null;
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+      return booking;
+    });
+    if (cancelled !== null) this.events.emit(cancelled);
+  }
+
+  /**
+   * Reconcile a verified Stripe webhook event against our records.
+   *
+   * Stripe delivers each event at least once, so the same event can arrive
+   * twice — even at the same moment. Everything runs in ONE transaction that
+   * starts by recording the event id (primary key): a second delivery inserts
+   * 0 rows and stops. Since the record and the changes commit together, a
+   * crash half-way leaves neither, and Stripe's redelivery redoes it cleanly.
+   */
   async handleWebhookEvent(event: Stripe.Event): Promise<void> {
+    const changed = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.processedStripeEvent.createMany({
+        data: [{ eventId: event.id, type: event.type }],
+        skipDuplicates: true,
+      });
+      if (count === 0) {
+        this.logger.log(`Stripe event ${event.id} already processed; skipping.`);
+        return null;
+      }
+      return this.applyEvent(tx, event);
+    });
+    // Tell live clients only after the commit, never about a rolled-back change.
+    if (changed !== null) this.events.emit(changed);
+  }
+
+  /** Apply one event inside the caller's transaction; returns the changed booking, if any. */
+  private async applyEvent(
+    tx: Prisma.TransactionClient,
+    event: Stripe.Event,
+  ): Promise<Booking | null> {
     switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const intent = event.data.object;
-        await this.markPaymentPaid(intent.id);
-        break;
-      }
-      case 'payment_intent.payment_failed': {
-        const intent = event.data.object;
-        await this.cancelForFailedIntent(intent.id);
-        break;
-      }
-      case 'account.updated': {
-        const account = event.data.object;
-        await this.syncConnectAccount(account);
-        break;
-      }
+      case 'payment_intent.succeeded':
+        return this.markPaymentPaid(tx, event.data.object.id);
+      case 'payment_intent.payment_failed':
+        return this.cancelForFailedIntent(tx, event.data.object.id);
+      case 'account.updated':
+        await this.syncConnectAccount(tx, event.data.object);
+        return null;
       default:
         this.logger.debug(`Unhandled Stripe event: ${event.type}`);
+        return null;
     }
   }
 
-  private async markPaymentPaid(intentId: string): Promise<void> {
-    const payment = await this.prisma.payment.findUnique({
-      where: { stripePaymentIntentId: intentId },
-    });
+  private async markPaymentPaid(
+    tx: Prisma.TransactionClient,
+    intentId: string,
+  ): Promise<Booking | null> {
+    const payment = await tx.payment.findUnique({ where: { stripePaymentIntentId: intentId } });
     if (payment === null) {
       this.logger.warn(`payment_intent.succeeded for unknown intent ${intentId}`);
-      return;
+      return null;
     }
-    if (payment.status === PaymentStatus.PAID) return; // idempotent
-    await this.prisma.payment.update({
-      where: { id: payment.id },
+    // Conditional writes: only PENDING → PAID and PENDING → CONFIRMED.
+    const paid = await tx.payment.updateMany({
+      where: { id: payment.id, status: PaymentStatus.PENDING },
       data: { status: PaymentStatus.PAID },
     });
-    await this.prisma.booking.update({
-      where: { id: payment.bookingId },
-      data: { status: BookingStatus.CONFIRMED },
+    if (paid.count === 0) return null; // already paid
+    const confirmed = await tx.booking.updateMany({
+      where: { id: payment.bookingId, status: BookingStatus.PENDING },
+      data: { status: BookingStatus.CONFIRMED, version: { increment: 1 } },
     });
+    if (confirmed.count === 0) {
+      // Paid, but the booking was cancelled meanwhile: needs a refund.
+      this.logger.warn(`Payment ${payment.id} PAID but booking ${payment.bookingId} not PENDING.`);
+      return null;
+    }
     this.logger.log(`Payment ${payment.id} marked PAID; booking ${payment.bookingId} CONFIRMED.`);
+    const booking = await tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+    return booking;
   }
 
-  private async cancelForFailedIntent(intentId: string): Promise<void> {
-    const payment = await this.prisma.payment.findUnique({
-      where: { stripePaymentIntentId: intentId },
+  private async cancelForFailedIntent(
+    tx: Prisma.TransactionClient,
+    intentId: string,
+  ): Promise<Booking | null> {
+    const payment = await tx.payment.findUnique({ where: { stripePaymentIntentId: intentId } });
+    if (payment === null) return null;
+    // Only an unpaid request is cancelled — never a lesson that is already confirmed.
+    const { count } = await tx.booking.updateMany({
+      where: { id: payment.bookingId, status: BookingStatus.PENDING },
+      data: { status: BookingStatus.CANCELLED, version: { increment: 1 } },
     });
-    if (payment === null) return;
-    await this.prisma.booking.update({
-      where: { id: payment.bookingId },
-      data: { status: BookingStatus.CANCELLED },
-    });
+    if (count === 0) return null;
     this.logger.log(`Payment ${payment.id} failed; booking ${payment.bookingId} CANCELLED.`);
+    const booking = await tx.booking.findUniqueOrThrow({ where: { id: payment.bookingId } });
+    await recordBookingEvent(tx, 'BookingStatusChanged', booking);
+    return booking;
   }
 
-  private async syncConnectAccount(account: Stripe.Account): Promise<void> {
-    const tutor = await this.prisma.tutor.findFirst({
+  private async syncConnectAccount(
+    tx: Prisma.TransactionClient,
+    account: Stripe.Account,
+  ): Promise<void> {
+    const tutor = await tx.tutor.findFirst({
       where: { stripeConnectAccountId: account.id },
     });
     if (tutor === null) return;
-    await this.prisma.tutor.update({
+    await tx.tutor.update({
       where: { id: tutor.id },
       data: { stripePayoutsEnabled: account.payouts_enabled ?? false },
     });

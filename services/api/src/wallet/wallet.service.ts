@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { BadRequestDomainError } from '../common/errors.js';
+import { BadRequestDomainError, ConflictDomainError } from '../common/errors.js';
 import type { GiftCard, PaymentMethod } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -38,7 +38,16 @@ export class WalletService {
     return { balanceCents: student.walletCents, giftCards, paymentMethods };
   }
 
-  /** Redeem a gift card code: move its remaining balance into the wallet. */
+  /**
+   * Redeem a gift card code: move its remaining balance into the wallet.
+   *
+   * The card is emptied with a compare-and-set: "set balance to 0 only if it
+   * is still exactly the amount I read (and still mine or unowned)". If two
+   * redeems race, both read 50, but only the first UPDATE matches; the second
+   * waits for it, re-checks the WHERE against the committed row (balance 0)
+   * and matches nothing. The wallet is credited in the same transaction, with
+   * the amount the winning UPDATE proved was there.
+   */
   async redeem(studentId: string, code: string): Promise<WalletSummary> {
     const card = await this.prisma.giftCard.findUnique({ where: { code: code.trim() } });
     if (card === null) {
@@ -50,16 +59,23 @@ export class WalletService {
     if (card.ownerId !== null && card.ownerId !== studentId) {
       throw new BadRequestDomainError('This gift card belongs to another account.');
     }
-    await this.prisma.$transaction([
-      this.prisma.giftCard.update({
-        where: { id: card.id },
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.giftCard.updateMany({
+        where: {
+          id: card.id,
+          balanceCents: card.balanceCents,
+          OR: [{ ownerId: null }, { ownerId: studentId }],
+        },
         data: { balanceCents: 0, ownerId: studentId },
-      }),
-      this.prisma.student.update({
+      });
+      if (count === 0) {
+        throw new ConflictDomainError('This gift card has already been redeemed.');
+      }
+      await tx.student.update({
         where: { id: studentId },
         data: { walletCents: { increment: card.balanceCents } },
-      }),
-    ]);
+      });
+    });
     return this.summary(studentId);
   }
 

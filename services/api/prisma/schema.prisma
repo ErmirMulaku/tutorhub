@@ -66,6 +66,12 @@ model Tutor {
   badges       String[]   @default([]) // e.g. "Top rated", "Fast responder", "Verified"
   responseTime String? // human label, e.g. "~1 hr"
   totalLessons Int        @default(0)
+  // Review aggregates kept on the tutor, so discover can filter and sort by
+  // rating in SQL and return one page (instead of loading every tutor and
+  // averaging in Node). Updated atomically with each new review.
+  ratingSum    Int        @default(0)
+  ratingCount  Int        @default(0)
+  ratingAvg    Float?
 
   // Tutor identity (dashboard auth). Nullable so seeded tutors and dev-login work
   // without credentials; student auth is unaffected.
@@ -366,6 +372,13 @@ model PaymentMethod {
   createdAt DateTime @default(now())
 }
 
+enum BookingSource {
+  WEB
+  MOBILE
+  DASHBOARD
+  ASSISTANT
+}
+
 model Booking {
   id        String        @id @default(uuid())
   tutor     Tutor         @relation(fields: [tutorId], references: [id])
@@ -377,13 +390,23 @@ model Booking {
   startTime DateTime
   endTime   DateTime
   status    BookingStatus @default(PENDING)
+  // Optimistic lock: every write bumps it, and edits that change more than
+  // the status only apply `where: { id, version }` — a stale read loses.
+  version   Int           @default(0)
+  // Where the booking was made. Added with expand → backfill → contract
+  // (FRESHA_DEPTH_SPEC Block 6): nullable for now; the backfill fills old
+  // rows; a later migration makes it NOT NULL without a long table lock.
+  source    BookingSource?
   payment   Payment?
   review    Review?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@index([tutorId, startTime])
-  @@index([studentId, startTime])
+  // (studentId, startTime, id): the exact sort order of myBookingsConnection,
+  // so a page is a plain index range scan with no extra sort step. Equality
+  // column first, then the sort columns, `id` last as the tie-breaker.
+  @@index([studentId, startTime, id])
   // Tutor dashboard: bookings for one tutor with one status, newest first.
   // Equality columns (tutorId, status) lead; the sort column (createdAt)
   // trails, so the index supplies the ORDER BY and no Sort node is needed.
@@ -442,4 +465,74 @@ model AiUsageLog {
 
   @@index([principalKind, principalId, createdAt])
   @@index([task, createdAt])
+}
+
+// A client-chosen key that makes "create a booking" safe to retry
+// (FRESHA_DEPTH_SPEC Block 3a). The first request inserts the key, does the
+// work and saves its response in ONE transaction; a retry with the same key
+// gets that saved response back instead of creating a second booking.
+model IdempotencyKey {
+  key          String   @id
+  // Who sent it (e.g. "student:<id>"); a key is never shared across callers.
+  principal    String
+  // sha256 of the request body; same key + different body = client bug (422).
+  requestHash  String
+  responseJson Json?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
+// Stripe event ids we have already applied (FRESHA_DEPTH_SPEC Block 3b).
+// Stripe delivers webhooks at least once, so the same event can arrive
+// twice; inserting its id in the same transaction as the change makes the
+// second delivery a no-op.
+model ProcessedStripeEvent {
+  eventId     String   @id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+// Transactional outbox (FRESHA_DEPTH_SPEC Block 4). Every booking change
+// inserts one row here IN THE SAME TRANSACTION as the change, so "the booking
+// changed" and "an event will be published" are always both true or both
+// false. A relay later publishes unpublished rows to Kafka and stamps them.
+// A partial index on unpublished rows lives in the migration SQL (Prisma
+// can't express `WHERE "publishedAt" IS NULL`).
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  aggregateType String
+  aggregateId   String
+  type          String
+  payload       Json
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+  attempts      Int       @default(0)
+  lastError     String?
+}
+
+// Events a consumer has already handled (idempotent consumer). Kafka delivers
+// at least once, so the same event can arrive twice; inserting (consumer,
+// eventId) in the same transaction as the side effect makes a repeat a no-op.
+model ProcessedEvent {
+  consumer    String
+  eventId     String
+  processedAt DateTime @default(now())
+
+  @@id([consumer, eventId])
+}
+
+// Feature flags (FRESHA_DEPTH_SPEC Block 7): turn code paths on for some
+// users, or off for everyone, without a deploy. Read via FeatureFlagService
+// (cached 30 s per instance); changed with scripts/flag.ts.
+model FeatureFlag {
+  key            String   @id
+  // Master switch: false = off for everyone, whatever the rest says.
+  enabled        Boolean  @default(false)
+  // 0–100: share of subjects (e.g. students) it's on for, by a stable hash.
+  rolloutPercent Int      @default(0)
+  // Subject ids it's always on for (testers, internal accounts).
+  allowList      String[] @default([])
+  updatedAt      DateTime @updatedAt
 }

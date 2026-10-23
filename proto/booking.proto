@@ -44,6 +44,9 @@ message BookReq {
   string student_id = 2;
   string subject_id = 3;
   google.protobuf.Timestamp start_time = 4;
+  // Optional. Reuse the same value when retrying: the retry returns the first
+  // booking instead of creating a second one.
+  string idempotency_key = 5;
 }
 
 message UpdateReq {

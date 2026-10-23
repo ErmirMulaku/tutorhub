@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
 
 type HttpLabel = 'method' | 'route' | 'status';
 type AiRequestLabel = 'task' | 'model' | 'status' | 'cache';
@@ -32,6 +32,14 @@ export class MetricsService {
   private readonly aiTokens: Counter<AiTokenLabel>;
   private readonly aiCost: Counter<AiCostLabel>;
   private readonly aiDuration: Histogram<AiDurationLabel>;
+  private readonly idempotentReplays: Counter;
+  private readonly outboxPending: Gauge;
+  private readonly outboxPublished: Counter;
+  private readonly outboxFailures: Counter;
+  private readonly consumerEvents: Counter<'consumer' | 'result'>;
+  private readonly bookingsCreated: Counter<'source'>;
+  private readonly bookingConflicts: Counter<'reason'>;
+  private readonly bookingCreateDuration: Histogram<'outcome'>;
 
   constructor() {
     this.registry.setDefaultLabels({ app: 'tutorhub-api' });
@@ -76,6 +84,55 @@ export class MetricsService {
       buckets: [0.1, 0.5, 1, 2, 5, 10, 20, 30],
       registers: [this.registry],
     });
+
+    this.idempotentReplays = new Counter({
+      name: 'idempotent_replays_total',
+      help: 'Requests answered from a stored response because their Idempotency-Key was seen before.',
+      registers: [this.registry],
+    });
+
+    this.outboxPending = new Gauge({
+      name: 'outbox_pending',
+      help: 'Outbox events not yet published to Kafka (as of the relay’s last run).',
+      registers: [this.registry],
+    });
+    this.outboxPublished = new Counter({
+      name: 'outbox_published_total',
+      help: 'Outbox events published to Kafka.',
+      registers: [this.registry],
+    });
+    this.outboxFailures = new Counter({
+      name: 'outbox_publish_failures_total',
+      help: 'Outbox events whose publish attempt failed (they stay pending and are retried).',
+      registers: [this.registry],
+    });
+    this.consumerEvents = new Counter({
+      name: 'consumer_events_total',
+      help: 'Kafka messages handled by a consumer, by result (processed, duplicate, ignored, dead_lettered).',
+      labelNames: ['consumer', 'result'],
+      registers: [this.registry],
+    });
+
+    // Release-watching signals for the booking path (Block 7, operations.md).
+    this.bookingsCreated = new Counter({
+      name: 'bookings_created_total',
+      help: 'Bookings created, by where they were made (web, mobile, dashboard, assistant).',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+    this.bookingConflicts = new Counter({
+      name: 'booking_conflicts_total',
+      help: 'Booking writes that lost a race: slot_unavailable or concurrent_change.',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+    this.bookingCreateDuration = new Histogram({
+      name: 'booking_create_duration_seconds',
+      help: 'Time to create a booking, by outcome (created, replayed, slot_unavailable, error).',
+      labelNames: ['outcome'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5],
+      registers: [this.registry],
+    });
   }
 
   /** Record one completed request. */
@@ -93,6 +150,39 @@ export class MetricsService {
     this.aiTokens.inc({ task: obs.task, model: obs.model, direction: 'out' }, obs.outputTokens);
     this.aiCost.inc({ task: obs.task, model: obs.model }, obs.costUsd);
     this.aiDuration.observe({ task: obs.task }, obs.durationSeconds);
+  }
+
+  /** A retried request got the stored response instead of doing the work again. */
+  countIdempotentReplay(): void {
+    this.idempotentReplays.inc();
+  }
+
+  setOutboxPending(count: number): void {
+    this.outboxPending.set(count);
+  }
+
+  countOutboxPublished(count: number): void {
+    this.outboxPublished.inc(count);
+  }
+
+  countOutboxFailures(count: number): void {
+    this.outboxFailures.inc(count);
+  }
+
+  countConsumerEvent(consumer: string, result: string): void {
+    this.consumerEvents.inc({ consumer, result });
+  }
+
+  countBookingCreated(source: string): void {
+    this.bookingsCreated.inc({ source: source.toLowerCase() });
+  }
+
+  countBookingConflict(reason: 'slot_unavailable' | 'concurrent_change'): void {
+    this.bookingConflicts.inc({ reason });
+  }
+
+  observeBookingCreate(outcome: string, seconds: number): void {
+    this.bookingCreateDuration.observe({ outcome }, seconds);
   }
 
   metrics(): Promise<string> {

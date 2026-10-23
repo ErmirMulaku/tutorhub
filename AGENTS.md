@@ -706,6 +706,100 @@ bundle with a stale `API_URL` (`API_URL` is now a build input — A, B, A proved
   the disk cleanup; app code unchanged since the last 10/10) — the PR's CI job runs it. **Not done by
   me:** pushing, the Vercel Root Directory change, the merge — those are the runbook's steps.
 
+### Phase 11 — Booking correctness & backend depth ✅
+
+Made the booking backend correct under concurrency, retries and partial failure, then added
+events, scale and release practices, from `docs/FRESHA_DEPTH_SPEC.md`, block by block. Every
+fix started from a **real bug found in this code**, was proven with a test against **real
+Postgres** (a mock can't show a race), and the test was checked to **fail on the old code**.
+
+**Built:**
+
+- **Race-safe state changes.** A status change only applies if the row still has the status
+  that was read (`updateMany where { id, status }`); reschedules use an optimistic `version`
+  lock. Lost races map to `409 CONFLICT` across REST, GraphQL and gRPC. Also fixed: a decline
+  arriving just after an accept used to cancel the confirmed lesson.
+- **Double booking impossible in the database.** Partial `EXCLUDE USING gist` constraints on
+  `(tutorId, tsrange)` and `(studentId, tsrange)` for active bookings (`'[)'`, so back-to-back
+  slots are allowed), mapped to `SLOT_UNAVAILABLE`. Per-tutor/student advisory locks keep a burst
+  of clashing inserts orderly instead of deadlocking.
+- **Idempotency and partial failures.**
+  - `Idempotency-Key` on REST, GraphQL and gRPC: the key, the booking and the stored response
+    commit in one transaction, so a parallel retry waits and replays.
+  - Stripe webhook as an idempotent consumer: the event id and both state changes commit in one
+    transaction.
+  - Gift-card redeem as a compare-and-set.
+  - Stripe calls with a booking-derived idempotency key, a 10 s timeout and retries only on
+    network/5xx errors.
+- **Transactional outbox + Kafka.** Every booking write records an event in the same
+  transaction; a relay publishes it to Redpanda/Kafka with `FOR UPDATE SKIP LOCKED` (one relay
+  per instance is safe), keyed by booking id. Consumers:
+  - a Node notifications consumer, deduped by a `ProcessedEvent` row in the same transaction,
+    with a DLQ after 5 tries;
+  - the **Elixir** notifications service, now a Broadway/`broadway_kafka` pipeline deduped by
+    booking version, with tombstones so out-of-order events can't resurrect a cancelled reminder.
+- **GraphQL for other teams.** Request-scoped DataLoaders (N+1 → one query per field), keyset
+  cursor connections (`myBookingsConnection`, `tutorBookingsConnection`), `bookLessonV2` returning
+  `BookingBooked | SlotUnavailable { nextFreeSlots }`, a query depth limit, and deprecation
+  instead of removal.
+- **Postgres at scale.** A 2,045,000-booking load database (`generate_series`), `EXPLAIN
+(ANALYZE, BUFFERS)` before/after (`docs/QUERY_PERFORMANCE.md`), an index swap with `CREATE
+INDEX CONCURRENTLY`, a zero-downtime column add (expand → batched resumable backfill → `CHECK …
+NOT VALID`/`VALIDATE`/`SET NOT NULL`), `lock_timeout` on DDL, and connection-pool math
+  (`docs/operations.md`).
+- **Discover page fix.** It loaded every tutor and every rating into Node to sort them, which
+  crashed at 200k tutors. Rating aggregates now live on the tutor, kept current by an atomic
+  relative `UPDATE` in the review transaction, and the page is filtered, sorted and paged in SQL.
+- **Feature flags + release metrics.** Percentage rollout with stable `sha256(flag:subject)`
+  buckets, an allow-list, a 30 s cache and a CLI; a kill switch for the Kafka relay;
+  `bookings_created_total`, `booking_conflicts_total` and `booking_create_duration_seconds`; a
+  rollout playbook with the rollback rule decided in advance.
+
+**Verified (not just generated):**
+
+- **Races shown on the old code, fixed on the new:**
+  - 10 parallel accept/decline on one booking → all 10 "succeeded" before, exactly 1 after.
+  - 20 parallel bookings of one slot → 20/20 saved with the constraint dropped, 1 + 19
+    `SLOT_UNAVAILABLE` with it.
+  - 5 parallel redeems of one gift card → wallet credited 5× before, 1× after.
+  - Two relays without `SKIP LOCKED` → duplicate Kafka messages; with it, each event exactly
+    once.
+  - DataLoader: 50 bookings → 3 lookups (50 per field with batching switched off).
+- **Found by running it, not by reading it** (each recorded with the fix):
+  - **Deadlocks:** EXCLUDE constraints deadlock under a burst of clashing inserts (`40P01`);
+    retrying timed out at 30 s, advisory locks brought it to 1.6 s.
+  - **Prisma error shape:** Prisma 7's pg adapter reports `23P01` as a `DriverAdapterError` with
+    the code only in `cause`.
+  - **Stripe retries:** the Node SDK already retries twice (up to 9 requests once layered).
+  - **My own replay bug:** an idempotency replay could have charged for a cancelled booking.
+  - **jsonb key order:** made replays not byte-identical.
+  - **Elixir config:** a broker-format bug that unit tests missed.
+  - **Prisma migrations:** `migrate dev` wraps a migration file in a transaction (no
+    `CONCURRENTLY`), `migrate deploy` doesn't, and a failed deploy is half-applied (`P3018`).
+- **Measured on 2,045,000 rows, with a second process writing every 50 ms:**
+  - OFFSET page 1,000: **21 ms vs 0.032 ms** keyset.
+  - Analytics: **10.7 → 0.53 ms**.
+  - Availability: **322 → 32 rows**.
+  - `CREATE INDEX CONCURRENTLY` + 2M-row backfill never blocked writes for long (worst 141 ms and
+    514 ms).
+  - Safe `NOT NULL`: **2 ms**; the naive one **blocked a write for 1,968 ms**.
+  - `lock_timeout` cancelled a queued `ALTER` after 3 s instead of freezing the table.
+- **Live end-to-end run:** compiled API + Redpanda + Elixir. A REST booking was confirmed → both
+  outbox rows were published → the Node consumer wrote the student's notification → Elixir
+  scheduled the reminder → both consumer groups were at lag 0.
+- **Honest correction:** I first blamed flaky e2e runs on CPU contention and capped Jest workers.
+  The real cause was the discover-page bug (a 200k-tutor dev DB). After the fix, full-parallel
+  runs were clean and the cap was removed. The API e2e suite went from 59 s to 3.7 s.
+- **Test counts:**
+  - API unit 105 → **125**.
+  - API e2e 67 → **106**: 104 pass. The 2 remaining failures (Stripe Connect payout, publish
+    profile) predate this branch.
+  - Elixir 7 → **11**.
+  - CI gained a Redpanda broker for the Kafka tests.
+- **Supply chain:** only the two new dependencies the spec allowed (`kafkajs`, `dataloader`, no
+  transitive dependencies), plus `broadway_kafka` for Elixir. `npm audit` count unchanged by this
+  branch.
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

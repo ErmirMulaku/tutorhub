@@ -33,5 +33,28 @@ services:
       timeout: 5s
       retries: 10
 
+  # Kafka-compatible broker for booking events (FRESHA_DEPTH_SPEC Block 4):
+  # the API's outbox relay publishes to `tutorhub.bookings.v1`; the
+  # notification consumers read it. Single container, dev mode, no ZooKeeper.
+  # Not used in production (managed Kafka, e.g. Amazon MSK / Confluent).
+  #   docker compose up -d redpanda
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v26.2.6
+    container_name: tutorhub-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --kafka-addr=0.0.0.0:9092
+      - --advertise-kafka-addr=localhost:9092
+    ports:
+      - '9092:9092'
+    healthcheck:
+      test: ['CMD-SHELL', 'rpk cluster health | grep -q "Healthy:.*true"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
 volumes:
   tutorhub-db-data:
