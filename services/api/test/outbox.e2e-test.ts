@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import { Kafka, logLevel, type Consumer } from 'kafkajs';
 import { AppModule } from '../src/app.module.js';
 import { BookingService } from '../src/bookings/booking.service.js';
+import { FeatureFlagService } from '../src/flags/feature-flag.service.js';
 import { MetricsService } from '../src/monitoring/metrics.service.js';
 import { NotificationType } from '../src/generated/prisma/client.js';
 import { BookingNotificationsConsumer } from '../src/notifications/booking-notifications.consumer.js';
@@ -230,6 +231,7 @@ async function eventually(check: () => Promise<boolean>, ms = 15_000): Promise<v
       deadKafka,
       app.get(MetricsService),
       app.get(ConfigService),
+      app.get(FeatureFlagService),
     );
 
     // Flush older unpublished rows first: the relay always takes the oldest
@@ -255,4 +257,27 @@ async function eventually(check: () => Promise<boolean>, ms = 15_000): Promise<v
     const [sent] = await eventsFor(booking.id);
     expect(sent?.publishedAt).toBeInstanceOf(Date);
   }, 60_000);
+
+  it('the outbox.publish kill switch pauses the relay; events wait in the table', async () => {
+    const saved = await prisma.featureFlag.findUnique({ where: { key: 'outbox.publish' } });
+    await prisma.featureFlag.upsert({
+      where: { key: 'outbox.publish' },
+      create: { key: 'outbox.publish', enabled: false },
+      update: { enabled: false },
+    });
+    try {
+      const booking = await book(25);
+
+      await expect(relay.runOnce()).resolves.toBe('paused');
+
+      const [waiting] = await eventsFor(booking.id);
+      expect(waiting).toMatchObject({ publishedAt: null, attempts: 0 });
+    } finally {
+      await prisma.featureFlag.delete({ where: { key: 'outbox.publish' } });
+      if (saved !== null) {
+        const { key, enabled, rolloutPercent, allowList } = saved;
+        await prisma.featureFlag.create({ data: { key, enabled, rolloutPercent, allowList } });
+      }
+    }
+  });
 });

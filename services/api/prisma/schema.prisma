@@ -522,3 +522,17 @@ model ProcessedEvent {
 
   @@id([consumer, eventId])
 }
+
+// Feature flags (FRESHA_DEPTH_SPEC Block 7): turn code paths on for some
+// users, or off for everyone, without a deploy. Read via FeatureFlagService
+// (cached 30 s per instance); changed with scripts/flag.ts.
+model FeatureFlag {
+  key            String   @id
+  // Master switch: false = off for everyone, whatever the rest says.
+  enabled        Boolean  @default(false)
+  // 0–100: share of subjects (e.g. students) it's on for, by a stable hash.
+  rolloutPercent Int      @default(0)
+  // Subject ids it's always on for (testers, internal accounts).
+  allowList      String[] @default([])
+  updatedAt      DateTime @updatedAt
+}

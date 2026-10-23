@@ -127,3 +127,65 @@ Rules learned the hard way (all reproduced in this repo):
   `migrate dev` then offers to reset the database.
 - A full-table backfill writes a new version of every row: the table grew 456 → 549 MB here.
   Autovacuum reuses the space, but doesn't give it back to the OS (`pg_repack` does, online).
+
+## Rollout playbook (feature flags)
+
+Risky booking changes ship **dark**: the code is deployed with its feature flag off, then turned
+on gradually with `scripts/flag.ts`. Deploying (moving code) and releasing (turning it on) are
+separate steps, so rolling back a release is a flag flip, not a redeploy.
+
+| Flag                | Turns on                               | Subject    | No row means         |
+| ------------------- | -------------------------------------- | ---------- | -------------------- |
+| `booking.v2_result` | suggested free slots in `bookLessonV2` | student id | **off**              |
+| `outbox.publish`    | the outbox relay publishing to Kafka   | `relay`    | **on** (kill switch) |
+
+How a flag decides: `enabled = false` → off for everyone. Otherwise it's on for the
+`allowList`, plus the students whose stable bucket `sha256(flag:subject) % 100` is below
+`rolloutPercent`. Raising 10% → 25% keeps the first 10% on, so nobody flips back and forth. Each
+API instance caches a flag for **30 s**, so every change (including turning something off) takes
+up to 30 s to reach all instances.
+
+### Before turning it on
+
+1. **Write the rollback rule down first**, in the PR or the release ticket. Deciding after things
+   go wrong invites "let's wait a bit longer". Default rule: roll back if, for 10 minutes compared
+   with the hour before:
+   - booking error rate (`booking_create_duration_seconds_count{outcome="error"}` /
+     all outcomes) is more than **2×** baseline, or above 1%;
+   - p95 of `booking_create_duration_seconds` is **50%** above baseline;
+   - `booking_conflicts_total{reason="concurrent_change"}` rate jumps (a new race);
+   - `outbox_pending` keeps growing, or consumer lag (`rpk group describe notifications`) keeps
+     growing.
+2. Note the baseline for each of those (Grafana screenshot or the numbers).
+3. Deploy with the flag **off** and confirm nothing moved: a dark deploy must be a no-op.
+
+### Turning it on
+
+```bash
+cd services/api
+npx tsx scripts/flag.ts set booking.v2_result --on --allow <your-test-student-id>   # internal first
+npx tsx scripts/flag.ts set booking.v2_result --percent 5     # then 5% → 25% → 50% → 100%
+npx tsx scripts/flag.ts list
+```
+
+Wait at least 30 s (cache) plus one full watch window (10 min) at each step, and compare against
+the baseline. Watch the new path's own signals too. For `booking.v2_result`: p95 of
+`bookLessonV2`, since suggestions run the slot engine for up to 7 days. (A metric for how often students
+pick a suggested slot would show whether the feature helps; it doesn't exist yet.)
+
+### Rolling back
+
+```bash
+npx tsx scripts/flag.ts set booking.v2_result --off            # everyone back on the old path within 30 s
+npx tsx scripts/flag.ts set outbox.publish --off               # stop Kafka publishing; events wait in OutboxEvent
+```
+
+No deploy, no migration. Then work out why at leisure. After a kill switch, `outbox_pending`
+grows while it's off and drains when it's back on (`--on`). Consumers are idempotent, so nothing
+is lost or doubled.
+
+### After 100%
+
+Once a flag has been at 100% for a while with no rollback, **delete the flag and the old code
+path** in a normal PR. Every flag doubles the paths to test, and stale flags are how "turn off
+the old thing" incidents happen.

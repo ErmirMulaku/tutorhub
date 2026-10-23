@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter.js';
 import { createValidationPipe } from '../src/common/validation.js';
+import type { FeatureFlag } from '../src/generated/prisma/client.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 const HOUR = 3_600_000;
@@ -33,6 +34,10 @@ describe('GraphQL depth: loaders, pagination, errors as data (e2e)', () => {
   const tutors: { id: string; subjectId: string }[] = [];
   let studentId = '';
   let token = '';
+  // A second student, not in the booking.v2_result flag's allow-list.
+  let otherStudentId = '';
+  let otherToken = '';
+  let savedFlag: FeatureFlag | null = null;
   const stamp = Date.now().toString();
 
   beforeAll(async () => {
@@ -100,13 +105,35 @@ describe('GraphQL depth: loaders, pagination, errors as data (e2e)', () => {
 
     const login = await http().post('/auth/dev-login').send({ email }).expect(200);
     token = (login.body as { accessToken: string }).accessToken;
+
+    const otherEmail = `depth-s2+${stamp}@example.com`;
+    otherStudentId = (
+      await prisma.student.create({ data: { fullName: 'Other Student', email: otherEmail } })
+    ).id;
+    const otherLogin = await http().post('/auth/dev-login').send({ email: otherEmail }).expect(200);
+    otherToken = (otherLogin.body as { accessToken: string }).accessToken;
+
+    // Suggestions are behind booking.v2_result: on for our student only.
+    // (Keep whatever row a developer had, and put it back afterwards.)
+    savedFlag = await prisma.featureFlag.findUnique({ where: { key: 'booking.v2_result' } });
+    const ours = { enabled: true, rolloutPercent: 0, allowList: [studentId] };
+    await prisma.featureFlag.upsert({
+      where: { key: 'booking.v2_result' },
+      create: { key: 'booking.v2_result', ...ours },
+      update: ours,
+    });
   });
 
   afterAll(async () => {
+    await prisma.featureFlag.delete({ where: { key: 'booking.v2_result' } });
+    if (savedFlag !== null) {
+      const { key, enabled, rolloutPercent, allowList } = savedFlag;
+      await prisma.featureFlag.create({ data: { key, enabled, rolloutPercent, allowList } });
+    }
     const tutorIds = tutors.map((t) => t.id);
     await prisma.booking.deleteMany({ where: { tutorId: { in: tutorIds } } });
     await prisma.subject.deleteMany({ where: { tutorId: { in: tutorIds } } });
-    await prisma.student.deleteMany({ where: { id: studentId } });
+    await prisma.student.deleteMany({ where: { id: { in: [studentId, otherStudentId] } } });
     await prisma.tutor.deleteMany({ where: { id: { in: tutorIds } } });
     await app.close();
   });
@@ -118,10 +145,11 @@ describe('GraphQL depth: loaders, pagination, errors as data (e2e)', () => {
   async function gql<T>(
     query: string,
     variables: object = {},
+    as = token,
   ): Promise<{ data: T; errors?: { message: string; extensions: { code: string } }[] }> {
     const res = await http()
       .post('/graphql')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Authorization', `Bearer ${as}`)
       .send({ query, variables });
     return res.body as { data: T; errors?: { message: string; extensions: { code: string } }[] };
   }
@@ -243,6 +271,27 @@ describe('GraphQL depth: loaders, pagination, errors as data (e2e)', () => {
       '2036-03-03T15:00:00.000Z',
       '2036-03-03T16:00:00.000Z',
     ]);
+
+    // booking.v2_result is off for the other student: same answer, no suggestions.
+    const flagOff = await gql<{ bookLessonV2: { __typename: string; nextFreeSlots: string[] } }>(
+      BOOK_V2,
+      { input },
+      otherToken,
+    );
+    expect(flagOff.data.bookLessonV2).toMatchObject({
+      __typename: 'SlotUnavailable',
+      nextFreeSlots: [],
+    });
+  });
+
+  it('exposes the booking release metrics', async () => {
+    const metrics = (await http().get('/metrics').expect(200)).text;
+    // From the test above: one created web booking, then two taken-slot attempts.
+    expect(metrics).toMatch(/bookings_created_total\{[^}]*source="web"[^}]*\} [1-9]/);
+    expect(metrics).toMatch(/booking_conflicts_total\{[^}]*reason="slot_unavailable"[^}]*\} [1-9]/);
+    expect(metrics).toMatch(
+      /booking_create_duration_seconds_count\{[^}]*outcome="slot_unavailable"[^}]*\} [1-9]/,
+    );
   });
 
   it('rejects a query deeper than 8 before running it', async () => {

@@ -18,6 +18,7 @@ import {
   studentPrincipal,
 } from '../idempotency/idempotency.service.js';
 import { recordBookingEvent } from '../outbox/booking-event.js';
+import { MetricsService } from '../monitoring/metrics.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
 import { decodeCursor, encodeCursor } from './booking-cursor.js';
@@ -101,7 +102,14 @@ export class BookingService {
     private readonly prisma: PrismaService,
     private readonly events: BookingEvents,
     private readonly idempotency: IdempotencyService,
+    private readonly metrics: MetricsService,
   ) {}
+
+  /** A lost race on an existing booking: counted, then reported as 409 CONFLICT. */
+  private changedBySomeoneElse(): ConflictDomainError {
+    this.metrics.countBookingConflict('concurrent_change');
+    return new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+  }
 
   /**
    * Runs a write that takes a time slot (insert or reschedule).
@@ -136,9 +144,11 @@ export class BookingService {
       return await (tx === undefined ? this.prisma.$transaction(lockThenWrite) : lockThenWrite(tx));
     } catch (error) {
       if (isExclusionViolation(error, 'booking_no_tutor_overlap')) {
+        this.metrics.countBookingConflict('slot_unavailable');
         throw new SlotUnavailableError('tutor');
       }
       if (isExclusionViolation(error, 'booking_no_student_overlap')) {
+        this.metrics.countBookingConflict('slot_unavailable');
         throw new SlotUnavailableError('student');
       }
       throw error;
@@ -155,6 +165,27 @@ export class BookingService {
     idempotency?: IdempotencyKeyInput,
     source: BookingSource = BookingSource.WEB,
   ): Promise<Booking> {
+    // Time every attempt and record how it ended — the signals to watch while
+    // rolling out a change to booking (docs/operations.md, rollout playbook).
+    const started = performance.now();
+    const seconds = (): number => (performance.now() - started) / 1000;
+    try {
+      const { booking, replayed } = await this.createBooking(dto, idempotency, source);
+      if (!replayed) this.metrics.countBookingCreated(source);
+      this.metrics.observeBookingCreate(replayed ? 'replayed' : 'created', seconds());
+      return booking;
+    } catch (error) {
+      const outcome = error instanceof SlotUnavailableError ? 'slot_unavailable' : 'error';
+      this.metrics.observeBookingCreate(outcome, seconds());
+      throw error;
+    }
+  }
+
+  private async createBooking(
+    dto: CreateBookingDto,
+    idempotency: IdempotencyKeyInput | undefined,
+    source: BookingSource,
+  ): Promise<{ booking: Booking; replayed: boolean }> {
     // Validate references up-front so callers get a clean 404 rather than a
     // raw foreign-key error.
     const [tutor, student, subject] = await Promise.all([
@@ -194,7 +225,7 @@ export class BookingService {
     if (idempotency === undefined) {
       const booking = await insert();
       this.events.emit(booking);
-      return booking;
+      return { booking, replayed: false };
     }
 
     // The key, the booking and the saved response commit together (one tx).
@@ -215,7 +246,7 @@ export class BookingService {
     // exactly the same response. Only the first one is news for live clients.
     const booking = bookingFromJson(response);
     if (!replayed) this.events.emit(booking);
-    return booking;
+    return { booking, replayed };
   }
 
   findAll(filter: BookingFilter = {}): Promise<Booking[]> {
@@ -310,7 +341,7 @@ export class BookingService {
         data: { status: to, version: { increment: 1 } },
       });
       if (count === 0) {
-        throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+        throw this.changedBySomeoneElse();
       }
       const changed = await tx.booking.findUniqueOrThrow({ where: { id: booking.id } });
       await recordBookingEvent(tx, 'BookingStatusChanged', changed);
@@ -371,7 +402,7 @@ export class BookingService {
         },
       });
       if (count === 0) {
-        throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
+        throw this.changedBySomeoneElse();
       }
       const moved = await tx.booking.findUniqueOrThrow({ where: { id } });
       await recordBookingEvent(tx, 'BookingRescheduled', moved);
@@ -470,6 +501,7 @@ export class BookingService {
       await recordBookingEvent(tx, 'BookingCreated', created);
       return created;
     });
+    this.metrics.countBookingCreated(BookingSource.DASHBOARD);
     this.events.emit(booking);
     return booking;
   }

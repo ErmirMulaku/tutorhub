@@ -6,6 +6,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FeatureFlagService, FLAGS } from '../flags/feature-flag.service.js';
 import { MetricsService } from '../monitoring/metrics.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BOOKINGS_TOPIC } from './booking-event.js';
@@ -39,8 +40,9 @@ export interface RelayRun {
  * batch but before the commit, the rows are still unpublished and go out
  * again. Consumers must therefore be idempotent.
  *
- * Kill switch: `OUTBOX_PUBLISH_ENABLED=false` stops publishing (events wait in
- * the table). The relay doesn't auto-start under tests (`NODE_ENV=test`);
+ * Kill switches: the `outbox.publish` feature flag (no deploy, see
+ * {@link runOnce}) and `OUTBOX_PUBLISH_ENABLED=false` (env, needs a restart)
+ * stop publishing; events wait in the table. The relay doesn't auto-start under tests (`NODE_ENV=test`);
  * tests call {@link publishPending} directly.
  */
 @Injectable()
@@ -55,6 +57,7 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
     @Inject(KafkaService) private readonly kafka: KafkaService,
     @Inject(MetricsService) private readonly metrics: MetricsService,
     @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(FeatureFlagService) private readonly flags: FeatureFlagService,
   ) {}
 
   onModuleInit(): void {
@@ -66,6 +69,18 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy(): void {
     this.stopped = true;
     clearTimeout(this.timer);
+  }
+
+  /**
+   * One relay round, honouring the kill switch: with the `outbox.publish`
+   * flag off (a row with enabled = false), nothing is published — events wait
+   * in the table and go out once it's back on. A missing row means ON, so
+   * forgetting to create the flag can't stop all events. Takes effect within
+   * the flag cache's 30 s.
+   */
+  async runOnce(): Promise<RelayRun | 'paused'> {
+    const on = await this.flags.isOn(FLAGS.outboxPublish, 'relay', true);
+    return on ? this.publishPending() : 'paused';
   }
 
   /** Publish one batch. Returns how many rows went out and how many failed. */
@@ -121,7 +136,11 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
   /** One loop step: publish, then wait 500 ms — or back off (up to 30 s) after a failure. */
   private async tick(): Promise<void> {
     try {
-      const run = await this.publishPending();
+      const run = await this.runOnce();
+      if (run === 'paused') {
+        this.schedule(EVERY_MS);
+        return;
+      }
       if (run.failed > 0) throw new Error(`${run.failed} events failed to publish`);
       this.backoffMs = EVERY_MS;
       // A full batch means there may be more waiting: go again right away.

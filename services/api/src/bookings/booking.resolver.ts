@@ -17,6 +17,7 @@ import { BookingSource, BookingStatus } from '../generated/prisma/client.js';
 import type { Booking, Review, Student, Subject, Tutor } from '../generated/prisma/client.js';
 import type { Loaders } from '../graphql/loaders.js';
 import { AvailabilityService } from '../availability/availability.service.js';
+import { FeatureFlagService, FLAGS } from '../flags/feature-flag.service.js';
 import {
   BookLessonResult,
   type SlotUnavailableModel,
@@ -44,6 +45,7 @@ export class BookingResolver {
   constructor(
     private readonly bookings: BookingService,
     private readonly availability: AvailabilityService,
+    private readonly flags: FeatureFlagService,
   ) {}
 
   @Query(() => [BookingModel], {
@@ -110,13 +112,15 @@ export class BookingResolver {
       return { booking };
     } catch (error) {
       if (!(error instanceof SlotUnavailableError)) throw error;
+      // Suggestions run the slot engine for up to a week: rolled out behind a
+      // flag (booking.v2_result) so it can be widened gradually or turned off
+      // without a deploy. Off → the same answer, just without suggestions.
+      const suggest = await this.flags.isOn(FLAGS.bookingV2Result, user.studentId);
       return {
         message: error.message,
-        nextFreeSlots: await this.availability.nextFreeSlots(
-          input.tutorId,
-          user.studentId,
-          input.startTime,
-        ),
+        nextFreeSlots: suggest
+          ? await this.availability.nextFreeSlots(input.tutorId, user.studentId, input.startTime)
+          : [],
       };
     }
   }

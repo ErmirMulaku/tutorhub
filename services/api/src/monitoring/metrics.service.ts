@@ -37,6 +37,9 @@ export class MetricsService {
   private readonly outboxPublished: Counter;
   private readonly outboxFailures: Counter;
   private readonly consumerEvents: Counter<'consumer' | 'result'>;
+  private readonly bookingsCreated: Counter<'source'>;
+  private readonly bookingConflicts: Counter<'reason'>;
+  private readonly bookingCreateDuration: Histogram<'outcome'>;
 
   constructor() {
     this.registry.setDefaultLabels({ app: 'tutorhub-api' });
@@ -109,6 +112,27 @@ export class MetricsService {
       labelNames: ['consumer', 'result'],
       registers: [this.registry],
     });
+
+    // Release-watching signals for the booking path (Block 7, operations.md).
+    this.bookingsCreated = new Counter({
+      name: 'bookings_created_total',
+      help: 'Bookings created, by where they were made (web, mobile, dashboard, assistant).',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+    this.bookingConflicts = new Counter({
+      name: 'booking_conflicts_total',
+      help: 'Booking writes that lost a race: slot_unavailable or concurrent_change.',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+    this.bookingCreateDuration = new Histogram({
+      name: 'booking_create_duration_seconds',
+      help: 'Time to create a booking, by outcome (created, replayed, slot_unavailable, error).',
+      labelNames: ['outcome'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5],
+      registers: [this.registry],
+    });
   }
 
   /** Record one completed request. */
@@ -147,6 +171,18 @@ export class MetricsService {
 
   countConsumerEvent(consumer: string, result: string): void {
     this.consumerEvents.inc({ consumer, result });
+  }
+
+  countBookingCreated(source: string): void {
+    this.bookingsCreated.inc({ source: source.toLowerCase() });
+  }
+
+  countBookingConflict(reason: 'slot_unavailable' | 'concurrent_change'): void {
+    this.bookingConflicts.inc({ reason });
+  }
+
+  observeBookingCreate(outcome: string, seconds: number): void {
+    this.bookingCreateDuration.observe({ outcome }, seconds);
   }
 
   metrics(): Promise<string> {

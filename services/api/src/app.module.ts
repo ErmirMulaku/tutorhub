@@ -18,6 +18,7 @@ import { EarningsModule } from './earnings/earnings.module.js';
 import { EmailModule } from './email/email.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { MarketingModule } from './marketing/marketing.module.js';
+import { FlagsModule } from './flags/flags.module.js';
 import { HealthController } from './health/health.controller.js';
 import { HelpModule } from './help/help.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
@@ -66,6 +67,7 @@ const MAX_QUERY_DEPTH = 8;
       }),
     }),
     PrismaModule,
+    FlagsModule,
     StripeModule,
     EmailModule,
     AuthModule,
