@@ -11,6 +11,11 @@ import {
   type Prisma,
   type Review,
 } from '../generated/prisma/client.js';
+import {
+  hashRequest,
+  IdempotencyService,
+  studentPrincipal,
+} from '../idempotency/idempotency.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
 import { assertCanTransition } from './booking-status.js';
@@ -21,6 +26,51 @@ import type { CreateBookingDto } from './dto/create-booking.dto.js';
 const SLOT_MINUTES = 60;
 const CHANGED_BY_SOMEONE_ELSE = 'This booking was just changed by someone else.';
 const MS_PER_MINUTE = 60_000;
+
+/** A client-supplied key that makes a create safe to retry, and who sent it. */
+export interface IdempotencyKeyInput {
+  key: string;
+  principal: string;
+}
+
+/** A booking as stored in `IdempotencyKey.responseJson` (dates as ISO strings). */
+type StoredBooking = Omit<Booking, 'startTime' | 'endTime' | 'createdAt' | 'updatedAt'> & {
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function bookingToJson(booking: Booking): StoredBooking {
+  return {
+    ...booking,
+    startTime: booking.startTime.toISOString(),
+    endTime: booking.endTime.toISOString(),
+    createdAt: booking.createdAt.toISOString(),
+    updatedAt: booking.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * The inverse of {@link bookingToJson}. Only ever reads JSON we wrote ourselves.
+ * Fields are listed one by one because Postgres `jsonb` doesn't keep key
+ * order: this way the first response and every replay are byte-identical.
+ */
+function bookingFromJson(json: Prisma.JsonValue): Booking {
+  const stored = json as unknown as StoredBooking;
+  return {
+    id: stored.id,
+    tutorId: stored.tutorId,
+    studentId: stored.studentId,
+    subjectId: stored.subjectId,
+    startTime: new Date(stored.startTime),
+    endTime: new Date(stored.endTime),
+    status: stored.status,
+    version: stored.version,
+    createdAt: new Date(stored.createdAt),
+    updatedAt: new Date(stored.updatedAt),
+  };
+}
 
 export interface BookingFilter {
   status?: BookingStatus;
@@ -38,6 +88,7 @@ export class BookingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: BookingEvents,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
   /**
@@ -54,18 +105,23 @@ export class BookingService {
    * student queue up, and each one after the winner sees its committed row
    * and gets a clean "slot taken". Locks are taken in sorted order so two
    * writers can never wait for each other; they are released at commit.
+   *
+   * Pass `tx` to run inside a caller's transaction (the idempotent create);
+   * otherwise it opens its own.
    */
   private async takeSlot<T>(
     who: { tutorId: string; studentId: string },
     write: (tx: Prisma.TransactionClient) => Promise<T>,
+    tx?: Prisma.TransactionClient,
   ): Promise<T> {
+    const lockThenWrite = async (db: Prisma.TransactionClient): Promise<T> => {
+      for (const id of [who.tutorId, who.studentId].sort()) {
+        await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))`;
+      }
+      return write(db);
+    };
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        for (const id of [who.tutorId, who.studentId].sort()) {
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))`;
-        }
-        return write(tx);
-      });
+      return await (tx === undefined ? this.prisma.$transaction(lockThenWrite) : lockThenWrite(tx));
     } catch (error) {
       if (isExclusionViolation(error, 'booking_no_tutor_overlap')) {
         throw new SlotUnavailableError('tutor');
@@ -77,7 +133,11 @@ export class BookingService {
     }
   }
 
-  async create(dto: CreateBookingDto): Promise<Booking> {
+  /**
+   * Create a PENDING booking. With `idempotency`, a retry carrying the same key
+   * and body gets the first booking back instead of creating a second one.
+   */
+  async create(dto: CreateBookingDto, idempotency?: IdempotencyKeyInput): Promise<Booking> {
     // Validate references up-front so callers get a clean 404 rather than a
     // raw foreign-key error.
     const [tutor, student, subject] = await Promise.all([
@@ -94,18 +154,46 @@ export class BookingService {
       throw new BadRequestDomainError('endTime must be after startTime.');
     }
 
-    const booking = await this.takeSlot(dto, (tx) =>
-      tx.booking.create({
-        data: {
+    const insert = (tx?: Prisma.TransactionClient): Promise<Booking> =>
+      this.takeSlot(
+        dto,
+        (db) =>
+          db.booking.create({
+            data: {
+              tutorId: dto.tutorId,
+              studentId: dto.studentId,
+              subjectId: dto.subjectId,
+              startTime,
+              endTime,
+            },
+          }),
+        tx,
+      );
+
+    if (idempotency === undefined) {
+      const booking = await insert();
+      this.events.emit(booking);
+      return booking;
+    }
+
+    // The key, the booking and the saved response commit together (one tx).
+    const { response, replayed } = await this.idempotency.run(
+      {
+        ...idempotency,
+        requestHash: hashRequest({
           tutorId: dto.tutorId,
           studentId: dto.studentId,
           subjectId: dto.subjectId,
-          startTime,
-          endTime,
-        },
-      }),
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        }),
+      },
+      async (tx) => bookingToJson(await insert(tx)),
     );
-    this.events.emit(booking);
+    // First time and replay both go through the stored JSON, so a retry gets
+    // exactly the same response. Only the first one is news for live clients.
+    const booking = bookingFromJson(response);
+    if (!replayed) this.events.emit(booking);
     return booking;
   }
 
@@ -155,17 +243,25 @@ export class BookingService {
     return updated;
   }
 
-  /** Student-facing booking: derives a fixed-length end and sets PENDING. */
-  bookLesson(input: BookInput, studentId: string): Promise<Booking> {
+  /**
+   * Student-facing booking: derives a fixed-length end and sets PENDING.
+   * `idempotencyKey` (optional) makes a retried request return the first booking.
+   */
+  bookLesson(input: BookInput, studentId: string, idempotencyKey?: string): Promise<Booking> {
     const start = input.startTime;
     const end = new Date(start.getTime() + SLOT_MINUTES * MS_PER_MINUTE);
-    return this.create({
-      tutorId: input.tutorId,
-      subjectId: input.subjectId,
-      studentId,
-      startTime: start.toISOString(),
-      endTime: end.toISOString(),
-    });
+    return this.create(
+      {
+        tutorId: input.tutorId,
+        subjectId: input.subjectId,
+        studentId,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+      },
+      idempotencyKey === undefined
+        ? undefined
+        : { key: idempotencyKey, principal: studentPrincipal(studentId) },
+    );
   }
 
   /** Move a student's own upcoming booking to a new start time (same duration). */

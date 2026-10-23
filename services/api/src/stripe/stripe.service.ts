@@ -1,6 +1,20 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
+import { withRetry } from '../common/retry.js';
+
+/** Give up on one Stripe call after this long (the SDK default is 80s). */
+const STRIPE_TIMEOUT_MS = 10_000;
+
+/**
+ * Only retry when the request may not have reached Stripe or Stripe failed on
+ * its side: a network error/timeout, or a 5xx. A 4xx (bad card, bad params)
+ * will fail the same way every time.
+ */
+export function isRetryableStripeError(error: unknown): boolean {
+  if (error instanceof Stripe.errors.StripeConnectionError) return true;
+  return error instanceof Stripe.errors.StripeError && (error.statusCode ?? 0) >= 500;
+}
 
 /**
  * Thin wrapper around the Stripe SDK, configured from `STRIPE_SECRET_KEY`.
@@ -86,18 +100,36 @@ export class StripeService {
    * Charge the platform for a booking. Funds land on the platform balance and
    * are transferred to the tutor's connected account once cleared (separate
    * charge & transfer), so no `transfer_data` is set here.
+   *
+   * Safe to retry: `idempotencyKey` (derived from the booking id) makes Stripe
+   * return the SAME PaymentIntent for a repeated request instead of creating
+   * a second one. So when a call times out and we don't know if it reached
+   * Stripe, we can just send it again. The SDK's own retries are turned off
+   * (`maxNetworkRetries: 0`) so retrying happens in one place, here.
    */
   createPaymentIntent(params: {
     amountCents: number;
     currency?: string;
     metadata: Record<string, string>;
+    idempotencyKey: string;
   }): Promise<Stripe.PaymentIntent> {
-    return this.client.paymentIntents.create({
-      amount: params.amountCents,
-      currency: params.currency ?? 'usd',
-      automatic_payment_methods: { enabled: true },
-      metadata: params.metadata,
-    });
+    return withRetry(
+      () =>
+        this.client.paymentIntents.create(
+          {
+            amount: params.amountCents,
+            currency: params.currency ?? 'usd',
+            automatic_payment_methods: { enabled: true },
+            metadata: params.metadata,
+          },
+          {
+            idempotencyKey: params.idempotencyKey,
+            timeout: STRIPE_TIMEOUT_MS,
+            maxNetworkRetries: 0,
+          },
+        ),
+      { attempts: 3, baseMs: 200, isRetryable: isRetryableStripeError },
+    );
   }
 
   // --- Payouts (transfer net earnings to a tutor) --------------------------

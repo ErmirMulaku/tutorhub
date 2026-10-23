@@ -37,7 +37,7 @@ export class BookingResolver {
     @CurrentUser() user: AuthUser,
     @Args('input', { type: () => BookInput }) input: BookInput,
   ): Promise<Booking> {
-    return this.bookings.bookLesson(input, user.studentId);
+    return this.bookings.bookLesson(input, user.studentId, input.idempotencyKey);
   }
 
   @Mutation(() => BookingModel, { name: 'rescheduleBooking' })

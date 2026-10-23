@@ -32,6 +32,7 @@ export class MetricsService {
   private readonly aiTokens: Counter<AiTokenLabel>;
   private readonly aiCost: Counter<AiCostLabel>;
   private readonly aiDuration: Histogram<AiDurationLabel>;
+  private readonly idempotentReplays: Counter;
 
   constructor() {
     this.registry.setDefaultLabels({ app: 'tutorhub-api' });
@@ -76,6 +77,12 @@ export class MetricsService {
       buckets: [0.1, 0.5, 1, 2, 5, 10, 20, 30],
       registers: [this.registry],
     });
+
+    this.idempotentReplays = new Counter({
+      name: 'idempotent_replays_total',
+      help: 'Requests answered from a stored response because their Idempotency-Key was seen before.',
+      registers: [this.registry],
+    });
   }
 
   /** Record one completed request. */
@@ -93,6 +100,11 @@ export class MetricsService {
     this.aiTokens.inc({ task: obs.task, model: obs.model, direction: 'out' }, obs.outputTokens);
     this.aiCost.inc({ task: obs.task, model: obs.model }, obs.costUsd);
     this.aiDuration.observe({ task: obs.task }, obs.durationSeconds);
+  }
+
+  /** A retried request got the stored response instead of doing the work again. */
+  countIdempotentReplay(): void {
+    this.idempotentReplays.inc();
   }
 
   metrics(): Promise<string> {

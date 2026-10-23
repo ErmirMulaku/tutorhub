@@ -7,8 +7,10 @@ import {
   BadRequestDomainError,
   ConflictDomainError,
   EntityNotFoundError,
+  IdempotencyKeyReusedError,
 } from '../../common/errors.js';
 import { BookingStatus, type Booking } from '../../generated/prisma/client.js';
+import { studentPrincipal } from '../../idempotency/idempotency.service.js';
 import { BookingEvents } from '../booking-events.js';
 import { BookingService } from '../booking.service.js';
 
@@ -36,6 +38,8 @@ interface BookReq {
   studentId: string;
   subjectId: string;
   startTime: Timestamp;
+  /** '' when unset (proto3 strings default to empty). */
+  idempotencyKey: string;
 }
 interface UpdateReq {
   id: string;
@@ -77,7 +81,7 @@ function toRpcException(error: unknown): RpcException {
   if (error instanceof InvalidBookingTransitionError) {
     return new RpcException({ code: GrpcStatus.FAILED_PRECONDITION, message: error.message });
   }
-  if (error instanceof BadRequestDomainError) {
+  if (error instanceof BadRequestDomainError || error instanceof IdempotencyKeyReusedError) {
     return new RpcException({ code: GrpcStatus.INVALID_ARGUMENT, message: error.message });
   }
   // A taken slot is "that already exists"; any other lost race is "try again".
@@ -112,13 +116,18 @@ export class BookingGrpcController {
     try {
       const start = fromTimestamp(req.startTime);
       const end = new Date(start.getTime() + SLOT_MINUTES * MS_PER_MINUTE);
-      const booking = await this.bookings.create({
-        tutorId: req.tutorId,
-        studentId: req.studentId,
-        subjectId: req.subjectId,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-      });
+      const booking = await this.bookings.create(
+        {
+          tutorId: req.tutorId,
+          studentId: req.studentId,
+          subjectId: req.subjectId,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+        },
+        req.idempotencyKey === ''
+          ? undefined
+          : { key: req.idempotencyKey, principal: studentPrincipal(req.studentId) },
+      );
       return toGrpcBooking(booking);
     } catch (error) {
       throw toRpcException(error);

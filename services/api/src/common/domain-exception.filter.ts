@@ -8,6 +8,7 @@ import {
   ConflictDomainError,
   EmailNotVerifiedError,
   EntityNotFoundError,
+  IdempotencyKeyReusedError,
 } from './errors.js';
 
 type DomainError =
@@ -15,7 +16,8 @@ type DomainError =
   | InvalidBookingTransitionError
   | BadRequestDomainError
   | EmailNotVerifiedError
-  | ConflictDomainError;
+  | ConflictDomainError
+  | IdempotencyKeyReusedError;
 
 /**
  * Maps transport-agnostic domain errors to the right shape per transport:
@@ -30,11 +32,15 @@ type DomainError =
   BadRequestDomainError,
   EmailNotVerifiedError,
   ConflictDomainError,
+  IdempotencyKeyReusedError,
 )
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(exception: DomainError, host: ArgumentsHost): GraphQLError | void {
     if (exception instanceof ConflictDomainError) {
       return this.conflict(exception, host);
+    }
+    if (exception instanceof IdempotencyKeyReusedError) {
+      return this.keyReused(exception, host);
     }
 
     const isNotFound = exception instanceof EntityNotFoundError;
@@ -67,5 +73,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
     response
       .status(HttpStatus.CONFLICT)
       .json({ statusCode: HttpStatus.CONFLICT, code: exception.code, message: exception.message });
+  }
+
+  private keyReused(
+    exception: IdempotencyKeyReusedError,
+    host: ArgumentsHost,
+  ): GraphQLError | void {
+    if (host.getType<GqlContextType>() === 'graphql') {
+      return new GraphQLError(exception.message, { extensions: { code: exception.code } });
+    }
+    const status = HttpStatus.UNPROCESSABLE_ENTITY;
+    const response = host.switchToHttp().getResponse<Response>();
+    response
+      .status(status)
+      .json({ statusCode: status, code: exception.code, message: exception.message });
   }
 }

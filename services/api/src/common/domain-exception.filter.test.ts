@@ -2,7 +2,7 @@ import type { ArgumentsHost } from '@nestjs/common';
 import { describe, expect, it, jest } from '@jest/globals';
 import { GraphQLError } from 'graphql';
 import { DomainExceptionFilter } from './domain-exception.filter.js';
-import { ConflictDomainError } from './errors.js';
+import { ConflictDomainError, IdempotencyKeyReusedError } from './errors.js';
 
 interface FakeHttpHost {
   host: ArgumentsHost;
@@ -39,5 +39,16 @@ describe('DomainExceptionFilter — conflicts', () => {
     const error = filter.catch(new ConflictDomainError('Changed.'), host);
     expect(error).toBeInstanceOf(GraphQLError);
     expect((error as GraphQLError).extensions['code']).toBe('CONFLICT');
+  });
+});
+
+describe('DomainExceptionFilter — idempotency key reuse', () => {
+  it('maps to HTTP 422 with code IDEMPOTENCY_KEY_REUSED', () => {
+    const { host, status, json } = httpHost();
+    new DomainExceptionFilter().catch(new IdempotencyKeyReusedError(), host);
+    expect(status).toHaveBeenCalledWith(422);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 422, code: 'IDEMPOTENCY_KEY_REUSED' }),
+    );
   });
 });

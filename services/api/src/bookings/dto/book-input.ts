@@ -1,5 +1,5 @@
 import { Field, GraphQLISODateTime, ID, InputType } from '@nestjs/graphql';
-import { IsDate, IsUUID } from 'class-validator';
+import { IsDate, IsOptional, IsString, IsUUID, Length } from 'class-validator';
 
 @InputType()
 export class BookInput {
@@ -15,4 +15,14 @@ export class BookInput {
   @Field(() => GraphQLISODateTime)
   @IsDate()
   startTime!: Date;
+
+  /**
+   * Optional. Send a unique value (e.g. a UUID) and reuse it when retrying the
+   * same booking: the retry returns the first booking instead of a second one.
+   */
+  @Field(() => ID, { nullable: true })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  idempotencyKey?: string;
 }

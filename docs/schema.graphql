@@ -15,6 +15,7 @@ type AuthPayload {
 }
 
 input BookInput {
+  idempotencyKey: ID
   startTime: DateTime!
   subjectId: ID!
   tutorId: ID!

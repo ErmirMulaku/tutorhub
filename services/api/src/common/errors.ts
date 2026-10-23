@@ -51,3 +51,17 @@ export class ConflictDomainError extends Error {
     this.name = 'ConflictDomainError';
   }
 }
+
+/**
+ * The client reused an idempotency key for a different request (another
+ * caller, or the same caller with a different body). That's a client bug, not
+ * a retry, so it maps to HTTP 422 with code `IDEMPOTENCY_KEY_REUSED`.
+ */
+export class IdempotencyKeyReusedError extends Error {
+  readonly code = 'IDEMPOTENCY_KEY_REUSED';
+
+  constructor() {
+    super('This Idempotency-Key was already used for a different request.');
+    this.name = 'IdempotencyKeyReusedError';
+  }
+}
