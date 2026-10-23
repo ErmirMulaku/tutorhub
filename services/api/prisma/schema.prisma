@@ -66,6 +66,12 @@ model Tutor {
   badges       String[]   @default([]) // e.g. "Top rated", "Fast responder", "Verified"
   responseTime String? // human label, e.g. "~1 hr"
   totalLessons Int        @default(0)
+  // Review aggregates kept on the tutor, so discover can filter and sort by
+  // rating in SQL and return one page (instead of loading every tutor and
+  // averaging in Node). Updated atomically with each new review.
+  ratingSum    Int        @default(0)
+  ratingCount  Int        @default(0)
+  ratingAvg    Float?
 
   // Tutor identity (dashboard auth). Nullable so seeded tutors and dev-login work
   // without credentials; student auth is unaffected.

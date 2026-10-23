@@ -75,8 +75,9 @@ What transaction pooling means for this code:
 **A hot slot can empty the pool.** Booking a slot takes a transaction plus the tutor's advisory
 lock (Block 2). Twenty people booking the same slot at once → twenty transactions, each holding a
 connection while it **waits in line** for the lock. With a pool of 10, the rest wait for a
-connection; after Prisma's 2 s `maxWait` they fail with `P2028`. Seen in the e2e suite under CPU
-load (Block 5). Mitigations, cheapest first: a bigger pool on the booking path; a short
+connection; after Prisma's 2 s `maxWait` they fail with `P2028`. Seen in the e2e suite while
+another request was loading 200k tutors at once (the discover-page bug, since fixed): one slow
+query anywhere makes every lock queue longer. Mitigations, cheapest first: a bigger pool on the booking path; a short
 `lock_timeout` on the advisory lock that answers "slot is busy, try again"; or rate-limit a single
 slot (most of those 20 will get `SLOT_UNAVAILABLE` anyway).
 

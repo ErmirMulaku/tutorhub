@@ -195,7 +195,11 @@ describe('API (e2e)', () => {
       errors?: unknown[];
     };
     expect(allBody.errors).toBeUndefined();
-    expect(allBody.data.tutors.items.map((i) => i.id)).toContain(tutorId);
+    // "All" is one page of the whole catalogue, which may hold far more than
+    // 50 tutors (it used to assume a tiny catalogue): check it's a full,
+    // valid page rather than that this test's tutor is on it.
+    expect(allBody.data.tutors.total).toBeGreaterThanOrEqual(1);
+    expect(allBody.data.tutors.items.length).toBe(Math.min(50, allBody.data.tutors.total));
 
     // Substring, case-insensitive match against the "E2E Guitar" subject.
     const search = await http()

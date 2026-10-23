@@ -495,8 +495,21 @@ export class BookingService {
     // see "no". The unique index on `bookingId` is the real guard — the second
     // insert waits for the first to commit, then fails with P2002.
     try {
-      return await this.prisma.review.create({
-        data: { bookingId, tutorId: booking.tutorId, rating, comment },
+      return await this.prisma.$transaction(async (tx) => {
+        const review = await tx.review.create({
+          data: { bookingId, tutorId: booking.tutorId, rating, comment },
+        });
+        // Keep the tutor's rating aggregates in step, in the same transaction.
+        // One UPDATE, relative to the row's current values: two reviews for
+        // the same tutor at once take turns on the row lock and both count
+        // (a read-then-write in JS here would lose one — Block 1's lost update).
+        await tx.$executeRaw`
+          UPDATE "Tutor"
+          SET "ratingSum" = "ratingSum" + ${rating},
+              "ratingCount" = "ratingCount" + 1,
+              "ratingAvg" = ("ratingSum" + ${rating})::float / ("ratingCount" + 1)
+          WHERE id = ${booking.tutorId}`;
+        return review;
       });
     } catch (error) {
       if (isUniqueViolation(error)) {

@@ -730,6 +730,15 @@ async function main(): Promise<void> {
       ],
     });
   }
+
+  // Reviews above were inserted directly, not through leaveReview, so set
+  // each tutor's stored rating aggregates (used by discover's sort) here.
+  await prisma.$executeRaw`
+    UPDATE "Tutor" t
+    SET "ratingSum" = r.sum, "ratingCount" = r.count, "ratingAvg" = r.sum::float / r.count
+    FROM (SELECT "tutorId", sum(rating)::int AS sum, count(*)::int AS count
+          FROM "Review" GROUP BY "tutorId") r
+    WHERE r."tutorId" = t.id`;
 }
 
 main()
