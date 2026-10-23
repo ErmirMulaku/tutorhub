@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { AvailabilityModule } from '../availability/availability.module.js';
 import { IdempotencyModule } from '../idempotency/idempotency.module.js';
 import { BookingController } from './booking.controller.js';
 import { BookingEvents } from './booking-events.js';
@@ -9,7 +10,7 @@ import { BookingsGateway } from './bookings.gateway.js';
 import { BookingGrpcController } from './grpc/booking-grpc.controller.js';
 
 @Module({
-  imports: [AuthModule, IdempotencyModule],
+  imports: [AuthModule, AvailabilityModule, IdempotencyModule],
   controllers: [BookingController, BookingGrpcController],
   providers: [BookingService, BookingResolver, BookingEvents, BookingsGateway],
   // BookingEvents is exported so NotificationsModule can turn booking changes

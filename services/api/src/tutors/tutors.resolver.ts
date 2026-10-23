@@ -1,6 +1,17 @@
-import { Args, Float, ID, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import {
+  Args,
+  Context,
+  Float,
+  ID,
+  Int,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 import { Level } from '../generated/prisma/client.js';
 import type { Review, Subject, Tutor } from '../generated/prisma/client.js';
+import type { Loaders } from '../graphql/loaders.js';
 import { ReviewModel } from '../graphql/models/review.model.js';
 import { SubjectModel } from '../graphql/models/subject.model.js';
 import { TutorPageModel } from '../graphql/models/tutor-page.model.js';
@@ -46,23 +57,25 @@ export class TutorsResolver {
     return this.tutors.findPublishedOne(id);
   }
 
+  // Batched per request (DataLoader): the discover grid's 20 tutors cost one
+  // query per field instead of 20.
   @ResolveField(() => [SubjectModel])
-  subjects(@Parent() tutor: Tutor): Promise<Subject[]> {
-    return this.tutors.subjectsOf(tutor.id);
+  subjects(@Parent() tutor: Tutor, @Context('loaders') loaders: Loaders): Promise<Subject[]> {
+    return loaders.subjectsByTutor.load(tutor.id);
   }
 
   @ResolveField(() => [ReviewModel])
-  reviews(@Parent() tutor: Tutor): Promise<Review[]> {
-    return this.tutors.reviewsOf(tutor.id);
+  reviews(@Parent() tutor: Tutor, @Context('loaders') loaders: Loaders): Promise<Review[]> {
+    return loaders.reviewsByTutor.load(tutor.id);
   }
 
   @ResolveField(() => Float, { nullable: true })
-  rating(@Parent() tutor: Tutor): Promise<number | null> {
-    return this.tutors.ratingOf(tutor.id);
+  rating(@Parent() tutor: Tutor, @Context('loaders') loaders: Loaders): Promise<number | null> {
+    return loaders.ratingByTutor.load(tutor.id);
   }
 
   @ResolveField(() => Int)
-  reviewCount(@Parent() tutor: Tutor): Promise<number> {
-    return this.tutors.reviewCountOf(tutor.id);
+  reviewCount(@Parent() tutor: Tutor, @Context('loaders') loaders: Loaders): Promise<number> {
+    return loaders.reviewCountByTutor.load(tutor.id);
   }
 }

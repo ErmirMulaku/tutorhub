@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Level } from '@ermulaku/types';
 import { EntityNotFoundError } from '../common/errors.js';
-import { Prisma, type Review, type Subject, type Tutor } from '../generated/prisma/client.js';
+import { Prisma, type Subject, type Tutor } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTutorDto, WorkingHoursDto } from './dto/create-tutor.dto.js';
 import type { UpdateTutorDto } from './dto/update-tutor.dto.js';
@@ -125,11 +125,6 @@ export class TutorsService {
     return new Map(grouped.map((g) => [g.tutorId, g._avg.rating ?? 0]));
   }
 
-  /** Number of reviews a tutor has received. */
-  reviewCountOf(tutorId: string): Promise<number> {
-    return this.prisma.review.count({ where: { tutorId } });
-  }
-
   async findOne(id: string): Promise<Tutor> {
     const tutor = await this.findOneOrNull(id);
     if (tutor === null) {
@@ -149,18 +144,6 @@ export class TutorsService {
 
   subjectsOf(tutorId: string): Promise<Subject[]> {
     return this.prisma.subject.findMany({ where: { tutorId }, orderBy: { name: 'asc' } });
-  }
-
-  reviewsOf(tutorId: string): Promise<Review[]> {
-    return this.prisma.review.findMany({ where: { tutorId } });
-  }
-
-  async ratingOf(tutorId: string): Promise<number | null> {
-    const { _avg } = await this.prisma.review.aggregate({
-      where: { tutorId },
-      _avg: { rating: true },
-    });
-    return _avg.rating;
   }
 
   async update(id: string, dto: UpdateTutorDto): Promise<Tutor> {

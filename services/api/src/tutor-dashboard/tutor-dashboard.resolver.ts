@@ -1,10 +1,15 @@
 import { UseGuards } from '@nestjs/common';
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import type { TutorPrincipal } from '../auth/auth-user.js';
 import { CurrentTutor } from '../auth/current-tutor.decorator.js';
 import { TutorAuthGuard } from '../auth/tutor-auth.guard.js';
-import { BookingService } from '../bookings/booking.service.js';
+import {
+  BookingService,
+  DEFAULT_PAGE_SIZE,
+  type BookingPage,
+} from '../bookings/booking.service.js';
 import { BookingStatus, type Booking, type Subject } from '../generated/prisma/client.js';
+import { BookingConnectionModel } from '../graphql/models/booking-connection.model.js';
 import { BookingModel } from '../graphql/models/booking.model.js';
 import { DashboardSummaryModel } from '../graphql/models/dashboard-summary.model.js';
 import { SubjectModel } from '../graphql/models/subject.model.js';
@@ -50,6 +55,36 @@ export class TutorDashboardResolver {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });
+  }
+
+  /**
+   * The tutor's bookings, one page at a time (cursor pagination). The old
+   * `tutorBookings` stays for the calendar, which always asks for a bounded
+   * from/to window.
+   */
+  @Query(() => BookingConnectionModel, { name: 'tutorBookingsConnection' })
+  tutorBookingsConnection(
+    @CurrentTutor() tutor: TutorPrincipal,
+    @Args('first', { type: () => Int, defaultValue: DEFAULT_PAGE_SIZE }) first: number,
+    @Args('after', { type: () => String, nullable: true }) after: string | undefined,
+    @Args('status', { type: () => BookingStatus, nullable: true })
+    status: BookingStatus | undefined,
+    @Args('from', { type: () => String, nullable: true }) from: string | undefined,
+    @Args('to', { type: () => String, nullable: true }) to: string | undefined,
+  ): Promise<BookingPage> {
+    return this.bookings.findPage(
+      {
+        tutorId: tutor.tutorId,
+        // `?? undefined`: GraphQL may send an explicit null, which Prisma rejects.
+        status: status ?? undefined,
+        startTime:
+          from || to
+            ? { gte: from ? new Date(from) : undefined, lt: to ? new Date(to) : undefined }
+            : undefined,
+      },
+      first,
+      after ?? undefined,
+    );
   }
 
   @Mutation(() => BookingModel, { name: 'acceptBooking' })

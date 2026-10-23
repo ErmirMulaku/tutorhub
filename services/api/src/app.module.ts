@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
+import { depthLimit } from './graphql/depth-limit.js';
+import { createLoaders, type GraphQLContext } from './graphql/loaders.js';
 import './graphql/register-enums.js';
 import { AccountModule } from './account/account.module.js';
 import { AiGatewayModule } from './ai-gateway/ai-gateway.module.js';
@@ -24,6 +26,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { OutboxModule } from './outbox/outbox.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { PrismaService } from './prisma/prisma.service.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 import { StripeModule } from './stripe/stripe.module.js';
 import { SubjectsModule } from './subjects/subjects.module.js';
@@ -40,15 +43,27 @@ const schemaFile = isProd
   ? true
   : fileURLToPath(new URL('../../../docs/schema.graphql', import.meta.url));
 
+/** Deepest query we accept. Our real screens go ~5 levels deep. */
+const MAX_QUERY_DEPTH = 8;
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
+    GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: schemaFile,
-      sortSchema: true,
-      graphiql: true,
-      context: ({ req }: { req: unknown }) => ({ req }),
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => ({
+        autoSchemaFile: schemaFile,
+        sortSchema: true,
+        graphiql: true,
+        // Fresh DataLoaders per request: batching + a per-request cache.
+        context: ({ req }: { req: unknown }): GraphQLContext => ({
+          req,
+          loaders: createLoaders(prisma),
+        }),
+        // Reject over-deep queries before any resolver runs.
+        validationRules: [depthLimit(MAX_QUERY_DEPTH)],
+      }),
     }),
     PrismaModule,
     StripeModule,

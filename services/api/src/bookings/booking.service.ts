@@ -19,12 +19,16 @@ import {
 import { recordBookingEvent } from '../outbox/booking-event.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
+import { decodeCursor, encodeCursor } from './booking-cursor.js';
 import { assertCanTransition } from './booking-status.js';
 import { InvalidBookingTransitionError, SlotUnavailableError } from './booking.errors.js';
 import type { BookInput } from './dto/book-input.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
 
 const SLOT_MINUTES = 60;
+/** Page size when the client doesn't say, and the most it may ask for. */
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 100;
 const CHANGED_BY_SOMEONE_ELSE = 'This booking was just changed by someone else.';
 const MS_PER_MINUTE = 60_000;
 
@@ -71,6 +75,11 @@ function bookingFromJson(json: Prisma.JsonValue): Booking {
     createdAt: new Date(stored.createdAt),
     updatedAt: new Date(stored.updatedAt),
   };
+}
+
+export interface BookingPage {
+  edges: { cursor: string; node: Booking }[];
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
 }
 
 export interface BookingFilter {
@@ -210,6 +219,57 @@ export class BookingService {
       },
       orderBy: { startTime: 'asc' },
     });
+  }
+
+  /**
+   * One page of bookings matching `where`, ordered by (startTime, id).
+   *
+   * Keyset ("seek") pagination: instead of `OFFSET n` — which makes Postgres
+   * read and throw away n rows, so page 1,000 is slow — the cursor says where
+   * the last page ended, and we ask for rows *after* it:
+   *   startTime > c.startTime OR (startTime = c.startTime AND id > c.id)
+   * An index on (…, startTime) jumps straight there, so every page costs the
+   * same. `id` breaks ties between lessons at the same time, and a booking
+   * added or removed meanwhile never shifts the next page (OFFSET would
+   * repeat or skip a row). We fetch one extra row to know if there's more.
+   */
+  async findPage(
+    where: Prisma.BookingWhereInput,
+    first: number,
+    after: string | undefined,
+  ): Promise<BookingPage> {
+    if (!Number.isInteger(first) || first < 1) {
+      throw new BadRequestDomainError('first must be a positive integer.');
+    }
+    const size = Math.min(first, MAX_PAGE_SIZE);
+    const cursor = after === undefined ? null : decodeCursor(after);
+    const rows = await this.prisma.booking.findMany({
+      where:
+        cursor === null
+          ? where
+          : {
+              AND: [
+                where,
+                {
+                  OR: [
+                    { startTime: { gt: cursor.startTime } },
+                    { startTime: cursor.startTime, id: { gt: cursor.id } },
+                  ],
+                },
+              ],
+            },
+      orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
+      take: size + 1,
+    });
+    const page = rows.slice(0, size);
+    const last = page.at(-1);
+    return {
+      edges: page.map((node) => ({ cursor: encodeCursor(node), node })),
+      pageInfo: {
+        hasNextPage: rows.length > size,
+        endCursor: last === undefined ? null : encodeCursor(last),
+      },
+    };
   }
 
   async findById(id: string): Promise<Booking> {
