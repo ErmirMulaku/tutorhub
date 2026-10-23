@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Level } from '@ermulaku/types';
 import { AvailabilityService } from '../availability/availability.service.js';
 import { BookingService } from '../bookings/booking.service.js';
+import { BookingSource } from '../generated/prisma/client.js';
 import { TutorsService } from '../tutors/tutors.service.js';
 import type { ToolSpec } from '../ai-gateway/llm/llm-client.js';
 
@@ -143,6 +144,8 @@ export class ToolDispatcher {
     const booking = await this.bookings.bookLesson(
       { tutorId, subjectId, startTime: new Date(startTime) },
       studentId,
+      undefined,
+      BookingSource.ASSISTANT,
     );
     return {
       id: booking.id,

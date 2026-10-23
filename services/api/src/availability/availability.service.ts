@@ -94,9 +94,19 @@ export class AvailabilityService {
       throw new EntityNotFoundError('Tutor', tutorId);
     }
 
-    // Only un-cancelled bookings consume availability.
+    // Only un-cancelled bookings consume availability, and only those near
+    // this day matter. `date` is in the tutor's timezone (up to ±14 h from
+    // UTC) and buffers reach past midnight, so look one day either side.
+    // Without the window this loaded every active booking the tutor ever had.
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
     const bookings = await this.prisma.booking.findMany({
-      where: { tutorId, status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] } },
+      where: {
+        tutorId,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        startTime: { lt: new Date(dayStart.getTime() + 2 * DAY_MS) },
+        endTime: { gt: new Date(dayStart.getTime() - DAY_MS) },
+      },
+      select: { startTime: true, endTime: true },
     });
     const existingBookings: BookingInterval[] = bookings.map((booking) => ({
       start: booking.startTime.toISOString(),

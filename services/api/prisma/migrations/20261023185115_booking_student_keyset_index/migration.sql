@@ -1,0 +1,19 @@
+-- Replace (studentId, startTime) with (studentId, startTime, id) — the exact
+-- ORDER BY of myBookingsConnection — without blocking writes
+-- (FRESHA_DEPTH_SPEC Block 6, docs/QUERY_PERFORMANCE.md). Step 1 of 2: build
+-- the new index; the next migration drops the old one, so student queries
+-- always have an index to use.
+--
+-- A plain CREATE INDEX holds a lock that blocks every INSERT/UPDATE/DELETE on
+-- "Booking" for the whole build. CONCURRENTLY builds it while writes continue
+-- (it scans the table twice and waits for transactions already running).
+--
+-- CONCURRENTLY can't run inside a transaction block. Checked by experiment on
+-- Prisma 7.8: `migrate deploy` runs a file's statements one by one, but
+-- `migrate dev` replays a multi-statement file into its shadow database inside
+-- one transaction and fails with 25001. A file with a SINGLE statement works
+-- for both — so: one concurrent statement per migration file (and no SET
+-- lock_timeout here: a second statement would bring the transaction back).
+-- If a concurrent build fails it leaves an INVALID index, which IF NOT EXISTS
+-- would then skip: drop the invalid index and re-run.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "Booking_studentId_startTime_id_idx" ON "Booking" ("studentId", "startTime", "id");

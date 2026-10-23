@@ -6,6 +6,7 @@ import {
 } from '../common/errors.js';
 import { isExclusionViolation, isUniqueViolation } from '../common/prisma-errors.js';
 import {
+  BookingSource,
   BookingStatus,
   type Booking,
   type Prisma,
@@ -72,6 +73,7 @@ function bookingFromJson(json: Prisma.JsonValue): Booking {
     endTime: new Date(stored.endTime),
     status: stored.status,
     version: stored.version,
+    source: stored.source,
     createdAt: new Date(stored.createdAt),
     updatedAt: new Date(stored.updatedAt),
   };
@@ -146,8 +148,13 @@ export class BookingService {
   /**
    * Create a PENDING booking. With `idempotency`, a retry carrying the same key
    * and body gets the first booking back instead of creating a second one.
+   * `source` records where it was made (web, mobile, dashboard, assistant).
    */
-  async create(dto: CreateBookingDto, idempotency?: IdempotencyKeyInput): Promise<Booking> {
+  async create(
+    dto: CreateBookingDto,
+    idempotency?: IdempotencyKeyInput,
+    source: BookingSource = BookingSource.WEB,
+  ): Promise<Booking> {
     // Validate references up-front so callers get a clean 404 rather than a
     // raw foreign-key error.
     const [tutor, student, subject] = await Promise.all([
@@ -175,6 +182,7 @@ export class BookingService {
               subjectId: dto.subjectId,
               startTime,
               endTime,
+              source,
             },
           });
           await recordBookingEvent(db, 'BookingCreated', booking);
@@ -317,7 +325,12 @@ export class BookingService {
    * Student-facing booking: derives a fixed-length end and sets PENDING.
    * `idempotencyKey` (optional) makes a retried request return the first booking.
    */
-  bookLesson(input: BookInput, studentId: string, idempotencyKey?: string): Promise<Booking> {
+  bookLesson(
+    input: BookInput,
+    studentId: string,
+    idempotencyKey?: string,
+    source: BookingSource = BookingSource.WEB,
+  ): Promise<Booking> {
     const start = input.startTime;
     const end = new Date(start.getTime() + SLOT_MINUTES * MS_PER_MINUTE);
     return this.create(
@@ -331,6 +344,7 @@ export class BookingService {
       idempotencyKey === undefined
         ? undefined
         : { key: idempotencyKey, principal: studentPrincipal(studentId) },
+      source,
     );
   }
 
@@ -450,6 +464,7 @@ export class BookingService {
           startTime,
           endTime: new Date(startTime.getTime() + SLOT_MINUTES * MS_PER_MINUTE),
           status: BookingStatus.CONFIRMED,
+          source: BookingSource.DASHBOARD,
         },
       });
       await recordBookingEvent(tx, 'BookingCreated', created);

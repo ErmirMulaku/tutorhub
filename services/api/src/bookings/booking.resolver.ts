@@ -13,7 +13,7 @@ import {
 import type { AuthUser } from '../auth/auth-user.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { BookingStatus } from '../generated/prisma/client.js';
+import { BookingSource, BookingStatus } from '../generated/prisma/client.js';
 import type { Booking, Review, Student, Subject, Tutor } from '../generated/prisma/client.js';
 import type { Loaders } from '../graphql/loaders.js';
 import { AvailabilityService } from '../availability/availability.service.js';
@@ -30,6 +30,14 @@ import { TutorModel } from '../graphql/models/tutor.model.js';
 import { BookingService, DEFAULT_PAGE_SIZE, type BookingPage } from './booking.service.js';
 import { SlotUnavailableError } from './booking.errors.js';
 import { BookInput } from './dto/book-input.js';
+
+/**
+ * Which app made the request. The mobile app identifies itself with an
+ * `X-Client: mobile` header; anything else (marketplace, GraphiQL) is web.
+ */
+function sourceOf(req: { headers?: Record<string, unknown> } | undefined): BookingSource {
+  return req?.headers?.['x-client'] === 'mobile' ? BookingSource.MOBILE : BookingSource.WEB;
+}
 
 @Resolver(() => BookingModel)
 export class BookingResolver {
@@ -75,8 +83,9 @@ export class BookingResolver {
   bookLesson(
     @CurrentUser() user: AuthUser,
     @Args('input', { type: () => BookInput }) input: BookInput,
+    @Context('req') req: { headers?: Record<string, unknown> } | undefined,
   ): Promise<Booking> {
-    return this.bookings.bookLesson(input, user.studentId, input.idempotencyKey);
+    return this.bookings.bookLesson(input, user.studentId, input.idempotencyKey, sourceOf(req));
   }
 
   /**
@@ -89,9 +98,15 @@ export class BookingResolver {
   async bookLessonV2(
     @CurrentUser() user: AuthUser,
     @Args('input', { type: () => BookInput }) input: BookInput,
+    @Context('req') req: { headers?: Record<string, unknown> } | undefined,
   ): Promise<{ booking: Booking } | SlotUnavailableModel> {
     try {
-      const booking = await this.bookings.bookLesson(input, user.studentId, input.idempotencyKey);
+      const booking = await this.bookings.bookLesson(
+        input,
+        user.studentId,
+        input.idempotencyKey,
+        sourceOf(req),
+      );
       return { booking };
     } catch (error) {
       if (!(error instanceof SlotUnavailableError)) throw error;

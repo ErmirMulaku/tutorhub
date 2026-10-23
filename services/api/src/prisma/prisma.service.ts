@@ -12,7 +12,13 @@ import { PrismaClient } from '../generated/prisma/client.js';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(ConfigService) config: ConfigService) {
     super({
-      adapter: new PrismaPg({ connectionString: config.getOrThrow<string>('DATABASE_URL') }),
+      adapter: new PrismaPg({
+        connectionString: config.getOrThrow<string>('DATABASE_URL'),
+        // Connections this instance may open (node-postgres default: 10).
+        // instances × this must stay below Postgres max_connections — see
+        // docs/operations.md "Connection pool math".
+        max: Number(config.get<string>('DATABASE_POOL_SIZE') ?? 10),
+      }),
     });
   }
 
