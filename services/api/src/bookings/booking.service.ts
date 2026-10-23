@@ -4,12 +4,17 @@ import {
   ConflictDomainError,
   EntityNotFoundError,
 } from '../common/errors.js';
-import { isUniqueViolation } from '../common/prisma-errors.js';
-import { BookingStatus, type Booking, type Review } from '../generated/prisma/client.js';
+import { isExclusionViolation, isUniqueViolation } from '../common/prisma-errors.js';
+import {
+  BookingStatus,
+  type Booking,
+  type Prisma,
+  type Review,
+} from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BookingEvents } from './booking-events.js';
 import { assertCanTransition } from './booking-status.js';
-import { InvalidBookingTransitionError } from './booking.errors.js';
+import { InvalidBookingTransitionError, SlotUnavailableError } from './booking.errors.js';
 import type { BookInput } from './dto/book-input.js';
 import type { CreateBookingDto } from './dto/create-booking.dto.js';
 
@@ -35,6 +40,43 @@ export class BookingService {
     private readonly events: BookingEvents,
   ) {}
 
+  /**
+   * Runs a write that takes a time slot (insert or reschedule).
+   *
+   * The guarantee is the database's EXCLUDE constraint: an overlapping booking
+   * for the same tutor or student is refused, and we turn that refusal into a
+   * {@link SlotUnavailableError} that says who is busy.
+   *
+   * The advisory locks are for *orderly* contention, not correctness. Without
+   * them, a burst of clashing inserts makes Postgres deadlock (each EXCLUDE
+   * check waits for the other's uncommitted row) and abort them one by one
+   * after `deadlock_timeout` (1s). With them, writers for the same tutor or
+   * student queue up, and each one after the winner sees its committed row
+   * and gets a clean "slot taken". Locks are taken in sorted order so two
+   * writers can never wait for each other; they are released at commit.
+   */
+  private async takeSlot<T>(
+    who: { tutorId: string; studentId: string },
+    write: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        for (const id of [who.tutorId, who.studentId].sort()) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))`;
+        }
+        return write(tx);
+      });
+    } catch (error) {
+      if (isExclusionViolation(error, 'booking_no_tutor_overlap')) {
+        throw new SlotUnavailableError('tutor');
+      }
+      if (isExclusionViolation(error, 'booking_no_student_overlap')) {
+        throw new SlotUnavailableError('student');
+      }
+      throw error;
+    }
+  }
+
   async create(dto: CreateBookingDto): Promise<Booking> {
     // Validate references up-front so callers get a clean 404 rather than a
     // raw foreign-key error.
@@ -46,16 +88,23 @@ export class BookingService {
     if (tutor === null) throw new EntityNotFoundError('Tutor', dto.tutorId);
     if (student === null) throw new EntityNotFoundError('Student', dto.studentId);
     if (subject === null) throw new EntityNotFoundError('Subject', dto.subjectId);
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+    if (endTime <= startTime) {
+      throw new BadRequestDomainError('endTime must be after startTime.');
+    }
 
-    const booking = await this.prisma.booking.create({
-      data: {
-        tutorId: dto.tutorId,
-        studentId: dto.studentId,
-        subjectId: dto.subjectId,
-        startTime: new Date(dto.startTime),
-        endTime: new Date(dto.endTime),
-      },
-    });
+    const booking = await this.takeSlot(dto, (tx) =>
+      tx.booking.create({
+        data: {
+          tutorId: dto.tutorId,
+          studentId: dto.studentId,
+          subjectId: dto.subjectId,
+          startTime,
+          endTime,
+        },
+      }),
+    );
     this.events.emit(booking);
     return booking;
   }
@@ -132,14 +181,16 @@ export class BookingService {
     // Optimistic lock: only write if nobody has touched the row since we read
     // it (every write bumps `version`). Otherwise a tutor's cancel that landed
     // in between would be silently overwritten by our stale copy.
-    const { count } = await this.prisma.booking.updateMany({
-      where: { id, version: booking.version },
-      data: {
-        startTime,
-        endTime: new Date(startTime.getTime() + duration),
-        version: { increment: 1 },
-      },
-    });
+    const { count } = await this.takeSlot(booking, (tx) =>
+      tx.booking.updateMany({
+        where: { id, version: booking.version },
+        data: {
+          startTime,
+          endTime: new Date(startTime.getTime() + duration),
+          version: { increment: 1 },
+        },
+      }),
+    );
     if (count === 0) {
       throw new ConflictDomainError(CHANGED_BY_SOMEONE_ELSE);
     }
@@ -222,16 +273,18 @@ export class BookingService {
     if (subject === null || subject.tutorId !== tutorId) {
       throw new EntityNotFoundError('Subject', subjectId);
     }
-    const booking = await this.prisma.booking.create({
-      data: {
-        tutorId,
-        studentId,
-        subjectId,
-        startTime,
-        endTime: new Date(startTime.getTime() + SLOT_MINUTES * MS_PER_MINUTE),
-        status: BookingStatus.CONFIRMED,
-      },
-    });
+    const booking = await this.takeSlot({ tutorId, studentId }, (tx) =>
+      tx.booking.create({
+        data: {
+          tutorId,
+          studentId,
+          subjectId,
+          startTime,
+          endTime: new Date(startTime.getTime() + SLOT_MINUTES * MS_PER_MINUTE),
+          status: BookingStatus.CONFIRMED,
+        },
+      }),
+    );
     this.events.emit(booking);
     return booking;
   }
