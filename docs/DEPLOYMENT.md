@@ -10,9 +10,10 @@
                          │ (Docker image from ECR)   │      │  (e.g. RDS)  │
                          └──────────▲────────────────┘      └──────────────┘
                                     │
-                         ┌──────────┴────────────────┐
-                         │ Vercel · dashboard        │  static SPA
-                         └───────────────────────────┘
+                         ┌──────────┴────────────────┐ runtime ┌───────────────────────────┐
+                         │ Vercel · dashboard        │────────▶│ Vercel · dashboard-reviews│
+                         │ static SPA (shell)        │ import  │ /reviews micro frontend   │
+                         └───────────────────────────┘         └───────────────────────────┘
                                     ▲
                          Stripe ────┘  webhook → https://<api>/stripe/webhook
 ```
@@ -25,20 +26,21 @@ ECR**; the front-ends are Next.js/SPA builds on **Vercel**.
 
 ## How it ships (CI/CD)
 
-Four GitHub Actions workflows in `.github/workflows/`, each triggered by a push to
+Five GitHub Actions workflows in `.github/workflows/`, each triggered by a push to
 `master` that touches the relevant paths (plus manual `workflow_dispatch`):
 
-| Workflow                 | Target                   | What it does                                                                                                                                                                                                |
-| ------------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deploy-api.yml`         | AWS App Runner (via ECR) | Builds `services/api/Dockerfile` (context = repo root, `linux/amd64`), pushes to ECR (`:<sha>` + `:latest`), runs `aws apprunner start-deployment`, polls the operation, then smoke-checks `POST /graphql`. |
-| `deploy-marketplace.yml` | Vercel (marketplace)     | `vercel deploy --prod` for the marketplace project.                                                                                                                                                         |
-| `deploy-dashboard.yml`   | Vercel (dashboard)       | `vercel deploy --prod` for the dashboard project.                                                                                                                                                           |
-| `deploy-storybook.yml`   | Vercel (Storybook)       | `vercel deploy --prod` for the `@ermulaku/ui` Storybook static build.                                                                                                                                       |
+| Workflow                       | Target                   | What it does                                                                                                                                                                                                |
+| ------------------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy-api.yml`               | AWS App Runner (via ECR) | Builds `services/api/Dockerfile` (context = repo root, `linux/amd64`), pushes to ECR (`:<sha>` + `:latest`), runs `aws apprunner start-deployment`, polls the operation, then smoke-checks `POST /graphql`. |
+| `deploy-marketplace.yml`       | Vercel (marketplace)     | `vercel deploy --prod` for the marketplace project.                                                                                                                                                         |
+| `deploy-dashboard.yml`         | Vercel (dashboard)       | `vercel deploy --prod` for the dashboard project.                                                                                                                                                           |
+| `deploy-dashboard-reviews.yml` | Vercel (Reviews remote)  | `vercel deploy --prod` for the Reviews micro frontend, independently of the dashboard (see `docs/MICRO_FRONTENDS.md`).                                                                                      |
+| `deploy-storybook.yml`         | Vercel (Storybook)       | `vercel deploy --prod` for the `@ermulaku/ui` Storybook static build.                                                                                                                                       |
 
 The API workflow authenticates to AWS with **GitHub OIDC** — it assumes an IAM role,
 so there are **no long-lived AWS keys** in GitHub.
 
-⚠️ **Disable Vercel's own Git integration** for all three Vercel projects, or every
+⚠️ **Disable Vercel's own Git integration** for all four Vercel projects, or every
 merge deploys twice (once from Vercel's git hook, once from the workflow). Project
 Settings → Git → disconnect, or set `"git": { "deploymentEnabled": false }` in the
 project's `vercel.json`.
@@ -77,20 +79,21 @@ group and use strong credentials. Migrations are a manual release step (see §4)
 
 ### Vercel (front-ends + Storybook)
 
-Three Vercel projects from this repo, each with a different **Root Directory**
-(`apps/marketplace`, `apps/dashboard-ng`, `packages/ui`) and **Node.js 22.x** (Next 16
+Four Vercel projects from this repo, each with a different **Root Directory**
+(`apps/marketplace`, `apps/dashboard-ng`, `apps/dashboard-reviews`, `packages/ui`) and **Node.js 22.x** (Next 16
 fails on Node 18; Angular 22 needs **22.22.3 or newer** — if Vercel's 22.x is older, the
 dashboard build says so and the project's Node.js Version must go to 24.x). Each project's `vercel.json` already sets the install/build
 commands (they `cd` to the repo root so npm workspaces + Nx resolve). GitHub config
 the Vercel workflows expect:
 
-| Kind     | Name                            |
-| -------- | ------------------------------- |
-| secret   | `VERCEL_TOKEN`                  |
-| variable | `VERCEL_ORG_ID`                 |
-| variable | `VERCEL_PROJECT_ID_MARKETPLACE` |
-| variable | `VERCEL_PROJECT_ID_DASHBOARD`   |
-| variable | `VERCEL_PROJECT_ID_STORYBOOK`   |
+| Kind     | Name                                  |
+| -------- | ------------------------------------- |
+| secret   | `VERCEL_TOKEN`                        |
+| variable | `VERCEL_ORG_ID`                       |
+| variable | `VERCEL_PROJECT_ID_MARKETPLACE`       |
+| variable | `VERCEL_PROJECT_ID_DASHBOARD`         |
+| variable | `VERCEL_PROJECT_ID_DASHBOARD_REVIEWS` |
+| variable | `VERCEL_PROJECT_ID_STORYBOOK`         |
 
 ---
 
@@ -136,13 +139,51 @@ an env edit + redeploy is enough. Without it, the "Become a tutor" links fall ba
 **dashboard** — Root Directory `apps/dashboard-ng` (Angular; it was `apps/dashboard`, the React
 app, until the cutover — see the runbook in `docs/DASHBOARD_ANGULAR_MIGRATION.md` §9)
 
-| Env var   | Value                              |
-| --------- | ---------------------------------- |
-| `API_URL` | `https://<app-runner-service-url>` |
+| Env var              | Value                                                                 |
+| -------------------- | --------------------------------------------------------------------- |
+| `API_URL`            | `https://<app-runner-service-url>`                                    |
+| `REVIEWS_REMOTE_URL` | `https://<dashboard-reviews>` — the Reviews remote's origin (no path) |
 
 ⚠️ The dashboard inlines `API_URL` at **build time** (the Angular builder's `define`).
 Changing it requires a **redeploy**, not just an env edit. The build **fails** when `API_URL` is
 unset rather than shipping `http://localhost:4000`.
+
+`REVIEWS_REMOTE_URL` is not compiled in: after the build,
+`apps/dashboard-ng/scripts/write-federation-manifest.mjs` writes it into
+`federation.manifest.json` (served with `no-cache`), which the dashboard reads at
+startup. The build **fails** when it is unset. Deploying a new Reviews remote needs
+nothing here; only moving it to another URL means editing this and redeploying the
+dashboard.
+
+**dashboard-reviews** — Root Directory `apps/dashboard-reviews` (the `/reviews`
+micro frontend, a Native Federation remote; see `docs/MICRO_FRONTENDS.md`). No env
+vars: inside the dashboard it uses the dashboard's API URL. Its `vercel.json` sends
+`Access-Control-Allow-Origin: *` (the dashboard is another origin) and `no-cache` on
+`remoteEntry.json`; the content-hashed JS is cached immutably.
+
+#### First deploy of the Reviews remote (manual, once)
+
+1. **Vercel → Add New → Project**, import this repo, name it e.g.
+   `tutorhub-dashboard-reviews`. **Root Directory** `apps/dashboard-reviews`,
+   Framework Preset **Other** (the build/install commands come from `vercel.json`),
+   **Node.js Version** 22.x (≥ 22.22.3, as for the dashboard) or 24.x.
+2. **Settings → Git** → disconnect (or add `"git": { "deploymentEnabled": false }`
+   to its `vercel.json`) so only the workflow deploys it.
+3. Note the **Project ID** (Settings → General) → GitHub **repo variable**
+   `VERCEL_PROJECT_ID_DASHBOARD_REVIEWS`. (`VERCEL_TOKEN` / `VERCEL_ORG_ID` are
+   already set for the other projects.)
+4. Run **Actions → Deploy Dashboard Reviews → Run workflow** (or merge a change
+   under `apps/dashboard-reviews/`). Check that
+   `https://<dashboard-reviews>/remoteEntry.json` answers with JSON and an
+   `access-control-allow-origin: *` header. If Deployment Protection is on for
+   production, turn it off for this project — the dashboard's visitors must be
+   able to fetch these files.
+5. In the **dashboard** project → Environment Variables, add `REVIEWS_REMOTE_URL` =
+   `https://<dashboard-reviews>` (Production, and Preview if previews should load
+   it), then redeploy the dashboard once (Actions → Deploy Dashboard → Run
+   workflow). Its build fails until this variable exists.
+6. Open `https://<dashboard>/reviews` signed in: DevTools → Network shows
+   `remoteEntry.json` and `routes-*.js` from the remote's domain.
 
 > The App Runner **service URL** (`aws apprunner describe-service … Service.ServiceUrl`)
 > has no scheme — use `https://<ServiceUrl>` (or a custom domain) for `API_URL`.

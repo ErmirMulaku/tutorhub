@@ -89,22 +89,29 @@
           },
           "configurations": {
             "production": {
+              // Tightened for Native Federation, not loosened. Angular, NgRx,
+              // RxJS and the kit are now shared bundles that the federation
+              // build writes beside this build's output, so these budgets no
+              // longer count them (initial 359 → 185 kB, shell-routes 75 → 28 kB
+              // on the same code); the old limits would have allowed the app's
+              // own code to double unnoticed. The shared bundles have no budget
+              // here — their size is measured in docs/MICRO_FRONTENDS.md.
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "380kB",
-                  "maximumError": "420kB"
+                  "maximumWarning": "200kB",
+                  "maximumError": "230kB"
                 },
                 {
                   "type": "allScript",
-                  "maximumWarning": "600kB",
-                  "maximumError": "700kB"
+                  "maximumWarning": "430kB",
+                  "maximumError": "500kB"
                 },
                 {
                   "type": "bundle",
                   "name": "shell-routes",
-                  "maximumWarning": "85kB",
-                  "maximumError": "100kB"
+                  "maximumWarning": "35kB",
+                  "maximumError": "45kB"
                 },
                 {
                   "type": "anyComponentStyle",

@@ -85,11 +85,15 @@
           },
           "configurations": {
             "production": {
+              // The initial bundle is standalone mode only (the federation
+              // runtime, es-module-shims and the borrowed dashboard styles);
+              // inside the dashboard only the exposed ./routes module and
+              // remoteEntry.json are fetched from this app.
               "budgets": [
                 {
                   "type": "initial",
                   "maximumWarning": "200kB",
-                  "maximumError": "260kB"
+                  "maximumError": "230kB"
                 },
                 {
                   "type": "anyComponentStyle",
