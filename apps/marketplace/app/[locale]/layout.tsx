@@ -80,7 +80,7 @@ export default async function LocaleLayout({
   // inline script below covers first visits (system preference) before paint.
   const themeCookie = (await cookies()).get('th_theme')?.value;
   const themeScript =
-    "(function(){try{var m=document.cookie.match(/(?:^|; )th_theme=(dark|light)/);" +
+    '(function(){try{var m=document.cookie.match(/(?:^|; )th_theme=(dark|light)/);' +
     "var t=m?m[1]:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');" +
     "if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();";
 
@@ -95,10 +95,14 @@ export default async function LocaleLayout({
       // hydration; that's an intentional pre-paint mutation, not a bug.
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body>
+        {/* First in <body>, not in <head>: it still runs before anything below
+            it is parsed or painted, so there's no flash. In <head> it was the
+            only node React had to hydrate there, so anything injected ahead of
+            it (Cypress's bootstrap script, browser extensions) broke hydration
+            (React #418); React skips injected nodes in a <head> it renders
+            nothing into. */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ServiceWorkerRegister />
         <Header
           locale={locale}
