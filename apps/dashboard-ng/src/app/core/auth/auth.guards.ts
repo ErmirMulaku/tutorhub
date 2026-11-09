@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, Router } from '@angular/router';
+import { authFeature } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { catchError, map, of } from 'rxjs';
 import { ProfileService } from '../api/profile.service';
-import { authFeature } from './auth.store';
 
 /**
  * Port of AppShell's `if (token === null) return <Navigate to="/login" />`:

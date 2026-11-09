@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import { CacheTags, GraphqlClient } from '@ermulaku/dashboard-kit';
 import type { BookingStatus } from '@ermulaku/types';
 import { type Observable, map, tap } from 'rxjs';
-import { CacheTags } from './cache-tags';
-import { GraphqlClient } from './graphql-client';
 import type {
   CreateLessonInput,
   StudentRef,

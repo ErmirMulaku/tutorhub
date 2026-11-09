@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
+import { CacheTags, GraphqlClient } from '@ermulaku/dashboard-kit';
 import { type Observable, map, tap } from 'rxjs';
-import { CacheTags } from './cache-tags';
-import { GraphqlClient } from './graphql-client';
 import type { CreatePromotionInput, MarketingSummary, Promotion, ReferralProgram } from './models';
 
 /** Promotions, referrals and gift-card stats. Documents copied from api.ts. */

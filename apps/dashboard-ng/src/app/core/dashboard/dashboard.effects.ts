@@ -1,8 +1,8 @@
 import { inject } from '@angular/core';
+import { errorMessage } from '@ermulaku/dashboard-kit';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, map, of, switchMap } from 'rxjs';
 import { DashboardApi } from '../api/dashboard-api';
-import { errorMessage } from '../api/errors';
 import { ProfileService } from '../api/profile.service';
 import { DashboardActions } from './dashboard.store';
 

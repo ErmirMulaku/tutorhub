@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { ToastService } from './toast';
+import { ToastService } from '@ermulaku/dashboard-kit';
 
 /** Port of components/CodeChip.tsx — a dashed promo-code chip that copies on click. */
 @Component({

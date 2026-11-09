@@ -1,11 +1,9 @@
 import { inject } from '@angular/core';
+import { CacheTags, errorMessage, ToastService } from '@ermulaku/dashboard-kit';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, map, mergeMap, of, switchMap, tap } from 'rxjs';
 import { BookingsApi, type BookingTransition } from '../api/bookings-api';
-import { CacheTags } from '../api/cache-tags';
-import { errorMessage } from '../api/errors';
 import { UiActions } from '../ui/ui.store';
-import { ToastService } from '../../shared/toast';
 import { BookingsActions } from './bookings.store';
 
 /**

@@ -15,14 +15,12 @@ import {
   type ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { Button, errorMessage, ToastService } from '@ermulaku/dashboard-kit';
 import { filter, finalize } from 'rxjs';
-import { errorMessage } from '../../core/api/errors';
 import { MarketingApi } from '../../core/api/marketing-api';
 import type { DiscountType } from '../../core/api/models';
-import { Button } from '../../shared/button';
 import { FieldError } from '../../shared/field-error';
 import { Modal } from '../../shared/modal';
-import { ToastService } from '../../shared/toast';
 
 /** A percentage discount can't go above 100; a fixed amount has no upper bound. */
 function percentAtMost100(group: AbstractControl): ValidationErrors | null {

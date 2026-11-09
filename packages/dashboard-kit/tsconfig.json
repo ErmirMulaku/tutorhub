@@ -1,0 +1,34 @@
+/*
+ * The kit is consumed as TypeScript source (tsconfig.base.json maps
+ * @ermulaku/dashboard-kit to src/index.ts) and compiled by each app's Angular
+ * build, so it has no build step of its own. This config only type-checks it,
+ * with the same compiler and template options as the dashboard.
+ *
+ * Like the dashboard's, this covers specs too (Jasmine types) so the root
+ * ESLint `projectService` can type-check every file; tsconfig.lib.json is the
+ * spec-free program that `ngc` checks templates in.
+ */
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": ["jasmine"]
+  },
+  "angularCompilerOptions": {
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true,
+    "typeCheckHostBindings": true
+  },
+  "include": ["src/**/*.ts"]
+}

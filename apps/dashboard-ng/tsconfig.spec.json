@@ -1,8 +1,17 @@
-/* Unit tests (Jasmine on Karma). Only jasmine's globals — never the root @types/jest. */
+/*
+ * Unit tests (Jasmine on Karma). Only jasmine's globals — never the root @types/jest.
+ * Also compiles @ermulaku/dashboard-kit's specs: the kit has no Angular build of
+ * its own, so its specs run in this Karma run (angular.json `test.include`).
+ */
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["jasmine"]
   },
-  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/test-setup.ts"]
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.spec.ts",
+    "src/test-setup.ts",
+    "../../packages/dashboard-kit/src/**/*.spec.ts"
+  ]
 }

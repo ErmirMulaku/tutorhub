@@ -1,5 +1,5 @@
+import { AuthActions } from '@ermulaku/dashboard-kit';
 import type { ActionReducer } from '@ngrx/store';
-import { AuthActions } from './auth.store';
 
 /** Store slices that belong to the session itself and survive an account switch. */
 const KEEP = ['auth', 'ui'] as const;

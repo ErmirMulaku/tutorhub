@@ -21,6 +21,7 @@
     "@angular/forms": "22.2.3",
     "@angular/platform-browser": "22.2.3",
     "@angular/router": "22.2.3",
+    "@ermulaku/dashboard-kit": "*",
     "@ermulaku/types": "*",
     "@ngrx/effects": "22.0.1",
     "@ngrx/entity": "22.0.1",
@@ -54,6 +55,12 @@
           {
             "env": "API_URL"
           }
+        ]
+      },
+      "test": {
+        "inputs": [
+          "default",
+          "^default"
         ]
       }
     }

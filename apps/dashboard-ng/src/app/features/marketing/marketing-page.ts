@@ -8,17 +8,19 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
+import {
+  Button,
+  cachedQuery,
+  Card,
+  errorMessage,
+  ErrorState,
+  money,
+  Skeleton,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { MarketingApi } from '../../core/api/marketing-api';
 import type { Promotion, PromotionState } from '../../core/api/models';
-import { money } from '../../core/format';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
 import { CodeChip } from '../../shared/code-chip';
-import { ErrorState } from '../../shared/error-state';
-import { Skeleton } from '../../shared/skeleton';
-import { ToastService } from '../../shared/toast';
 import { NewPromotionModal } from './new-promotion-modal';
 
 const STATE_TONE: Record<PromotionState, string> = {

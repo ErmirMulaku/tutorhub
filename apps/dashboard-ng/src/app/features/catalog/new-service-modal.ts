@@ -9,15 +9,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Button, errorMessage, ToastService } from '@ermulaku/dashboard-kit';
 import type { Level } from '@ermulaku/types';
 import { finalize } from 'rxjs';
 import { CatalogApi } from '../../core/api/catalog-api';
-import { errorMessage } from '../../core/api/errors';
 import type { ServiceType } from '../../core/api/models';
-import { Button } from '../../shared/button';
 import { FieldError } from '../../shared/field-error';
 import { Modal } from '../../shared/modal';
-import { ToastService } from '../../shared/toast';
 
 /**
  * Port of features/catalog/NewServiceModal.tsx — shared by the Catalog screen

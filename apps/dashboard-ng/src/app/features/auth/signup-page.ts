@@ -2,11 +2,10 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AuthActions, Button } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { AuthApiService } from '../../core/auth/auth-api.service';
-import { AuthActions } from '../../core/auth/auth.store';
 import { isValidEmail, passwordError } from '../../core/validation';
-import { Button } from '../../shared/button';
 import { VerifyPanel, type VerifiedSession } from './verify-panel';
 
 /** Port of features/auth/RegisterScreen.tsx. */

@@ -1,9 +1,11 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { createAction } from '@ngrx/store';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { Subject } from 'rxjs';
-import { UiActions } from '../ui/ui.store';
 import { CacheTags, cachedQuery, loadOnTags } from './cache-tags';
+
+const reload = createAction('[Test] Reload');
 
 describe('CacheTags', () => {
   it('emits only for the tags a listener asked about', () => {
@@ -99,7 +101,7 @@ describe('cachedQuery (the RTK Query hook stand-in)', () => {
 @Component({ template: '' })
 class StoreHost {
   constructor() {
-    loadOnTags(['Notifications'], () => UiActions.setOnline({ online: true }));
+    loadOnTags(['Notifications'], reload);
   }
 }
 

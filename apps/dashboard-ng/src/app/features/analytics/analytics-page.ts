@@ -1,11 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { cachedQuery, Card, ErrorState, Skeleton } from '@ermulaku/dashboard-kit';
 import { AnalyticsApi } from '../../core/api/analytics-api';
-import { cachedQuery } from '../../core/api/cache-tags';
 import { type AreaPoint, AreaChart } from '../../shared/area-chart';
 import { type Bar, BarChart } from '../../shared/bar-chart';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { Skeleton } from '../../shared/skeleton';
 
 /** Port of features/analytics/AnalyticsScreen.tsx — KPIs, trend, top subjects, weekday load, mix. */
 @Component({

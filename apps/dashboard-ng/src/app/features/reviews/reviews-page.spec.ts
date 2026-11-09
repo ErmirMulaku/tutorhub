@@ -1,9 +1,8 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { GraphqlError, ToastService } from '@ermulaku/dashboard-kit';
 import { Subject, of, throwError } from 'rxjs';
-import { GraphqlError } from '../../core/api/graphql-client';
 import type { TutorReview } from '../../core/api/models';
 import { ReviewsApi } from '../../core/api/reviews-api';
-import { ToastService } from '../../shared/toast';
 import { ReviewCard } from './reviews-page';
 
 const review = (overrides: Partial<TutorReview> = {}): TutorReview => ({

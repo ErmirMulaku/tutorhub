@@ -1,19 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import {
+  Avatar,
+  Button,
+  cachedQuery,
+  Card,
+  ErrorState,
+  loadOnTags,
+  money,
+  Skeleton,
+  StarRating,
+  timeOf,
+} from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { ReviewsApi } from '../../core/api/reviews-api';
-import { cachedQuery, loadOnTags } from '../../core/api/cache-tags';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
 import { DashboardActions, dashboardFeature } from '../../core/dashboard/dashboard.store';
-import { money, timeOf } from '../../core/format';
-import { Avatar } from '../../shared/avatar';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
 import type { IconName } from '../../shared/icon';
 import { KPI_CARD_HEIGHT, type KpiDelta, KpiStat } from '../../shared/kpi-stat';
-import { Skeleton } from '../../shared/skeleton';
-import { StarRating } from '../../shared/star-rating';
 import { StatusPill } from '../../shared/status-pill';
 
 const BANNER_KEY = 'th_setup_dismissed';

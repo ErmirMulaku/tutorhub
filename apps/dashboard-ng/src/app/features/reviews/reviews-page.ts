@@ -8,20 +8,23 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Avatar,
+  Button,
+  cachedQuery,
+  Card,
+  dayOf,
+  errorMessage,
+  ErrorState,
+  type Segment,
+  SegmentedTabs,
+  Skeleton,
+  StarRating,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { finalize } from 'rxjs';
-import { cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
 import type { ReviewFilter, TutorReview } from '../../core/api/models';
 import { ReviewsApi } from '../../core/api/reviews-api';
-import { dayOf } from '../../core/format';
-import { Avatar } from '../../shared/avatar';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
-import { Skeleton } from '../../shared/skeleton';
-import { StarRating } from '../../shared/star-rating';
-import { ToastService } from '../../shared/toast';
 
 /**
  * One review with its reply, or a reply box (port of ReviewsScreen's

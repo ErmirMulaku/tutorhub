@@ -9,11 +9,11 @@ import {
   UrlTree,
   provideRouter,
 } from '@angular/router';
+import { authFeature } from '@ermulaku/dashboard-kit';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { type Observable, Subject, isObservable, of, throwError } from 'rxjs';
 import { ProfileService } from '../api/profile.service';
 import { authGuard, onboardingGuard } from './auth.guards';
-import { authFeature } from './auth.store';
 
 /** Run a functional guard the way the router does: inside an injection context. */
 function run(guard: CanActivateFn): MaybeAsync<GuardResult> {

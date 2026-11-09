@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, inject, signal } from '@angular/core';
+import { loadOnTags } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
-import { loadOnTags } from '../core/api/cache-tags';
 import { DashboardActions, dashboardFeature } from '../core/dashboard/dashboard.store';
 import { Icon } from '../shared/icon';
 

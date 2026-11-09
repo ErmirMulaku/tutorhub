@@ -101,7 +101,11 @@
             "runner": "karma",
             "tsConfig": "tsconfig.spec.json",
             "buildTarget": "dashboard-ng:build:test",
-            "include": ["test-setup.ts", "**/*.spec.ts"]
+            "include": [
+              "test-setup.ts",
+              "**/*.spec.ts",
+              "../../../packages/dashboard-kit/src/**/*.spec.ts"
+            ]
           }
         }
       }

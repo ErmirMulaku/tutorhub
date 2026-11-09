@@ -9,14 +9,11 @@ import {
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Button, cachedQuery, errorMessage, money } from '@ermulaku/dashboard-kit';
 import type { Level } from '@ermulaku/types';
 import { filter, finalize, take } from 'rxjs';
-import { cachedQuery } from '../../core/api/cache-tags';
 import { CatalogApi } from '../../core/api/catalog-api';
-import { errorMessage } from '../../core/api/errors';
 import { ProfileService } from '../../core/api/profile.service';
-import { money } from '../../core/format';
-import { Button } from '../../shared/button';
 import { FieldError } from '../../shared/field-error';
 import { WeeklyHoursEditor } from '../availability/weekly-hours-editor';
 import { NewServiceModal } from '../catalog/new-service-modal';

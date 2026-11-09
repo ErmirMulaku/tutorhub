@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
+import { GraphqlClient } from '@ermulaku/dashboard-kit';
 import { type Observable, map } from 'rxjs';
-import { GraphqlClient } from './graphql-client';
 import type { DashboardSummary, TutorNotification } from './models';
 
 /** KPI summary + the notifications feed. Documents copied from api.ts. */

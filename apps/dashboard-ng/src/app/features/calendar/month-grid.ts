@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { timeOf } from '@ermulaku/dashboard-kit';
 import type { TutorBooking } from '../../core/api/models';
-import { timeOf } from '../../core/format';
 import { daysFrom } from './calendar-range';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

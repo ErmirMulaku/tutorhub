@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Skeleton } from '@ermulaku/dashboard-kit';
 import { KPI_CARD_HEIGHT, KpiStat } from './kpi-stat';
-import { Skeleton } from './skeleton';
 
 @Component({
   imports: [KpiStat, Skeleton],

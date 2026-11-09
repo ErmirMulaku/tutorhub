@@ -1,9 +1,9 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastHost } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { uiFeature } from './core/ui/ui.store';
-import { ToastHost } from './shared/toast';
 
 /**
  * Root component: hosts the router and the toast stack, and reflects

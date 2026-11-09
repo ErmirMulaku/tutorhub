@@ -1,15 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import {
+  Button,
+  CacheTags,
+  Card,
+  ErrorState,
+  type Segment,
+  SegmentedTabs,
+  timeOf,
+} from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { combineLatest, distinctUntilChanged, map, startWith } from 'rxjs';
-import { CacheTags } from '../../core/api/cache-tags';
 import type { TutorBooking } from '../../core/api/models';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
-import { timeOf } from '../../core/format';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
 import {
   type CalendarView,
   END_HOUR,

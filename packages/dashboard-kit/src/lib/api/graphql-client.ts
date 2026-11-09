@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { type Observable, map } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../api-base-url';
 import { AuthActions } from '../auth/auth.store';
 
 export interface GraphqlErrorEntry {
@@ -38,10 +38,11 @@ export class GraphqlError extends Error {
 export class GraphqlClient {
   private readonly http = inject(HttpClient);
   private readonly store = inject(Store);
+  private readonly apiUrl = inject(API_BASE_URL);
 
   request<T>(document: string, variables: Record<string, unknown> = {}): Observable<T> {
     return this.http
-      .post<GraphqlBody<T>>(`${environment.apiUrl}/graphql`, { query: document, variables })
+      .post<GraphqlBody<T>>(`${this.apiUrl}/graphql`, { query: document, variables })
       .pipe(
         map((body) => {
           if (body.errors && body.errors.length > 0) {

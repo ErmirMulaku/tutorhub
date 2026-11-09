@@ -45,10 +45,10 @@ export default tseslint.config(
     },
   },
 
-  // Angular dashboard: angular-eslint on top of the shared TS rules, with inline
+  // Angular dashboard (and its shared kit): angular-eslint on top of the shared TS rules, with inline
   // templates extracted so the template rules below see them too.
   {
-    files: ['apps/dashboard-ng/**/*.ts'],
+    files: ['apps/dashboard-ng/**/*.ts', 'packages/dashboard-kit/**/*.ts'],
     extends: [...angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     rules: {
@@ -71,7 +71,7 @@ export default tseslint.config(
   // itself — nothing calls it unbound — so the rule only reports false
   // positives there.
   {
-    files: ['apps/dashboard-ng/**/*.spec.ts'],
+    files: ['apps/dashboard-ng/**/*.spec.ts', 'packages/dashboard-kit/**/*.spec.ts'],
     rules: { '@typescript-eslint/unbound-method': 'off' },
   },
   {

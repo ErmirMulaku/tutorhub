@@ -10,19 +10,22 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import {
+  authFeature,
+  Avatar,
+  cachedQuery,
+  CacheTags,
+  Card,
+  errorMessage,
+  ErrorState,
+  timeOf,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { EMPTY, catchError, exhaustMap, filter } from 'rxjs';
-import { CacheTags, cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
 import { MessagingApi } from '../../core/api/messaging-api';
 import type { Conversation } from '../../core/api/models';
-import { authFeature } from '../../core/auth/auth.store';
-import { timeOf } from '../../core/format';
 import { LiveSocketService } from '../../core/live/live-socket.service';
-import { Avatar } from '../../shared/avatar';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { ToastService } from '../../shared/toast';
 
 /**
  * Port of features/messages/MessagesScreen.tsx — thread list + conversation +
