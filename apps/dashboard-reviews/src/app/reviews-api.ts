@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { CacheTags, GraphqlClient } from '@ermulaku/dashboard-kit';
 import { type Observable, map, tap } from 'rxjs';
-import type { ReviewFilter, ReviewSummary, TutorReview } from './models';
+import type { ReviewFilter, ReviewSummary, TutorReview } from './review.models';
 
 /** Reviews and replies. Documents copied from api.ts. */
 @Injectable({ providedIn: 'root' })

@@ -1,8 +1,8 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { GraphqlError, ToastService } from '@ermulaku/dashboard-kit';
 import { Subject, of, throwError } from 'rxjs';
-import type { TutorReview } from '../../core/api/models';
-import { ReviewsApi } from '../../core/api/reviews-api';
+import type { TutorReview } from './review.models';
+import { ReviewsApi } from './reviews-api';
 import { ReviewCard } from './reviews-page';
 
 const review = (overrides: Partial<TutorReview> = {}): TutorReview => ({

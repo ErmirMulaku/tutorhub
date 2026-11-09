@@ -3,7 +3,7 @@
  * elements are inline by default, so these are made blocks here.
  *
  * Element selectors on purpose (specificity 0,0,1): any class a screen puts on
- * the host — `.chat` and `.rev-summary` (grid), `.svc` and `.earn__stat` (flex)
+ * the host — `.chat` (grid), `.svc` and `.earn__stat` (flex)
  * — still wins, exactly as on the React <div>. A component-level
  * `:host { display: block }` compiles to an attribute selector (0,1,0) that is
  * emitted after the global stylesheet, and it silently beat those classes.
@@ -11,7 +11,6 @@
 th-card,
 th-kpi-stat,
 th-service-card,
-th-promo-card,
-th-review-card {
+th-promo-card {
   display: block;
 }

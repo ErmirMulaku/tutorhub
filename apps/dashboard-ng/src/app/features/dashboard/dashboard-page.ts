@@ -13,7 +13,7 @@ import {
   timeOf,
 } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
-import { ReviewsApi } from '../../core/api/reviews-api';
+import { DashboardApi } from '../../core/api/dashboard-api';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
 import { DashboardActions, dashboardFeature } from '../../core/dashboard/dashboard.store';
 import type { IconName } from '../../shared/icon';
@@ -71,7 +71,7 @@ function readBannerDismissed(): boolean {
 })
 export class DashboardPage {
   private readonly store = inject(Store);
-  private readonly reviewsApi = inject(ReviewsApi);
+  private readonly dashboardApi = inject(DashboardApi);
 
   private readonly summary = this.store.selectSignal(dashboardFeature.selectSummary);
   protected readonly summaryError = this.store.selectSignal(dashboardFeature.selectSummaryError);
@@ -81,15 +81,17 @@ export class DashboardPage {
   protected readonly published = this.store.selectSignal(dashboardFeature.selectPublished);
   protected readonly today = this.store.selectSignal(bookingsFeature.selectToday);
 
-  private readonly reviews = cachedQuery({
+  // Tagged `Reviews`: a reply posted in the Reviews remote invalidates the
+  // shared CacheTags singleton, which reloads this card too.
+  private readonly latest = cachedQuery({
     tags: ['Reviews'],
-    load: () => this.reviewsApi.myReviews('all'),
+    load: () => this.dashboardApi.latestReview(),
   });
 
   protected readonly greeting = greeting();
   protected readonly firstName = computed(() => this.me()?.name.split(' ')[0] ?? 'there');
   protected readonly upNext = computed(() => this.today().find((b) => b.status === 'CONFIRMED'));
-  protected readonly latestReview = computed(() => this.reviews.data()?.[0]);
+  protected readonly latestReview = computed(() => this.latest.data() ?? undefined);
   protected readonly bannerDismissed = signal(readBannerDismissed());
   protected readonly skeletons = [0, 1, 2, 3];
   /** As tall as a loaded KPI card, so nothing moves when the numbers arrive. */

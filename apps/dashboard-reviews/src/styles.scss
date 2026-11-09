@@ -1,0 +1,6 @@
+/*
+ * Standalone mode only (the remote opened directly on :3101). Inside the
+ * dashboard this file is never loaded — the remote's page renders with the
+ * shell's global styles — so here it just borrows them to look the same.
+ */
+@use '../../dashboard-ng/src/styles';

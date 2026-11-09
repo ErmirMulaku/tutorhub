@@ -19,7 +19,8 @@
     "typecheck": "nx run-many -t typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:mfe": "nx run-many -t dev -p @ermulaku/dashboard-ng @ermulaku/dashboard-reviews --parallel=2 --outputStyle=stream"
   },
   "lint-staged": {
     "*.ts": [

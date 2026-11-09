@@ -1,0 +1,133 @@
+{
+  "$schema": "../../node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": {
+    "packageManager": "npm",
+    "analytics": false
+  },
+  "newProjectRoot": "projects",
+  "schematics": {
+    "@schematics/angular:application": {
+      "testRunner": "karma"
+    },
+    "@schematics/angular:library": {
+      "testRunner": "karma"
+    }
+  },
+  "projects": {
+    "dashboard-reviews": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "th",
+      "architect": {
+        "build": {
+          "builder": "@angular-architects/native-federation:build",
+          "options": {
+            "cacheExternalArtifacts": true,
+            "tsConfig": "tsconfig.federation.json"
+          },
+          "configurations": {
+            "production": {
+              "target": "dashboard-reviews:esbuild:production"
+            },
+            "development": {
+              "target": "dashboard-reviews:esbuild:development",
+              "dev": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-architects/native-federation:build",
+          "options": {
+            "target": "dashboard-reviews:serve-original:development",
+            "tsConfig": "tsconfig.federation.json",
+            "outputPath": "dist/dashboard-reviews-dev",
+            "rebuildDelay": 500,
+            "cacheExternalArtifacts": true,
+            "dev": true,
+            "devServer": true,
+            "port": 0
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "karma",
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "dashboard-reviews:esbuild:test",
+            "include": ["test-setup.ts", "**/*.spec.ts"]
+          }
+        },
+        "esbuild": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
+            "styles": ["src/styles.scss"],
+            "define": {
+              "API_URL": "'http://localhost:4000'"
+            },
+            "polyfills": ["es-module-shims"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "200kB",
+                  "maximumError": "260kB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "2kB",
+                  "maximumError": "4kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
+            "test": {
+              "optimization": false,
+              "sourceMap": true,
+              "polyfills": ["zone.js"]
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve-original": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "dashboard-reviews:esbuild:production"
+            },
+            "development": {
+              "buildTarget": "dashboard-reviews:esbuild:development"
+            }
+          },
+          "defaultConfiguration": "development",
+          "options": {
+            "port": 3101
+          }
+        }
+      }
+    }
+  }
+}

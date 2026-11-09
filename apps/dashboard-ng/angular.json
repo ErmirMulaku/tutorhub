@@ -48,6 +48,7 @@
           "options": {
             "target": "dashboard-ng:serve-original:development",
             "tsConfig": "tsconfig.federation.json",
+            "outputPath": "dist/dashboard-ng-dev",
             "rebuildDelay": 500,
             "cacheExternalArtifacts": true,
             "dev": true,
