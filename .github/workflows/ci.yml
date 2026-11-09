@@ -18,6 +18,14 @@ jobs:
       HUSKY: '0'
       DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
       JWT_SECRET: test-secret
+      # The API's AI gateway reads these at boot (ConfigService.getOrThrow),
+      # so without them it can't start. CI never calls AWS: the region just
+      # configures the Bedrock / S3 Vectors clients, and the bucket/index are
+      # placeholders. Redis (rate limits, cache) is a real service below.
+      AWS_REGION: eu-central-1
+      REDIS_URL: redis://localhost:6379
+      S3_VECTOR_BUCKET: ci-unused
+      S3_VECTOR_INDEX: ci-unused
       # dashboard-ng's Karma run: Angular's built-in launcher with Chrome's
       # sandbox off — the runner's kernel may refuse the sandbox's namespaces.
       KARMA_BROWSER: ChromeHeadlessNoSandbox
@@ -32,6 +40,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U tutorhub -d tutorhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -97,6 +114,14 @@ jobs:
       DATABASE_URL: postgresql://tutorhub:tutorhub@localhost:5432/tutorhub?schema=public
       JWT_SECRET: test-secret
       API_URL: http://localhost:4000
+      # The API's AI gateway reads these at boot (ConfigService.getOrThrow),
+      # so without them it can't start. CI never calls AWS: the region just
+      # configures the Bedrock / S3 Vectors clients, and the bucket/index are
+      # placeholders. Redis (rate limits, cache) is a real service below.
+      AWS_REGION: eu-central-1
+      REDIS_URL: redis://localhost:6379
+      S3_VECTOR_BUCKET: ci-unused
+      S3_VECTOR_INDEX: ci-unused
     services:
       postgres:
         image: postgres:17-alpine
@@ -108,6 +133,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U tutorhub -d tutorhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10

@@ -33,7 +33,9 @@ describe('Reviews + Analytics + Settings (e2e)', () => {
         name: 'RAS Tutor',
         timezone: 'UTC',
         hourlyCents: 5000,
-        workingHours: [],
+        // Publishing needs a price, a subject and weekly hours (see
+        // TutorSettingsService.publish), so the fixture has all three.
+        workingHours: [{ day: 1, start: '09:00', end: '17:00' }],
         email,
         isActive: false,
       },
@@ -128,7 +130,9 @@ describe('Reviews + Analytics + Settings (e2e)', () => {
       'mutation { updateTutorProfile(input: { headline: "New headline" }) { name } }',
       t,
     ).expect(200);
-    await gql('mutation { publishProfile { isActive } }', t).expect(200);
+    const published = await gql('mutation { publishProfile { isActive } }', t).expect(200);
+    // GraphQL errors arrive with HTTP 200: check the body too.
+    expect(published.body).toEqual({ data: { publishProfile: { isActive: true } } });
     const res = await gql('{ tutorSettings { headline isActive } }', t).expect(200);
     const s = (res.body as { data: { tutorSettings: { headline: string; isActive: boolean } } })
       .data.tutorSettings;
