@@ -800,6 +800,59 @@ NOT VALID`/`VALIDATE`/`SET NOT NULL`), `lock_timeout` on DDL, and connection-poo
   transitive dependencies), plus `broadway_kafka` for Elixir. `npm audit` count unchanged by this
   branch.
 
+### Phase 12 — Micro frontends (Native Federation) ✅
+
+Turned the Angular dashboard into a **Native Federation** host and moved its Reviews page into a
+separately built and deployed remote, from `docs/NATIVE_FEDERATION_SPEC.md`, one commit per phase.
+How it works, trade-offs and numbers: `docs/MICRO_FRONTENDS.md`.
+
+**Built:**
+
+- `packages/dashboard-kit`: auth store + interceptor, `GraphqlClient`, `CacheTags`, UI
+  primitives and `ToastService`, shared as **one singleton** across shell and remote. Kept as source
+  behind a tsconfig path, with an `API_BASE_URL` token instead of the app's `define`.
+- **The shell as a dynamic host** (`@angular-architects/native-federation` 22.2.4, checked against
+  the package's own schematic source and the v4 docs, not memory).
+- **`apps/dashboard-reviews`**, exposing `./routes`.
+- **A fallback with Retry** inside the layout when the remote can't load.
+- A second Vercel project + deploy workflow, and a production manifest written from
+  `REVIEWS_REMOTE_URL` after the build.
+
+**Verified (not just generated):**
+
+- **Real browser, real API:** `/reviews` came from :3101 (only `remoteEntry.json` + `routes.js`
+  — Angular/NgRx/kit not refetched); a reply showed the **shell's** toast (one `ToastService`) and
+  fired exactly the refetches its tags imply; live Socket.IO updates still arrived. A style
+  fingerprint of all 77 elements matched the pre-change build exactly.
+- **Each failure mode reproduced, not assumed:**
+  - Remote down at start-up → fallback, then Retry recovered **in place**.
+  - Remote down after start-up → es-module-shims caches the failed module fetch for the page's
+    life (no public API), so Retry falls back to a page reload.
+  - Manifest 404 → `initFederation()` rejects _before_ writing the import map, leaving the shell
+    itself blank; fixed by restarting federation with no remotes. The generated `main.ts`'s
+    "catch and bootstrap anyway" did not cover this.
+- **Caught by running it:** a production build while `ng serve` ran swapped production Angular in
+  under the dev app (`ngDevMode is not defined`) — the dev builder serves the shared bundles from
+  `dist/`; dev servers now write to `dist/<app>-dev`.
+- **Independent deploy:** rebuilt only the remote with a changed label; the shell's output
+  checksum was identical and a reload showed the new text.
+- **Tests:** Karma 128 → **135** (130 shell incl. the kit, 5 remote; the 7 new federation specs
+  each mutation-tested); Cypress 10 → **12** (remote load; remote `remoteEntry.json` 404 →
+  fallback while other pages work). Linux `npm ci --dry-run` passes for the full and both Vercel
+  installs.
+- **Measured honestly — a regression:**
+  - JS loaded for `/login` went from 115 to **299 kB gzip**, because shared packages can't be
+    tree-shaken.
+  - Mobile Lighthouse on `/login` went from 97 to **81** (LCP 2.3 → 4.4 s).
+  - Angular budgets were **tightened**, not raised (they no longer see the shared bundles).
+- **Changed from the spec (and why):**
+  - The injected `initFederation()` result replaces the deprecated global `loadRemoteModule`.
+  - `canMatch` + a same-path fallback route replaces a redirect, so the URL, title and active
+    nav link stay.
+  - CORS is `*`, not one origin: public, cookie-free files, and a single origin would break
+    shell previews.
+  - Commit 4 is `feat`, not `test` (it adds behaviour).
+
 ---
 
 _This workflow is the point, not a footnote: ship faster with AI, and take senior accountability

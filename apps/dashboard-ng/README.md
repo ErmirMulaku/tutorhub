@@ -10,12 +10,18 @@ at that tag. How the migration went: [`docs/DASHBOARD_ANGULAR_MIGRATION.md`](../
 esbuild `application` builder, RxJS, NgRx, SCSS, **Jasmine + Karma** for unit
 tests, **Cypress** for E2E against a fixture API.
 
+**Micro frontends:** this app is a **Native Federation host** (the shell). Its `/reviews` page is
+a separately built and deployed remote, [`apps/dashboard-reviews`](../dashboard-reviews), loaded
+at runtime; code both need lives in [`packages/dashboard-kit`](../../packages/dashboard-kit). How
+it works, the trade-offs and the numbers: [`docs/MICRO_FRONTENDS.md`](../../docs/MICRO_FRONTENDS.md).
+
 ## Run
 
 The API must be running (see [`services/api`](../../services/api/README.md)), then:
 
 ```bash
-npm run dev -w @ermulaku/dashboard-ng       # ng serve on :3100
+npm run dev:mfe                             # shell on :3100 + Reviews remote on :3101 (repo root)
+npm run dev -w @ermulaku/dashboard-ng       # the shell alone; /reviews then shows its fallback
 ```
 
 The marketplace uses :3200. :3100 is the port the marketplace's "Become a tutor" link and the API's
@@ -24,13 +30,13 @@ Stripe Connect return URL default to locally.
 ## Scripts
 
 ```bash
-npm run dev         # dev server (Vite, HMR) on :3100
+npm run dev         # dev server (Vite, HMR, + federation artifacts in dist/dashboard-ng-dev) on :3100
 npm run build       # production build → dist/dashboard-ng/browser (fails over a size budget)
 npm run typecheck   # ngc (templates too, strictTemplates) + tsc for the specs and Cypress
 npm run lint        # eslint + angular-eslint (TS and template rules)
 npm test            # Jasmine on Karma, headless Chrome, single run
 npm run test:watch  # Karma in a real Chrome window, re-runs on save
-npm run e2e         # Cypress, headless (needs `npm run dev` running; no API needed)
+npm run e2e         # Cypress, headless (needs `npm run dev:mfe` running; no API needed)
 npm run e2e:open    # Cypress's interactive runner
 ```
 
@@ -45,18 +51,27 @@ Angular equivalent of the React app's Webpack `DefinePlugin`:
 - override: `API_URL=https://api.example.com npm run build`
 
 Read it through `src/environments/environment.ts`, never the global directly. Changing it needs a
-rebuild.
+rebuild. The shared kit gets it through the `API_BASE_URL` token (`app.config.ts`) instead: a
+bundle shared with remotes can't depend on this app's `define`.
+
+Remotes are listed in `public/federation.manifest.json` (development: the Reviews remote on
+`:3101`). Production writes it after the build from `REVIEWS_REMOTE_URL`
+(`scripts/write-federation-manifest.mjs`), so moving the remote needs no rebuild of this app's
+code.
 
 Redux DevTools are registered only in **development** builds: `angular.json` swaps
 `src/environments/dev-tools.ts` (no providers) for `dev-tools.development.ts` there, so production
-never bundles them. Size budgets (initial 420 kB, all scripts 700 kB, the post-login
-`shell-routes` chunk 100 kB — errors; warnings a little lower) live in the production configuration.
+never bundles them. Size budgets (initial 230 kB, all scripts 500 kB, the post-login
+`shell-routes` chunk 45 kB — errors; warnings a little lower) live in the production
+configuration. They count this app's own bundles only — Angular, NgRx, RxJS and the kit are shared
+federation bundles now (see `docs/MICRO_FRONTENDS.md` §5).
 
 ## Layout
 
 ```
 src/
-  main.ts                    bootstrapApplication(App, appConfig)
+  main.ts                    initFederation(manifest) → then loads bootstrap.ts
+  bootstrap.ts               bootstrapApplication(App, …) with the federation result as FEDERATION
   app/
     app.ts                   root: <router-outlet> + theme/accent → <html> (signal effect)
     app.config.ts            router, HttpClient + auth interceptor, NgRx store/effects/devtools
@@ -64,11 +79,14 @@ src/
     core/
       auth/                  NgRx auth feature + effects, interceptor, guards, AuthApiService
       ui/                    NgRx ui feature (theme, accent, online, drawer, modal) + effects
-      api/                   GraphqlClient (POST /graphql, no Apollo), services, response models
-      format.ts, validation.ts, nav.ts   framework-free helpers ported from React
+      api/                   per-feature API services and response models
+      federation/            remoteRoutes() (remote route + fallback), RemoteModules, the fallback page
+      validation.ts, nav.ts  framework-free helpers ported from React
     layout/                  Shell, Sidebar (aside[th-sidebar]), Topbar (header[th-topbar])
-    shared/                  Button, Card, Avatar, Icon, Toast — Angular ports of @ermulaku/ui
-    features/<screen>/       one folder per route
+    shared/                  Icon, KPI stat, charts, modal, … — this app's own components
+                             (Button, Card, Avatar, Toast, GraphqlClient, auth store, format …
+                             live in packages/dashboard-kit, shared with the remotes)
+    features/<screen>/       one folder per route (/reviews is the remote's)
   environments/              API_URL
   styles.scss + styles/      tokens → primitives → app (ported verbatim)
 ```
@@ -78,7 +96,8 @@ React app. `packages/ui` itself is React-only and is not used here.
 
 ## Tests
 
-- **Unit (124 specs):** `*.spec.ts` next to the code, Jasmine syntax (`describe` / `it` /
+- **Unit (130 specs, including `packages/dashboard-kit`'s — the kit has no Angular build of its
+  own, so `angular.json` → `test.include` runs its specs here):** `*.spec.ts` next to the code, Jasmine syntax (`describe` / `it` /
   `expect`), run by Karma in Chrome via the `@angular/build:unit-test` builder
   (`runner: "karma"`). `tsconfig.spec.json` only exposes Jasmine's globals, never the repo-root
   Jest types. Covered: NgRx reducers, selectors and effects (functional effects called directly,
@@ -89,11 +108,13 @@ React app. `packages/ui` itself is React-only and is not used here.
   `zone.js` so `fakeAsync` / `tick` work. The builder then also defaults TestBed to zone change
   detection, so `src/test-setup.ts` (a global `beforeEach`) switches every TestBed back to
   zoneless — tests run the way the app does. The production build never ships zone.js.
-- **E2E (10 tests):** `cypress/e2e/*.cy.ts`. There is no backend: one `cy.intercept` answers every
+- **E2E (12 tests, two of them for the Reviews remote — loaded from :3101, and the fallback when
+  its `remoteEntry.json` is a 404):** `cypress/e2e/*.cy.ts`. There is no backend: one `cy.intercept` answers every
   `/graphql` call by its root field from `cypress/fixtures/graphql.json` (or a per-test override,
   which can be stateful), aliased by that name (`cy.wait('@acceptBooking')`). An operation without
   a fixture fails the test (`cypress/support/e2e.ts`).
 - **CI:** Karma runs in the `verify` job (`KARMA_BROWSER=ChromeHeadlessNoSandbox`); Cypress runs in
-  the `dashboard-ng-e2e` job against the dev server, with failure screenshots uploaded.
+  the `dashboard-ng-e2e` job against the shell and Reviews remote dev servers, with failure
+  screenshots uploaded.
 - **Note:** Karma is deprecated upstream and Vitest is Angular's default runner; Karma is used here
   on purpose to learn it.
