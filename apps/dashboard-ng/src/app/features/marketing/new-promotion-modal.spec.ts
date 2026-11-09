@@ -1,8 +1,7 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { GraphqlError, ToastService } from '@ermulaku/dashboard-kit';
 import { of, throwError } from 'rxjs';
-import { GraphqlError } from '../../core/api/graphql-client';
 import { MarketingApi } from '../../core/api/marketing-api';
-import { ToastService } from '../../shared/toast';
 import { NewPromotionModal } from './new-promotion-modal';
 
 /**

@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, linkedSignal, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Button, cachedQuery } from '@ermulaku/dashboard-kit';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { BookingsApi } from '../../core/api/bookings-api';
-import { cachedQuery } from '../../core/api/cache-tags';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
 import { UiActions, uiFeature } from '../../core/ui/ui.store';
-import { Button } from '../../shared/button';
 import { Modal } from '../../shared/modal';
 
 /** Keep the current pick while it's still in the list; otherwise default to the first item. */

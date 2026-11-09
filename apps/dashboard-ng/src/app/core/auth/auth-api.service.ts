@@ -1,9 +1,8 @@
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { type GraphqlBody, type GraphqlErrorEntry, SKIP_AUTH } from '@ermulaku/dashboard-kit';
 import { type Observable, catchError, of, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { GraphqlBody, GraphqlErrorEntry } from '../api/graphql-client';
-import { SKIP_AUTH } from './auth.interceptor';
 
 interface AuthPayload {
   accessToken: string;

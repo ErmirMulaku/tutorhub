@@ -8,20 +8,23 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Avatar,
+  Button,
+  cachedQuery,
+  Card,
+  dayOf,
+  errorMessage,
+  ErrorState,
+  type Segment,
+  SegmentedTabs,
+  Skeleton,
+  StarRating,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { finalize } from 'rxjs';
-import { cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
-import type { ReviewFilter, TutorReview } from '../../core/api/models';
-import { ReviewsApi } from '../../core/api/reviews-api';
-import { dayOf } from '../../core/format';
-import { Avatar } from '../../shared/avatar';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
-import { Skeleton } from '../../shared/skeleton';
-import { StarRating } from '../../shared/star-rating';
-import { ToastService } from '../../shared/toast';
+import type { ReviewFilter, TutorReview } from './review.models';
+import { ReviewsApi } from './reviews-api';
 
 /**
  * One review with its reply, or a reply box (port of ReviewsScreen's
@@ -33,6 +36,55 @@ import { ToastService } from '../../shared/toast';
   imports: [Avatar, Button, StarRating],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'th-card review' },
+  // Moved from the dashboard's global styles: the remote owns its look.
+  styles: `
+    .review__head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .review__who {
+      flex: 1;
+    }
+    .review__name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .review__body {
+      margin: 12px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .review__reply {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: var(--primary-50);
+      border-inline-start: 3px solid var(--primary);
+      border-radius: 0 10px 10px 0;
+      font-size: 13.5px;
+    }
+    .review__reply-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary-700);
+      margin-bottom: 4px;
+    }
+    .review__reply-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .review__reply-form input {
+      flex: 1;
+      font: inherit;
+      font-size: 13.5px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+  `,
   template: `
     @let r = review();
     <div class="review__head">
@@ -105,6 +157,79 @@ const FILTERS: Segment<ReviewFilter>[] = [
   selector: 'th-reviews-page',
   imports: [Card, ErrorState, ReviewCard, SegmentedTabs, Skeleton, StarRating],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Moved from the dashboard's global styles: the remote owns its look.
+  styles: `
+    .rev-summary {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 28px;
+      margin-bottom: 16px;
+    }
+    .rev-summary__score {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+      border-inline-end: 1px solid var(--border-soft);
+    }
+    .rev-summary__avg {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .rev-summary__dist {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      justify-content: center;
+    }
+    .rev-summary__row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rev-summary__star {
+      width: 28px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .rev-summary__bar-track {
+      flex: 1;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      overflow: hidden;
+    }
+    .rev-summary__bar-fill {
+      height: 100%;
+      background: var(--star);
+      border-radius: 999px;
+    }
+    .rev-summary__count {
+      width: 24px;
+      text-align: end;
+      font-size: 12.5px;
+    }
+    .reviews__list {
+      display: grid;
+      gap: 14px;
+    }
+    /* Was in the dashboard's styles/_hosts.scss: the card host is a block. */
+    th-review-card {
+      display: block;
+    }
+    @media (max-width: 900px) {
+      .rev-summary {
+        grid-template-columns: 1fr;
+      }
+      .rev-summary__score {
+        border-inline-end: none;
+        border-bottom: 1px solid var(--border-soft);
+        padding-bottom: 16px;
+      }
+    }
+  `,
   template: `
     <div class="reviews">
       @if (summary.data(); as s) {

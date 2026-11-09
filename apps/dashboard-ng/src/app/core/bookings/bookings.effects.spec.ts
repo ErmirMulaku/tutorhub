@@ -1,12 +1,10 @@
+import { CacheTags, GraphqlError, ToastService } from '@ermulaku/dashboard-kit';
 import { Actions } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { TestScheduler } from 'rxjs/testing';
 import { booking } from '../../../testing/factories';
 import type { BookingsApi } from '../api/bookings-api';
-import { CacheTags } from '../api/cache-tags';
-import { GraphqlError } from '../api/graphql-client';
 import { UiActions } from '../ui/ui.store';
-import { ToastService } from '../../shared/toast';
 import {
   changeStatus,
   changeStatusToast,

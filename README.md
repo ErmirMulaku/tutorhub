@@ -25,7 +25,7 @@ real scheduling platforms (timezone-correct slots, no-show handling, real-time u
 ## Architecture
 
 ```
- marketplace (Next.js)  ┐                       ┌ dashboard (React+Redux, Webpack)
+ marketplace (Next.js)  ┐                       ┌ dashboard (Angular + NgRx) ◄── /reviews micro frontend
  mobile (Expo)          ┴── GraphQL / REST ──►  │
                                                 ▼
                                 services/api (NestJS)
@@ -39,7 +39,7 @@ Per-phase build log and decisions: [`AGENTS.md`](./AGENTS.md) and [`docs/`](./do
 
 ## Tech stack
 
-TypeScript · Angular 22 + NgRx + RxJS · React 19 · Next.js 16 (SSR/PWA) ·
+TypeScript · Angular 22 + NgRx + RxJS · Native Federation (micro frontends) · React 19 · Next.js 16 (SSR/PWA) ·
 NestJS 11 · GraphQL (Apollo) + gRPC · PostgreSQL + Prisma · Socket.IO · i18n + RTL ·
 Expo / React Native · Elixir/Phoenix (notifications) · Jest + Cypress · GitHub Actions +
 Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Amazon RDS.
@@ -49,7 +49,9 @@ Lighthouse CI · Storybook · OpenAI (booking assistant) · AWS App Runner + Ama
 | Path                                    | What                                                                                                        |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `apps/marketplace`                      | Next.js student app (SSR, PWA, RTL, GPU-only animations)                                                    |
-| `apps/dashboard-ng`                     | Angular + NgRx tutor dashboard (zoneless, signals; replaced the React one)                                  |
+| `apps/dashboard-ng`                     | Angular + NgRx tutor dashboard (zoneless, signals; replaced the React one) — a Native Federation host       |
+| `apps/dashboard-reviews`                | the dashboard's `/reviews` page as a micro frontend, deployed on its own ([how](./docs/MICRO_FRONTENDS.md)) |
+| `packages/dashboard-kit`                | runtime code the dashboard shares with its micro frontends (auth, API client, UI primitives)                |
 | `apps/mobile`                           | Expo / React Native student app                                                                             |
 | `services/api`                          | NestJS — REST + GraphQL + gRPC over Postgres                                                                |
 | `services/notifications`                | Elixir/Phoenix — lesson reminders                                                                           |

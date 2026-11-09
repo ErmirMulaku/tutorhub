@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
+import { CacheTags, GraphqlClient } from '@ermulaku/dashboard-kit';
 import { type Observable, map, tap } from 'rxjs';
-import { CacheTags } from './cache-tags';
-import { GraphqlClient } from './graphql-client';
 import type { MeTutor, NotificationPrefsInput, TutorProfileInput, TutorSettings } from './models';
 
 /** The signed-in tutor's identity, settings and account. Documents copied from api.ts. */

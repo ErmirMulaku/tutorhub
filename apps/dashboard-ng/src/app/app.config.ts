@@ -1,13 +1,13 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { type ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { API_BASE_URL, authFeature, authInterceptor } from '@ermulaku/dashboard-kit';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
 import { devTools } from '../environments/dev-tools';
+import { environment } from '../environments/environment';
 import { routes } from './app.routes';
 import * as authEffects from './core/auth/auth.effects';
-import { authInterceptor } from './core/auth/auth.interceptor';
-import { authFeature } from './core/auth/auth.store';
 import { resetOnAuthChange } from './core/auth/reset-on-auth-change';
 import * as uiEffects from './core/ui/ui.effects';
 import { uiFeature } from './core/ui/ui.store';
@@ -23,6 +23,9 @@ export const appConfig: ApplicationConfig = {
     // are passed straight into matching component `input()`s.
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([authInterceptor])),
+    // The kit (GraphqlClient, authInterceptor) reads the API origin from this
+    // token, not from the build-time API_URL: it is shared with remotes.
+    { provide: API_BASE_URL, useValue: environment.apiUrl },
     // The meta-reducer wipes data slices when the signed-in tutor changes.
     provideStore({}, { metaReducers: [resetOnAuthChange] }),
     provideState(authFeature),

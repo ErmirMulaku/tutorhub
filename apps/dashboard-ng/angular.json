@@ -27,34 +27,91 @@
       "prefix": "th",
       "architect": {
         "build": {
+          "builder": "@angular-architects/native-federation:build",
+          "options": {
+            "cacheExternalArtifacts": true,
+            "tsConfig": "tsconfig.federation.json"
+          },
+          "configurations": {
+            "production": {
+              "target": "dashboard-ng:esbuild:production"
+            },
+            "development": {
+              "target": "dashboard-ng:esbuild:development",
+              "dev": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-architects/native-federation:build",
+          "options": {
+            "target": "dashboard-ng:serve-original:development",
+            "tsConfig": "tsconfig.federation.json",
+            "outputPath": "dist/dashboard-ng-dev",
+            "rebuildDelay": 500,
+            "cacheExternalArtifacts": true,
+            "dev": true,
+            "devServer": true,
+            "port": 0
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "karma",
+            "tsConfig": "tsconfig.spec.json",
+            "buildTarget": "dashboard-ng:esbuild:test",
+            "include": [
+              "test-setup.ts",
+              "**/*.spec.ts",
+              "../../../packages/dashboard-kit/src/**/*.spec.ts"
+            ]
+          }
+        },
+        "esbuild": {
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
             "styles": ["src/styles.scss"],
             "define": {
               "API_URL": "'http://localhost:4000'"
-            }
+            },
+            "polyfills": ["es-module-shims"]
           },
           "configurations": {
             "production": {
+              // Tightened for Native Federation, not loosened. Angular, NgRx,
+              // RxJS and the kit are now shared bundles that the federation
+              // build writes beside this build's output, so these budgets no
+              // longer count them (initial 359 → 185 kB, shell-routes 75 → 28 kB
+              // on the same code); the old limits would have allowed the app's
+              // own code to double unnoticed. The shared bundles have no budget
+              // here — their size is measured in docs/MICRO_FRONTENDS.md.
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "380kB",
-                  "maximumError": "420kB"
+                  "maximumWarning": "200kB",
+                  "maximumError": "230kB"
                 },
                 {
                   "type": "allScript",
-                  "maximumWarning": "600kB",
-                  "maximumError": "700kB"
+                  "maximumWarning": "430kB",
+                  "maximumError": "500kB"
                 },
                 {
                   "type": "bundle",
                   "name": "shell-routes",
-                  "maximumWarning": "85kB",
-                  "maximumError": "100kB"
+                  "maximumWarning": "35kB",
+                  "maximumError": "45kB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -83,25 +140,19 @@
           },
           "defaultConfiguration": "production"
         },
-        "serve": {
+        "serve-original": {
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "dashboard-ng:build:production"
+              "buildTarget": "dashboard-ng:esbuild:production"
             },
             "development": {
-              "buildTarget": "dashboard-ng:build:development"
+              "buildTarget": "dashboard-ng:esbuild:development"
             }
           },
-          "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular/build:unit-test",
+          "defaultConfiguration": "development",
           "options": {
-            "runner": "karma",
-            "tsConfig": "tsconfig.spec.json",
-            "buildTarget": "dashboard-ng:build:test",
-            "include": ["test-setup.ts", "**/*.spec.ts"]
+            "port": 3100
           }
         }
       }

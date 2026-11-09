@@ -182,22 +182,16 @@ export interface CreatePromotionInput {
   discountValue: number;
 }
 
-// --- Reviews -------------------------------------------------------------------
-export type ReviewFilter = 'all' | 'unreplied' | 'replied';
-export interface TutorReview {
-  id: string;
-  studentName: string;
-  studentAvatarColor: string | null;
-  subjectName: string;
+// --- Latest review (dashboard card) ---------------------------------------------
+/**
+ * The dashboard's "Latest review" card. The Reviews page and its full review
+ * model live in the Reviews remote (apps/dashboard-reviews).
+ */
+export interface LatestReview {
   rating: number;
   comment: string | null;
-  reply: string | null;
-  createdAt: string;
-}
-export interface ReviewSummary {
-  average: number;
-  count: number;
-  distribution: number[];
+  studentName: string;
+  subjectName: string;
 }
 
 // --- Analytics -----------------------------------------------------------------

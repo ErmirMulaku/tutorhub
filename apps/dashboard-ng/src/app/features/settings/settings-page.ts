@@ -1,20 +1,23 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Button,
+  cachedQuery,
+  Card,
+  errorMessage,
+  ErrorState,
+  type Segment,
+  SegmentedTabs,
+  Skeleton,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { type Observable, catchError, concatMap, filter, finalize, map, of } from 'rxjs';
-import { cachedQuery } from '../../core/api/cache-tags';
 import { EarningsApi } from '../../core/api/earnings-api';
-import { errorMessage } from '../../core/api/errors';
 import type { NotificationPrefsInput, PayoutSchedule } from '../../core/api/models';
 import { ProfileService } from '../../core/api/profile.service';
 import { ianaTimezone } from '../../core/validators';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
 import { FieldError } from '../../shared/field-error';
-import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
-import { Skeleton } from '../../shared/skeleton';
-import { ToastService } from '../../shared/toast';
 import { ToggleSwitch } from '../../shared/toggle-switch';
 import { PAYOUT_SCHEDULES, scheduleLabel } from '../earnings/payout-editor';
 import { DeleteAccountCard } from './delete-account-card';

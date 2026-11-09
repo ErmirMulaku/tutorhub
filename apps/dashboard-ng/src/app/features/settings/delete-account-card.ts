@@ -9,12 +9,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { AuthActions, Button, Card } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { finalize } from 'rxjs';
 import { ProfileService } from '../../core/api/profile.service';
-import { AuthActions } from '../../core/auth/auth.store';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
 
 /**
  * Port of features/settings/DeleteAccountCard.tsx — permanent account deletion.

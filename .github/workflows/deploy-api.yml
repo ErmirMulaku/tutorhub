@@ -1,15 +1,20 @@
 name: Deploy API
 
-# Builds the API image and rolls it out to App Runner (eu-central-1).
+# Builds the API image and rolls it out to ECS Fargate (eu-central-1).
+#
+# Runtime: one Fargate Spot task, no load balancer. The task runs three
+# containers — `redis` (cache sidecar), `tutorhub-api`, and `cloudflared`
+# (Cloudflare Tunnel) — and the API is reached at
+# https://tutorhub-api.ermir-mulaku.com through the tunnel.
 #
 # One-time setup this workflow assumes:
 #   - An ECR repository (vars.ECR_REPOSITORY, e.g. `tutorhub-api`).
-#   - An App Runner service pointed at that repository
-#     (secrets.APPRUNNER_SERVICE_ARN).
+#   - The ECS service `tutorhub-api-svc` in cluster `tutorhub-gateway`,
+#     task family `tutorhub-api`.
 #   - An IAM role GitHub can assume via OIDC (secrets.AWS_DEPLOY_ROLE_ARN),
-#     trusted for this repo, allowing ecr:* on the repo plus
-#     apprunner:StartDeployment / apprunner:DescribeService / ListOperations.
-#     OIDC avoids storing long-lived AWS keys in GitHub.
+#     trusted for this repo, allowing ecr:* on the repo, ecs:Describe/Register
+#     task definitions, ecs:UpdateService/DescribeServices, and iam:PassRole on
+#     the task's execution and task roles. OIDC avoids long-lived AWS keys.
 #
 # Migrations are NOT run here — see the note at the bottom of the file.
 
@@ -40,8 +45,10 @@ permissions:
 env:
   AWS_REGION: eu-central-1
   ECS_CLUSTER: tutorhub-gateway
-  ECS_SERVICE: tutorhub-gateway-svc
-  ECS_TASK_FAMILY: tutorhub-gateway
+  ECS_SERVICE: tutorhub-api-svc
+  ECS_TASK_FAMILY: tutorhub-api
+  ECS_CONTAINER: tutorhub-api
+  API_URL: https://tutorhub-api.ermir-mulaku.com
 
 jobs:
   deploy:
@@ -57,6 +64,33 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Refuse to ship code whose migrations haven't been run on production.
+      # This runner can't reach the database (see the note at the bottom), so
+      # it asks the running API instead: /ready reports the newest applied
+      # migration and how many are applied. On 2026-10-23 a merge shipped code
+      # that needed 10 new migrations and broke the discover page until they
+      # were run by hand — this step would have stopped that deploy here.
+      - name: Check production has this commit's migrations
+        run: |
+          STATUS=$(curl -s --max-time 20 "$API_URL/ready" || true)
+          LATEST=$(echo "$STATUS" | jq -r '.schema.latestMigration // empty' 2>/dev/null || true)
+          APPLIED=$(echo "$STATUS" | jq -r '.schema.appliedMigrations // empty' 2>/dev/null || true)
+          if [ -z "$LATEST" ] || [ -z "$APPLIED" ]; then
+            # The API running now predates this check (or is unreachable).
+            echo "::warning::Production /ready doesn't report its schema; skipping the migration check. Response: $STATUS"
+            exit 0
+          fi
+          WANTED=$(ls services/api/prisma/migrations | grep -E '^[0-9]{14}_' | sort)
+          NEWER=$(echo "$WANTED" | awk -v latest="$LATEST" '$0 > latest')
+          COUNT=$(echo "$WANTED" | grep -c .)
+          echo "Production: $APPLIED applied, newest $LATEST. This commit: $COUNT migrations."
+          if [ -n "$NEWER" ] || [ "$COUNT" -gt "$APPLIED" ]; then
+            echo "::error::Production is missing migrations this commit needs. Run them first:"
+            echo "  DATABASE_URL='<prod direct url>' npx prisma migrate deploy --schema services/api/prisma/schema.prisma"
+            [ -n "$NEWER" ] && echo "Not applied yet:" && echo "$NEWER"
+            exit 1
+          fi
+
       - name: Log in to Amazon ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -71,7 +105,7 @@ jobs:
           # and its Dockerfile copies packages/* manifests.
           context: .
           file: services/api/Dockerfile
-          # App Runner runs x86_64 — an arm64 image built on Apple Silicon or an
+          # The task runs x86_64 — an arm64 image built on Apple Silicon or an
           # arm runner will not start.
           platforms: linux/amd64
           push: true
@@ -86,10 +120,12 @@ jobs:
           TD=$(aws ecs describe-task-definition \
             --task-definition "$ECS_TASK_FAMILY" \
             --query taskDefinition --output json)
-          NEW=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+          # Swap the image on the API container BY NAME — the task also runs
+          # `redis` and `cloudflared`, and redis is listed first.
+          NEW=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg C "$ECS_CONTAINER" '
             del(.taskDefinitionArn,.revision,.status,.requiresAttributes,
                 .compatibilities,.registeredAt,.registeredBy)
-            | .containerDefinitions[0].image = $IMG')
+            | (.containerDefinitions[] | select(.name == $C) | .image) = $IMG')
           ARN=$(aws ecs register-task-definition \
             --cli-input-json "$NEW" \
             --query 'taskDefinition.taskDefinitionArn' --output text)
@@ -101,8 +137,8 @@ jobs:
 
       - name: Smoke check
         run: |
-          curl -sf https://api.tutorhub.ermir-mulaku.com/health
-          curl -sf -o /dev/null -X POST https://api.tutorhub.ermir-mulaku.com/graphql \
+          curl -sf "$API_URL/health"
+          curl -sf -o /dev/null -X POST "$API_URL/graphql" \
             -H 'content-type: application/json' \
             -d '{"query":"{__typename}"}'
           echo "API answered /health and GraphQL"

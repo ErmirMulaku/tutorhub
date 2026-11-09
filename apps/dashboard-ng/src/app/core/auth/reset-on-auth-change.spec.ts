@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
+import { AuthActions, authFeature } from '@ermulaku/dashboard-kit';
 import { Store, provideState, provideStore } from '@ngrx/store';
 import { booking } from '../../../testing/factories';
 import { BookingsActions, bookingsFeature } from '../bookings/bookings.store';
 import { DashboardActions, dashboardFeature } from '../dashboard/dashboard.store';
 import { UiActions, uiFeature } from '../ui/ui.store';
-import { AuthActions, authFeature } from './auth.store';
 import { resetOnAuthChange } from './reset-on-auth-change';
 
 /**

@@ -1,11 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthActions, Avatar, loadOnTags } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
-import { loadOnTags } from '../core/api/cache-tags';
-import { AuthActions } from '../core/auth/auth.store';
 import { DashboardActions, dashboardFeature } from '../core/dashboard/dashboard.store';
 import { type NavItem, NAV_GROUPS } from '../core/nav';
-import { Avatar } from '../shared/avatar';
 
 type Badge = NonNullable<NavItem['badge']>;
 

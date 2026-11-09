@@ -1,0 +1,84 @@
+name: Deploy Dashboard Reviews
+
+# Deploys the Reviews micro frontend (apps/dashboard-reviews, a Native Federation
+# remote) to its own Vercel project. The dashboard (deploy-dashboard.yml) loads
+# it at runtime from the URL in its federation.manifest.json, so this deploys
+# without rebuilding or redeploying the dashboard.
+#
+# ⚠️ Vercel's Git integration must be DISABLED for this project, or every merge
+# deploys twice — once from Vercel's own git hook and once from here.
+# Project Settings → Git → disconnect, or add to apps/dashboard-reviews/vercel.json:
+#     "git": { "deploymentEnabled": false }
+#
+# Secrets/vars this workflow assumes:
+#   - secrets.VERCEL_TOKEN                     (Account Settings → Tokens)
+#   - vars.VERCEL_ORG_ID                       (apps/*/.vercel/project.json → orgId)
+#   - vars.VERCEL_PROJECT_ID_DASHBOARD_REVIEWS (this project's .vercel → projectId)
+#
+# The CLI runs from the REPO ROOT, not apps/dashboard-reviews: the Vercel
+# project's Root Directory is apps/dashboard-reviews, and running from there
+# makes the CLI apply it twice (see deploy-dashboard.yml). The project is
+# selected by the VERCEL_* env vars instead of by directory.
+#
+# No env vars are needed: inside the dashboard the remote uses the dashboard's
+# API_BASE_URL. vercel.json sends `Access-Control-Allow-Origin: *` (the
+# dashboard is another origin) and `no-cache` on remoteEntry.json, which
+# changes on every deploy, while the content-hashed JS stays immutable.
+#
+# Shared code: a change to packages/dashboard-kit redeploys both apps. The
+# dashboard's copy of the kit is the one that runs (the host's shared
+# singletons win), so a kit change must stay compatible with the other app's
+# deployed build until both have finished deploying.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/dashboard-reviews/**'
+      - 'packages/dashboard-kit/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-dashboard-reviews.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dashboard-reviews
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID_DASHBOARD_REVIEWS }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          URL=$(npx vercel@latest deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "Deployed to $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Smoke check
+        run: |
+          # Deployment Protection makes the *-<hash>.vercel.app URL answer with
+          # Vercel's own login page, so this asserts the deployment serves — not
+          # that remoteEntry.json is reachable. Point it at the public production
+          # domain (the one in the dashboard's REVIEWS_REMOTE_URL) to check that.
+          curl -sf -o /dev/null -w 'HTTP %{http_code} in %{time_total}s\n' \
+            -L "${{ steps.deploy.outputs.url }}/remoteEntry.json"

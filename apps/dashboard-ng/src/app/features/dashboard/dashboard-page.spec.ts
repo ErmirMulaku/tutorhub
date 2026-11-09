@@ -2,7 +2,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
-import { ReviewsApi } from '../../core/api/reviews-api';
+import { DashboardApi } from '../../core/api/dashboard-api';
 import { bookingsFeature } from '../../core/bookings/bookings.store';
 import { dashboardFeature } from '../../core/dashboard/dashboard.store';
 import { KPI_CARD_HEIGHT } from '../../shared/kpi-stat';
@@ -21,7 +21,7 @@ describe('DashboardPage loading states', () => {
       providers: [
         provideRouter([]),
         provideMockStore(),
-        { provide: ReviewsApi, useValue: { myReviews: () => of([]) } },
+        { provide: DashboardApi, useValue: { latestReview: () => of(null) } },
       ],
     });
     store = TestBed.inject<MockStore<object>>(MockStore);

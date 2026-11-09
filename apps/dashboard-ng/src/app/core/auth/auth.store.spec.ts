@@ -1,9 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import {
+  AuthActions,
+  authFeature,
+  initialAuthState,
+  TOKEN_KEY,
+  TUTOR_KEY,
+} from '@ermulaku/dashboard-kit';
 import { Actions } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { clearCredentials, persistCredentials } from './auth.effects';
-import { AuthActions, TOKEN_KEY, TUTOR_KEY, authFeature, initialAuthState } from './auth.store';
 
 describe('auth feature', () => {
   beforeEach(() => localStorage.clear());

@@ -189,3 +189,44 @@ is lost or doubled.
 Once a flag has been at 100% for a while with no rollback, **delete the flag and the old code
 path** in a normal PR. Every flag doubles the paths to test, and stale flags are how "turn off
 the old thing" incidents happen.
+
+## Releasing API changes that include migrations
+
+The "Deploy API" workflow ships code on every merge to `master` but **never runs migrations**
+(the runner can't reach the database, and auto-migrating on merge skips review). So the order is
+always: **migrate production, then merge.**
+
+1. Read-only first: `DATABASE_URL=<prod direct url> npx prisma migrate status` to see what's
+   pending, and preview anything destructive (a `DELETE`, a `NOT NULL`, a new constraint's
+   preconditions, e.g. the booking overlap query).
+2. `DATABASE_URL=<prod direct url> npx prisma migrate deploy`. For Neon, use the **direct** host
+   (the URL without `-pooler`): `CREATE INDEX CONCURRENTLY` and `SET lock_timeout` need a real
+   session.
+3. Merge. Every migration here is additive (expand), so the old code keeps working between
+   steps 2 and 3.
+
+Two guards back this up:
+
+- `/ready` returns **503 `schema: behind`** when the database is missing a migration this build
+  needs, and reports `schema.latestMigration` / `appliedMigrations` when it's fine.
+- The deploy's first step reads that from production and **fails before building** if the commit
+  contains migrations production doesn't have. Its smoke check also runs a real `tutors` query,
+  not just `{__typename}`.
+
+Why: on 2026-10-23, PR #32 merged code that needed 10 new migrations (and 2 older ones that had
+never been applied). The deploy shipped it, the smoke check passed, `/ready` said 200, and the
+discover page failed with `column Tutor.ratingSum does not exist` until the migrations were run
+by hand.
+
+## Outbox retention
+
+`OutboxCleanupService` runs hourly and deletes in batches of 1,000:
+
+- published `OutboxEvent` rows older than 7 days;
+- without `KAFKA_BROKERS`, also **unpublished** rows older than 7 days — nothing will send them,
+  and notifications use the in-process fallback. If a broker is added later, only the last week
+  of events goes out;
+- `ProcessedEvent` dedupe rows older than 30 days.
+
+Watch `outbox_pending` (set by the relay when Kafka is on): with Kafka on, it should hover near
+zero; a steady climb means the relay is stuck or the kill switch is off.

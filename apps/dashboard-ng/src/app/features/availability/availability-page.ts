@@ -1,17 +1,19 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Button,
+  cachedQuery,
+  Card,
+  errorMessage,
+  ErrorState,
+  Skeleton,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { type Observable, filter, finalize } from 'rxjs';
 import { AvailabilityApi } from '../../core/api/availability-api';
-import { cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
 import { endAfterStart } from '../../core/validators';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
 import { FieldError } from '../../shared/field-error';
-import { Skeleton } from '../../shared/skeleton';
-import { ToastService } from '../../shared/toast';
 import { WeeklyHoursEditor } from './weekly-hours-editor';
 
 /** Port of features/availability/AvailabilityScreen.tsx — weekly hours, booking rules, time off. */

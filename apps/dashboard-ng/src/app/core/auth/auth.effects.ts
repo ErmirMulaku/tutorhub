@@ -1,8 +1,8 @@
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthActions, TOKEN_KEY, TUTOR_KEY } from '@ermulaku/dashboard-kit';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { tap } from 'rxjs';
-import { AuthActions, TOKEN_KEY, TUTOR_KEY } from './auth.store';
 
 /** Persist a new session (what the React slice did inside its reducer). */
 export const persistCredentials = createEffect(

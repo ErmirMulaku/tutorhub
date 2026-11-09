@@ -8,16 +8,12 @@ import {
   ReactiveFormsModule,
   type ValidationErrors,
 } from '@angular/forms';
+import { Button, cachedQuery, errorMessage, Skeleton, ToastService } from '@ermulaku/dashboard-kit';
 import { filter, map } from 'rxjs';
 import { AvailabilityApi } from '../../core/api/availability-api';
-import { cachedQuery } from '../../core/api/cache-tags';
-import { errorMessage } from '../../core/api/errors';
 import type { WorkingHour } from '../../core/api/models';
 import { endAfterStart } from '../../core/validators';
-import { Button } from '../../shared/button';
 import { FieldError } from '../../shared/field-error';
-import { Skeleton } from '../../shared/skeleton';
-import { ToastService } from '../../shared/toast';
 import { ToggleSwitch } from '../../shared/toggle-switch';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

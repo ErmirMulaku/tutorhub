@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { STATUS_LABEL, statusTone } from '@ermulaku/dashboard-kit';
 import type { BookingStatus } from '@ermulaku/types';
-import { STATUS_LABEL, statusTone } from '../core/format';
 
 /** Port of components/StatusPill.tsx — reuses the `.th-pill` tone classes. */
 @Component({

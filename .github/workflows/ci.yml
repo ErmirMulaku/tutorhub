@@ -174,29 +174,37 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Only the dashboard and its workspace deps — the same install Vercel runs.
-      # A full `npm ci` would also run services/api's `postinstall`
-      # (`prisma generate`), which needs DATABASE_URL this job has no use for.
+      # Only the dashboard, its Reviews remote and their workspace deps — the
+      # same installs Vercel runs. A full `npm ci` would also run services/api's
+      # `postinstall` (`prisma generate`), which needs DATABASE_URL this job has
+      # no use for.
       - name: Install dependencies
-        run: npm ci --workspace=@ermulaku/dashboard-ng --include-workspace-root
+        run: >-
+          npm ci --workspace=@ermulaku/dashboard-ng --workspace=@ermulaku/dashboard-reviews
+          --include-workspace-root
 
       # The API is faked with cy.intercept fixtures, so no database or API
-      # server is started here — only the Angular dev server. It's started and
-      # awaited here rather than through the action's `start` / `wait-on`, whose
-      # probe failed on its first attempt ("Socket closed before the connection
-      # was established") instead of retrying; curl tries IPv6 and IPv4 and the
-      # loop retries. The server keeps running into the next step.
-      - name: Start the dashboard dev server
-        working-directory: apps/dashboard-ng
+      # server is started here — only the Angular dev servers. They're started
+      # and awaited here rather than through the action's `start` / `wait-on`,
+      # whose probe failed on its first attempt ("Socket closed before the
+      # connection was established") instead of retrying; curl tries IPv6 and
+      # IPv4 and the loop retries. The servers keep running into the next step.
+      #
+      # /reviews is served by the Reviews remote (apps/dashboard-reviews), which
+      # the dashboard loads at runtime from :3101, so both dev servers run.
+      - name: Start the dashboard and Reviews remote dev servers
         run: |
-          npm run dev > /tmp/ng-serve.log 2>&1 &
-          for i in $(seq 1 120); do
-            if curl -sf -o /dev/null http://localhost:3100/; then
-              echo "Dev server is up"; exit 0
+          (cd apps/dashboard-ng && npm run dev > /tmp/ng-serve.log 2>&1 &)
+          (cd apps/dashboard-reviews && npm run dev > /tmp/ng-serve-reviews.log 2>&1 &)
+          for i in $(seq 1 180); do
+            if curl -sf -o /dev/null http://localhost:3100/ &&
+               curl -sf -o /dev/null http://localhost:3101/remoteEntry.json; then
+              echo "Dev servers are up"; exit 0
             fi
             sleep 1
           done
-          echo "Dev server failed to start" >&2; cat /tmp/ng-serve.log >&2; exit 1
+          echo "Dev servers failed to start" >&2
+          cat /tmp/ng-serve.log /tmp/ng-serve-reviews.log >&2; exit 1
 
       - name: Cypress E2E (fixtures)
         uses: cypress-io/github-action@v6

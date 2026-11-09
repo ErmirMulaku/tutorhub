@@ -5,6 +5,8 @@ import * as bookingsEffects from '../core/bookings/bookings.effects';
 import { bookingsFeature } from '../core/bookings/bookings.store';
 import * as dashboardEffects from '../core/dashboard/dashboard.effects';
 import { dashboardFeature } from '../core/dashboard/dashboard.store';
+import { remoteRoutes } from '../core/federation/federation';
+import { RemoteUnavailable } from '../core/federation/remote-unavailable';
 import { Shell } from './shell';
 
 /**
@@ -64,10 +66,17 @@ export const SHELL_ROUTES: Routes = [
         loadComponent: () =>
           import('../features/marketing/marketing-page').then((m) => m.MarketingPage),
       },
-      {
+      // Served by the Reviews remote (apps/dashboard-reviews), fetched at
+      // runtime through federation.manifest.json — not part of this build.
+      // If it can't be loaded, the fallback renders here instead.
+      ...remoteRoutes({
         path: 'reviews',
-        loadComponent: () => import('../features/reviews/reviews-page').then((m) => m.ReviewsPage),
-      },
+        remote: 'reviews',
+        exposed: './routes',
+        exportName: 'REVIEWS_ROUTES',
+        fallback: RemoteUnavailable,
+        data: { label: 'Reviews' },
+      }),
       {
         path: 'analytics',
         loadComponent: () =>

@@ -7,20 +7,24 @@ import {
   linkedSignal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import {
+  Avatar,
+  Button,
+  Card,
+  dayOf,
+  ErrorState,
+  loadOnTags,
+  type Segment,
+  SegmentedTabs,
+  Skeleton,
+  timeOf,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import type { BookingTransition } from '../../core/api/bookings-api';
-import { loadOnTags } from '../../core/api/cache-tags';
 import type { TutorBooking } from '../../core/api/models';
 import { BookingsActions, bookingsFeature } from '../../core/bookings/bookings.store';
-import { dayOf, timeOf } from '../../core/format';
-import { Avatar } from '../../shared/avatar';
-import { Button } from '../../shared/button';
-import { Card } from '../../shared/card';
-import { ErrorState } from '../../shared/error-state';
-import { type Segment, SegmentedTabs } from '../../shared/segmented-tabs';
-import { Skeleton } from '../../shared/skeleton';
 import { StatusPill } from '../../shared/status-pill';
-import { ToastService } from '../../shared/toast';
 
 type Tab = 'upcoming' | 'pending' | 'past';
 const TABS: readonly Tab[] = ['upcoming', 'pending', 'past'];

@@ -45,10 +45,14 @@ export default tseslint.config(
     },
   },
 
-  // Angular dashboard: angular-eslint on top of the shared TS rules, with inline
+  // Angular dashboard, its Reviews remote and their shared kit: angular-eslint on top of the shared TS rules, with inline
   // templates extracted so the template rules below see them too.
   {
-    files: ['apps/dashboard-ng/**/*.ts'],
+    files: [
+      'apps/dashboard-ng/**/*.ts',
+      'apps/dashboard-reviews/**/*.ts',
+      'packages/dashboard-kit/**/*.ts',
+    ],
     extends: [...angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     rules: {
@@ -71,11 +75,15 @@ export default tseslint.config(
   // itself — nothing calls it unbound — so the rule only reports false
   // positives there.
   {
-    files: ['apps/dashboard-ng/**/*.spec.ts'],
+    files: [
+      'apps/dashboard-ng/**/*.spec.ts',
+      'apps/dashboard-reviews/**/*.spec.ts',
+      'packages/dashboard-kit/**/*.spec.ts',
+    ],
     rules: { '@typescript-eslint/unbound-method': 'off' },
   },
   {
-    files: ['apps/dashboard-ng/**/*.html'],
+    files: ['apps/dashboard-ng/**/*.html', 'apps/dashboard-reviews/**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
   },
 

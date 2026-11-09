@@ -74,7 +74,11 @@ describe('API (e2e)', () => {
 
   it('GET /ready → ready with the database up', async () => {
     const res = await http().get('/ready').expect(200);
-    expect(res.body).toEqual({ status: 'ready', checks: { database: 'up' } });
+    expect(res.body).toMatchObject({
+      status: 'ready',
+      checks: { database: 'up', schema: 'current' },
+      schema: { latestMigration: expect.any(String), appliedMigrations: expect.any(Number) },
+    });
   });
 
   it('GET /metrics exposes Prometheus request metrics', async () => {

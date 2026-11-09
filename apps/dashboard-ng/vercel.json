@@ -2,13 +2,17 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd ../.. && CYPRESS_INSTALL_BINARY=0 npm ci --workspace=@ermulaku/dashboard-ng --include-workspace-root",
-  "buildCommand": "cd ../.. && node -v && : \"${API_URL:?Set API_URL in the Vercel project}\" && npx nx build @ermulaku/dashboard-ng",
+  "buildCommand": "cd ../.. && node -v && : \"${API_URL:?Set API_URL in the Vercel project}\" && : \"${REVIEWS_REMOTE_URL:?Set REVIEWS_REMOTE_URL in the Vercel project}\" && npx nx build @ermulaku/dashboard-ng && node apps/dashboard-ng/scripts/write-federation-manifest.mjs",
   "outputDirectory": "dist/dashboard-ng/browser",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [
     {
-      "source": "/(main|chunk|styles)-(.*)\\.(js|css)",
+      "source": "/(.*)\\.(js|css)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(federation\\.manifest|remoteEntry|importmap)\\.json",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
   ]
 }

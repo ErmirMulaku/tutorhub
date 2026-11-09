@@ -24,6 +24,13 @@ name: Deploy Dashboard
 # project's env vars apply, so API_URL comes from the Vercel project; the build
 # fails if it is missing. Changing it there still needs a redeploy — an env
 # edit alone does nothing.
+#
+# REVIEWS_REMOTE_URL (Vercel env var too) is the Reviews remote's origin
+# (deploy-dashboard-reviews.yml). After the build, it is written into
+# federation.manifest.json in the output (scripts/write-federation-manifest.mjs)
+# — not compiled in — and the build fails if it is missing. The remote deploys
+# on its own; this workflow only runs again for dashboard or shared changes
+# (packages/**, which includes packages/dashboard-kit).
 
 on:
   push:

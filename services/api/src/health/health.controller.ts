@@ -1,8 +1,12 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOkResponse, ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { schemaStatus, type SchemaStatus } from './schema-status.js';
 
-/** Liveness (`/health`) and readiness (`/ready`, DB-checked) probes (SPEC §13). */
+/**
+ * Liveness (`/health`) and readiness (`/ready`) probes (SPEC §13). Readiness
+ * checks the database is reachable AND has every migration this code needs.
+ */
 @ApiTags('health')
 @Controller()
 export class HealthController {
@@ -15,17 +19,32 @@ export class HealthController {
   }
 
   @Get('ready')
-  @ApiOkResponse({ description: 'Service is ready (database reachable).' })
-  @ApiServiceUnavailableResponse({ description: 'A dependency is unavailable.' })
-  async ready(): Promise<{ status: 'ready'; checks: { database: 'up' } }> {
+  @ApiOkResponse({ description: 'Ready: database reachable and schema up to date.' })
+  @ApiServiceUnavailableResponse({
+    description: 'Database unreachable, or migrations this code needs are not applied.',
+  })
+  async ready(): Promise<{
+    status: 'ready';
+    checks: { database: 'up'; schema: 'current' };
+    schema: Omit<SchemaStatus, 'pending'>;
+  }> {
+    let schema: SchemaStatus;
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      schema = await schemaStatus(this.prisma);
     } catch {
       throw new ServiceUnavailableException({
         status: 'not_ready',
         checks: { database: 'down' },
       });
     }
-    return { status: 'ready', checks: { database: 'up' } };
+    const { pending, ...applied } = schema;
+    if (pending.length > 0) {
+      throw new ServiceUnavailableException({
+        status: 'not_ready',
+        checks: { database: 'up', schema: 'behind' },
+        schema: { ...applied, pending },
+      });
+    }
+    return { status: 'ready', checks: { database: 'up', schema: 'current' }, schema: applied };
   }
 }

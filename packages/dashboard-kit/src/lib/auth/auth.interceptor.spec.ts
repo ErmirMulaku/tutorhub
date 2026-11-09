@@ -8,7 +8,7 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../api-base-url';
 import { SKIP_AUTH, authInterceptor } from './auth.interceptor';
 import { AuthActions, authFeature } from './auth.store';
 
@@ -18,7 +18,7 @@ import { AuthActions, authFeature } from './auth.store';
  * request's URL, headers and body can be inspected first.
  */
 describe('authInterceptor', () => {
-  const api = `${environment.apiUrl}/graphql`;
+  const api = 'http://api.test/graphql';
   let http: HttpClient;
   let backend: HttpTestingController;
   let store: MockStore;
@@ -29,6 +29,7 @@ describe('authInterceptor', () => {
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideMockStore(),
+        { provide: API_BASE_URL, useValue: 'http://api.test' },
       ],
     });
     http = TestBed.inject(HttpClient);

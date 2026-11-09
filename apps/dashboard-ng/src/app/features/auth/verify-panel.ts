@@ -12,8 +12,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Button } from '@ermulaku/dashboard-kit';
 import { AuthApiService } from '../../core/auth/auth-api.service';
-import { Button } from '../../shared/button';
 
 export interface VerifiedSession {
   token: string;

@@ -1381,110 +1381,6 @@ body {
 
 /* ===== Phase 6 — Reviews / Analytics / Settings / Onboarding ============= */
 
-/* Reviews */
-.rev-summary {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 28px;
-  margin-bottom: 16px;
-}
-.rev-summary__score {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-  border-inline-end: 1px solid var(--border-soft);
-}
-.rev-summary__avg {
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 1;
-}
-.rev-summary__dist {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  justify-content: center;
-}
-.rev-summary__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.rev-summary__star {
-  width: 28px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted);
-}
-.rev-summary__bar-track {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  overflow: hidden;
-}
-.rev-summary__bar-fill {
-  height: 100%;
-  background: var(--star);
-  border-radius: 999px;
-}
-.rev-summary__count {
-  width: 24px;
-  text-align: end;
-  font-size: 12.5px;
-}
-.reviews__list {
-  display: grid;
-  gap: 14px;
-}
-.review__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.review__who {
-  flex: 1;
-}
-.review__name {
-  font-size: 14px;
-  font-weight: 700;
-}
-.review__body {
-  margin: 12px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
-.review__reply {
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: var(--primary-50);
-  border-inline-start: 3px solid var(--primary);
-  border-radius: 0 10px 10px 0;
-  font-size: 13.5px;
-}
-.review__reply-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--primary-700);
-  margin-bottom: 4px;
-}
-.review__reply-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-.review__reply-form input {
-  flex: 1;
-  font: inherit;
-  font-size: 13.5px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--ink);
-}
-
 /* Analytics */
 .analytics__row {
   display: grid;
@@ -1976,7 +1872,6 @@ body {
   .avail,
   .analytics__row,
   .mkt__bottom,
-  .rev-summary,
   .settings__form {
     grid-template-columns: 1fr;
   }
@@ -1984,11 +1879,6 @@ body {
   .earn__top,
   .mkt__stats {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .rev-summary__score {
-    border-inline-end: none;
-    border-bottom: 1px solid var(--border-soft);
-    padding-bottom: 16px;
   }
 }
 

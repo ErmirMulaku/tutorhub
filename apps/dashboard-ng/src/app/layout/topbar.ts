@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
+import { Button } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { debounceTime, distinctUntilChanged, filter, map, skip } from 'rxjs';
 import { PAGE_META } from '../core/nav';
 import { type Accent, UiActions, uiFeature } from '../core/ui/ui.store';
-import { Button } from '../shared/button';
 import { Icon } from '../shared/icon';
 import { NotificationsBell } from './notifications-bell';
 

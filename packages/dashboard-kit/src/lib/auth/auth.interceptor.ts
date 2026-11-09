@@ -2,7 +2,7 @@ import { HttpContextToken, HttpErrorResponse, type HttpInterceptorFn } from '@an
 import { inject } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { catchError, throwError } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../api-base-url';
 import { AuthActions, authFeature } from './auth.store';
 
 /**
@@ -20,7 +20,7 @@ export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
  * GraphQL auth errors arrive as HTTP 200, so those are handled in GraphqlClient.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (req.context.get(SKIP_AUTH) || !req.url.startsWith(environment.apiUrl)) return next(req);
+  if (req.context.get(SKIP_AUTH) || !req.url.startsWith(inject(API_BASE_URL))) return next(req);
 
   const store = inject(Store);
   const token = store.selectSignal(authFeature.selectToken)();

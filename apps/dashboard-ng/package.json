@@ -21,19 +21,23 @@
     "@angular/forms": "22.2.3",
     "@angular/platform-browser": "22.2.3",
     "@angular/router": "22.2.3",
+    "@ermulaku/dashboard-kit": "*",
     "@ermulaku/types": "*",
     "@ngrx/effects": "22.0.1",
     "@ngrx/entity": "22.0.1",
     "@ngrx/store": "22.0.1",
     "@ngrx/store-devtools": "22.0.1",
+    "es-module-shims": "2.8.4",
     "rxjs": "7.8.2",
     "socket.io-client": "4.8.3",
     "tslib": "2.8.1"
   },
   "devDependencies": {
+    "@angular-architects/native-federation": "22.2.4",
     "@angular/build": "22.2.3",
     "@angular/cli": "22.2.3",
     "@angular/compiler-cli": "22.2.3",
+    "@softarc/native-federation-orchestrator": "4.9.0",
     "@types/jasmine": "6.0.0",
     "cypress": "15.17.0",
     "istanbul-lib-instrument": "6.0.3",
@@ -54,6 +58,12 @@
           {
             "env": "API_URL"
           }
+        ]
+      },
+      "test": {
+        "inputs": [
+          "default",
+          "^default"
         ]
       }
     }

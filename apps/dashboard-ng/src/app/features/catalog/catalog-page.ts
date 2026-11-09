@@ -8,15 +8,17 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { cachedQuery } from '../../core/api/cache-tags';
+import {
+  Button,
+  cachedQuery,
+  errorMessage,
+  ErrorState,
+  money,
+  Skeleton,
+  ToastService,
+} from '@ermulaku/dashboard-kit';
 import { CatalogApi } from '../../core/api/catalog-api';
-import { errorMessage } from '../../core/api/errors';
 import type { Service, ServiceType } from '../../core/api/models';
-import { money } from '../../core/format';
-import { Button } from '../../shared/button';
-import { ErrorState } from '../../shared/error-state';
-import { Skeleton } from '../../shared/skeleton';
-import { ToastService } from '../../shared/toast';
 import { NewServiceModal } from './new-service-modal';
 
 const TYPE_LABEL: Record<ServiceType, string> = {

@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { authFeature } from '@ermulaku/dashboard-kit';
 import { Store } from '@ngrx/store';
 import { filter } from 'rxjs';
-import { authFeature } from '../core/auth/auth.store';
 import { BookingsActions } from '../core/bookings/bookings.store';
 import { LiveSocketService } from '../core/live/live-socket.service';
 import { UiActions, uiFeature } from '../core/ui/ui.store';
