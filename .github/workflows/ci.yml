@@ -184,14 +184,28 @@ jobs:
       - name: Re-seed before the booking E2E
         run: npm run db:seed --workspace @ermulaku/api
 
+      # Started and awaited here rather than through the action's `start` /
+      # `wait-on`, whose probe fails on its first attempt ("Socket closed
+      # before the connection was established") instead of retrying — the
+      # same workaround as the dashboard-ng-e2e job. The server keeps running
+      # into the next step.
+      - name: Start the marketplace
+        working-directory: apps/marketplace
+        run: |
+          npm run start > /tmp/marketplace.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -sf -o /dev/null http://localhost:3200/en; then
+              echo "Marketplace is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "Marketplace failed to start" >&2; cat /tmp/marketplace.log >&2; exit 1
+
       - name: Cypress search-to-book E2E
         uses: cypress-io/github-action@v6
         with:
           working-directory: apps/marketplace
           install: false
-          start: npm run start
-          wait-on: 'http://localhost:3200/en'
-          wait-on-timeout: 120
 
   dashboard-ng-e2e:
     name: Dashboard (Angular) · Cypress

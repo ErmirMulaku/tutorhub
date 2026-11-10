@@ -20,26 +20,41 @@ describe('search → book', () => {
   it('finds a tutor by subject and books a lesson end to end', () => {
     cy.visit('/en/tutors');
 
-    // Search narrows the grid to the maths tutor (debounced into the URL).
-    cy.get('.discover-filters__search').type('Mathematics');
-    cy.location('search').should('contain', 'subject=Mathematics');
-    cy.get('.tutor-card-link').should('have.length', 1);
-    cy.contains('.tutor-card__name', 'Ben Carter').should('be.visible');
+    // Search narrows the grid to the maths tutors (debounced into the URL).
+    // The search box writes a free-text `query` (name, subject, …); `subject=`
+    // is the separate exact-subject filter.
+    cy.get('.tutor-card-link')
+      .its('length')
+      .then((all) => {
+        cy.get('.discover-filters__search').type('Mathematics');
+        cy.location('search').should('contain', 'query=Mathematics');
+        cy.get('.tutor-card-link').should('have.length.lessThan', all);
+      });
+    // Sara Khan teaches Mathematics, weekdays 09–17 in London (see the seed).
+    cy.contains('.tutor-card__name', 'Sara Khan').should('be.visible');
 
     // Open the profile.
-    cy.get('.tutor-card-link').first().click();
+    cy.contains('.tutor-card-link', 'Sara Khan').click();
     cy.location('pathname', { timeout: 30000 }).should('include', '/tutor/');
-    cy.contains('.profile__name', 'Ben Carter').should('be.visible');
+    cy.contains('.profile__name', 'Sara Khan').should('be.visible');
 
-    // Jump to a weekday that has availability, then book the first slot.
+    // Booking needs a signed-in student: dev-login the seeded demo student and
+    // store its token in the app's session cookie. Without Stripe keys (as in
+    // CI) the wizard books directly, without the payment step.
+    cy.request('POST', `${Cypress.env('apiUrl') ?? 'http://localhost:4000'}/auth/dev-login`, {
+      email: 'sara@example.com',
+    }).then((res) => cy.setCookie('th_token', (res.body as { accessToken: string }).accessToken));
+
+    // Jump to a weekday that has availability, then go through the wizard:
+    // subject → time → confirm.
     cy.location('pathname').then((pathname) => {
       cy.visit(`${pathname}?date=${firstFutureWeekday()}`);
     });
+    cy.contains('.wizard__chip', 'Mathematics').click();
+    cy.contains('.profile__booking .th-btn', 'Continue').click();
     cy.get('.slot--btn').should('have.length.greaterThan', 0).first().click();
-
-    // The booking sheet opens; confirm it.
-    cy.get('.th-modal').should('be.visible');
-    cy.contains('.th-modal .th-btn', 'Confirm booking').click();
+    cy.get('.profile__booking input[type=checkbox]').check();
+    cy.contains('.profile__booking .th-btn', 'Confirm booking').click();
 
     // Confirmation.
     cy.contains('.booking__success', 'Lesson booked!').should('be.visible');
